@@ -38,19 +38,6 @@ export default function Navbar({ page, onNavigate, score, streak }) {
         </button>
       </div>
 
-      {page === 'play' && (
-        <div className="nav-game-stats">
-          <div className="nav-stat">
-            <span className="nav-stat-label">ציון</span>
-            <span className="nav-stat-val">{score}</span>
-          </div>
-          <div className="nav-stat-div" />
-          <div className="nav-stat">
-            <span className="nav-stat-label">סטריק</span>
-            <span className={`nav-stat-val ${streak > 2 ? 'fire' : ''}`}>{streak}</span>
-          </div>
-        </div>
-      )}
     </nav>
   );
 }
