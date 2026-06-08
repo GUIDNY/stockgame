@@ -455,14 +455,15 @@ ul { list-style: none; }
 .play-progress-fill { height: 100%; background: var(--green); transition: width .4s ease; border-radius: 2px; }
 
 .play-meta {
-  display: flex; align-items: center; gap: 20px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px; padding: 14px 12px;
   background: var(--surface); border-bottom: 2px solid var(--border); flex-shrink: 0;
+  justify-content: space-between;
 }
-.play-meta-left { display: flex; gap: 16px; align-items: center; margin-left: auto; }
+.play-meta-left { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; }
 
 .ticker-badge {
-  padding: 6px 14px; background: var(--blue-dim); color: var(--blue-dark);
-  border-radius: 12px; font-size: 16px; font-weight: 900; letter-spacing: .04em; display: flex; align-items: center;
+  padding: 5px 12px; background: var(--blue-dim); color: var(--blue-dark);
+  border-radius: 10px; font-size: 15px; font-weight: 900; letter-spacing: .04em; display: flex; align-items: center; white-space: nowrap;
 }
 .ticker-badge.synthetic { background: var(--surface-2); color: var(--text-3); }
 .timeframe-badge { padding: 6px 12px; background: var(--surface-2); color: var(--text-3); border-radius: 12px; font-size: 15px; font-weight: 800; display: flex; align-items: center; }
