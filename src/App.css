@@ -978,16 +978,42 @@ ul { list-style: none; }
 @media (max-width: 480px) {
   /* Play page layout improvements */
   .play-meta-bar {
-    padding: 10px 12px;
-    gap: 10px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    font-size: 12px;
+    padding: 14px 14px;
+    gap: 16px;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    font-size: 13px;
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
   }
 
   .play-meta-bar-left,
   .play-meta-bar-right {
-    min-width: max-content;
+    min-width: auto;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .pmb-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+  }
+
+  .pmb-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+  }
+
+  .pmb-value {
+    font-size: 15px;
+    font-weight: 900;
+    color: var(--text);
   }
 
   /* Chart takes more space */
