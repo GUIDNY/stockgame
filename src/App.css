@@ -1124,8 +1124,8 @@ ul { list-style: none; }
 
   /* Navbar improvements */
   .navbar {
-    padding: 10px 14px;
-    height: 52px;
+    padding: 8px 12px;
+    height: 56px;
   }
 
   .nav-brand {
@@ -1137,8 +1137,8 @@ ul { list-style: none; }
   }
 
   .nav-logo svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   .nav-link {
@@ -1150,6 +1150,23 @@ ul { list-style: none; }
   .nav-link-icon svg {
     width: 16px;
     height: 16px;
+  }
+
+  .nav-game-stats {
+    gap: 20px;
+  }
+
+  .nav-stat {
+    min-width: 65px;
+  }
+
+  .nav-stat-label {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .nav-stat-val {
+    font-size: 24px;
   }
 
   /* Lesson/Practice cards */
