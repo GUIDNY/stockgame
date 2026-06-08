@@ -81,7 +81,7 @@ export default function MarketPage() {
                   style={{ borderLeftColor: color }}
                 >
                   <div className="tc-header">
-                    <span className="tc-ticker">{ticker}</span>
+                    <span className="tc-ticker">{ticker.symbol}</span>
                     <span className="tc-change" style={{ color }}>
                       {isGain ? '▲' : '▼'} {Math.abs(data.pct)}%
                     </span>
