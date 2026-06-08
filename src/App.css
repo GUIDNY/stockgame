@@ -149,12 +149,12 @@ ul { list-style: none; }
 .nav-link-icon { display: flex; align-items: center; width: 18px; height: 18px; color: inherit; }
 .nav-link-icon svg { width: 100%; height: 100%; stroke-width: 2.5; }
 
-.nav-game-stats { display: flex; align-items: center; gap: 8px; }
-.nav-stat { display: flex; flex-direction: column; align-items: center; min-width: 48px; }
-.nav-stat-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
-.nav-stat-val { font-size: 18px; font-weight: 900; color: var(--text); }
+.nav-game-stats { display: flex; align-items: center; gap: 14px; }
+.nav-stat { display: flex; flex-direction: column; align-items: center; min-width: 60px; }
+.nav-stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; font-weight: 800; margin-bottom: 3px; }
+.nav-stat-val { font-size: 22px; font-weight: 900; color: var(--text); line-height: 1; }
 .nav-stat-val.fire { color: #ff9600; }
-.nav-stat-div { width: 1px; height: 26px; background: var(--border); }
+.nav-stat-div { width: 1px; height: 32px; background: var(--border); }
 
 /* ═══════════════════════════════════════════════════════════════
    SHARED BUTTONS

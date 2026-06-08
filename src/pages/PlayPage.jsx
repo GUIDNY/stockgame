@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import CandlestickChart from '../components/CandlestickChart';
 import GameControls from '../components/GameControls';
 import ResultOverlay from '../components/ResultOverlay';
+import { IconTrophy, IconTrendingUp, IconBarChart } from '../components/Icons';
 import patternDefinitions from '../data/patternDefinitions';
 import { TIMEFRAMES } from '../hooks/useMarketData';
 
@@ -117,7 +118,9 @@ export default function PlayPage({
     return (
       <div className="done-screen">
         <div className="done-card">
-          <div className="done-emoji">{pct >= 80 ? '🏆' : pct >= 60 ? '📈' : '📊'}</div>
+          <div className="done-emoji">
+            {pct >= 80 ? <IconTrophy /> : pct >= 60 ? <IconTrendingUp /> : <IconBarChart />}
+          </div>
           <h1>סיום!</h1>
           <div className="done-score">{score}<span className="done-total">/{total}</span></div>
           <div className="done-pct">{pct}% דיוק</div>
@@ -196,7 +199,7 @@ export default function PlayPage({
 
       {/* Data loading notice */}
       {dataStatus === 'loading' && (
-        <div className="data-notice loading">⏳ טוען נתוני {tf.sublabel} מהשוק...</div>
+        <div className="data-notice loading">טוען נתוני {tf.sublabel} מהשוק...</div>
       )}
 
       {/* Chart */}

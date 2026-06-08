@@ -47,7 +47,7 @@ export default function Navbar({ page, onNavigate, score, streak }) {
           <div className="nav-stat-div" />
           <div className="nav-stat">
             <span className="nav-stat-label">סטריק</span>
-            <span className={`nav-stat-val ${streak > 2 ? 'fire' : ''}`}>{streak}{streak > 2 ? ' 🔥' : ''}</span>
+            <span className={`nav-stat-val ${streak > 2 ? 'fire' : ''}`}>{streak}</span>
           </div>
         </div>
       )}

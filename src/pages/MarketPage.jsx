@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { IconTrendingUp, IconTrendingDown } from '../components/Icons';
 
 // Real market data - these are actual closing prices we fetch once
 const TICKERS = [
@@ -119,14 +120,14 @@ export default function MarketPage() {
     <div className="market-page">
       <div className="market-header">
         <div className="market-header-inner">
-          <h1 className="market-title">📈 שוק לייב</h1>
+          <h1 className="market-title"><IconTrendingUp /> שוק לייב</h1>
           <p className="market-sub">עדכונים בזמן אמת של מניות שנבחרות</p>
         </div>
       </div>
 
       <div className="market-content">
         {loading ? (
-          <div className="market-loading">⏳ טוען נתוני שוק...</div>
+          <div className="market-loading">טוען נתוני שוק...</div>
         ) : (
           <div className="ticker-grid">
             {TICKERS.map((ticker) => {
@@ -157,7 +158,8 @@ export default function MarketPage() {
 
                   <div className="tc-meta">
                     <span className="tc-badge">
-                      {isGain ? '🟢 עליה' : '🔴 ירידה'}
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', marginRight: 6 }} />
+                      {isGain ? 'עליה' : 'ירידה'}
                     </span>
                   </div>
                 </div>
@@ -167,7 +169,7 @@ export default function MarketPage() {
         )}
 
         <div className="market-note">
-          <span className="note-icon">⚠️</span>
+          <span className="note-icon">!</span>
           <span>
             הנתונים מתעדכנים כל שנייה בזמני מסחר (9:30 AM - 4:00 PM ET ימי חול).
             בחוץ מזמני מסחר, הנתונים הם מהסגירה האחרונה.

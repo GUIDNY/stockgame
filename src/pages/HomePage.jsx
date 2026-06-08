@@ -1,11 +1,12 @@
+import { IconBarChart, IconTarget, IconFire, IconMarket } from '../components/Icons';
 import MiniChart from '../components/MiniChart';
 import patternDefinitions from '../data/patternDefinitions';
 
 const FEATURES = [
-  { icon: '📊', title: '12 תבניות', desc: 'מהנרות הפשוטים ועד תבניות מורכבות כמו כוכב הבוקר ושלושה חיילים' },
-  { icon: '📡', title: 'נתוני שוק אמיתיים', desc: 'דוגמאות אמיתיות מ-SPY, AAPL, TSLA ועוד מניות מובילות' },
-  { icon: '🎯', title: 'קרא את הגרף', desc: 'לחץ ↑ או ↓ לנחש את הכיוון — וקבל הסבר מיד אחרי' },
-  { icon: '🔥', title: 'מעקב קדמה', desc: 'ציון, סטריק ואחוזי דיוק לכל תבנית' },
+  { icon: IconBarChart, title: '12 תבניות', desc: 'מהנרות הפשוטים ועד תבניות מורכבות כמו כוכב הבוקר ושלושה חיילים' },
+  { icon: IconMarket, title: 'נתוני שוק אמיתיים', desc: 'דוגמאות אמיתיות מ-SPY, AAPL, TSLA ועוד מניות מובילות' },
+  { icon: IconTarget, title: 'קרא את הגרף', desc: 'לחץ ↑ או ↓ לנחש את הכיוון — וקבל הסבר מיד אחרי' },
+  { icon: IconFire, title: 'מעקב קדמה', desc: 'ציון, סטריק ואחוזי דיוק לכל תבנית' },
 ];
 
 export default function HomePage({ onNavigate, dataStatus, realPatternCount }) {
@@ -17,7 +18,7 @@ export default function HomePage({ onNavigate, dataStatus, realPatternCount }) {
       <section className="hero">
         <div className="hero-inner">
           <div className="hero-eyebrow">
-            <span className="hero-badge">📊 גרפים פיננסיים</span>
+            <span className="hero-badge"><IconBarChart /> גרפים פיננסיים</span>
           </div>
           <h1 className="hero-title">
             למד לקרוא<br />
@@ -30,10 +31,10 @@ export default function HomePage({ onNavigate, dataStatus, realPatternCount }) {
 
           <div className="hero-ctas">
             <button className="btn-primary" onClick={() => onNavigate('play')}>
-              🎮 התחל לשחק
+              התחל לשחק
             </button>
             <button className="btn-secondary" onClick={() => onNavigate('learn')}>
-              📚 לומד תבניות
+              לומד תבניות
             </button>
           </div>
 
@@ -43,7 +44,7 @@ export default function HomePage({ onNavigate, dataStatus, realPatternCount }) {
             </div>
           )}
           {dataStatus === 'loading' && (
-            <div className="hero-data-badge loading">⏳ טוען נתוני שוק...</div>
+            <div className="hero-data-badge loading">טוען נתוני שוק...</div>
           )}
         </div>
       </section>
@@ -71,7 +72,7 @@ export default function HomePage({ onNavigate, dataStatus, realPatternCount }) {
         <div className="features-grid">
           {FEATURES.map((f) => (
             <div key={f.title} className="feature-card">
-              <div className="feature-icon">{f.icon}</div>
+              <div className="feature-icon"><f.icon /></div>
               <h3 className="feature-title">{f.title}</h3>
               <p className="feature-desc">{f.desc}</p>
             </div>

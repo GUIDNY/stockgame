@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import CandlestickChart from '../components/CandlestickChart';
+import { IconPuzzle, IconZap, IconSkull, IconTrophy, IconTarget, IconBook, IconClock, IconFire } from '../components/Icons';
 import patternDefinitions from '../data/patternDefinitions';
 
 function shuffle(arr) {
@@ -13,9 +14,9 @@ function shuffle(arr) {
 
 /* ── Mode catalog ─────────────────────────────────────────────────────────── */
 const MODES = [
-  { id: 'quiz',     icon: '🧩', title: 'זיהוי תבנית',  color: '#388bfd', diff: 'מתחיל',  desc: 'ראה גרף — בחר את שם התבנית מ-4 אפשרויות. מחדד זיכרון ושמות.' },
-  { id: 'speed',    icon: '⚡', title: 'מרוץ הזמן',    color: '#d29922', diff: 'בינוני', desc: '15 שניות לכל שאלה — מה יקרה? מהירות ודיוק.' },
-  { id: 'survival', icon: '💀', title: 'מצב הישרדות', color: '#f85149', diff: 'קשה',    desc: 'שגיאה אחת = Game Over. כמה רצף תצבור?' },
+  { id: 'quiz',     icon: IconPuzzle, title: 'זיהוי תבנית',  color: '#388bfd', diff: 'מתחיל',  desc: 'ראה גרף — בחר את שם התבנית מ-4 אפשרויות. מחדד זיכרון ושמות.' },
+  { id: 'speed',    icon: IconZap, title: 'מרוץ הזמן',    color: '#d29922', diff: 'בינוני', desc: '15 שניות לכל שאלה — מה יקרה? מהירות ודיוק.' },
+  { id: 'survival', icon: IconSkull, title: 'מצב הישרדות', color: '#f85149', diff: 'קשה',    desc: 'שגיאה אחת = Game Over. כמה רצף תצבור?' },
 ];
 
 function ModeCatalog({ onSelect }) {
@@ -37,7 +38,7 @@ function ModeCatalog({ onSelect }) {
               style={{ '--mode-color': m.color }}
               onClick={() => onSelect(m.id)}
             >
-              <div className="mode-icon" style={{ background: m.color + '1a', color: m.color }}>{m.icon}</div>
+              <div className="mode-icon" style={{ background: m.color + '1a', color: m.color }}><m.icon /></div>
               <div className="mode-body">
                 <div className="mode-diff" style={{ color: m.color }}>{m.diff}</div>
                 <h3 className="mode-title">{m.title}</h3>
@@ -104,7 +105,9 @@ function QuizMode({ onBack }) {
     return (
       <div className="practice-page">
         <div className="pr-result">
-          <div className="pr-emoji">{pct >= 80 ? '🏆' : pct >= 60 ? '🎯' : '📚'}</div>
+          <div className="pr-emoji">
+            {pct >= 80 ? <IconTrophy /> : pct >= 60 ? <IconTarget /> : <IconBook />}
+          </div>
           <h2>סיום הקוויז!</h2>
           <div className="pr-score">{score}/{total}</div>
           <div className="pr-pct">{pct}% דיוק</div>
@@ -257,7 +260,9 @@ function SpeedMode({ onBack, realPatterns }) {
     return (
       <div className="practice-page">
         <div className="pr-result">
-          <div className="pr-emoji">{pct >= 80 ? '⚡' : '🕰️'}</div>
+          <div className="pr-emoji">
+            {pct >= 80 ? <IconZap /> : <IconClock />}
+          </div>
           <h2>סיים!</h2>
           <div className="pr-score">{score}/{total}</div>
           <div className="pr-pct">{pct}% דיוק</div>
@@ -279,7 +284,7 @@ function SpeedMode({ onBack, realPatterns }) {
         <button type="button" className="sv-back" onClick={onBack}>← מצבים</button>
         <div className="speed-stats">
           <span className="speed-stat">✓ {score}</span>
-          <span className="speed-stat fire">{streak > 2 ? `${streak} 🔥` : streak}</span>
+          <span className="speed-stat fire">{streak}</span>
           <span className="speed-stat">{idx + 1}/{total}</span>
         </div>
       </div>
@@ -410,7 +415,7 @@ function SurvivalMode({ onBack, realPatterns }) {
       </div>
 
       <div className="survival-controls">
-        <div className="survival-lives">💀 שגיאה אחת = Game Over</div>
+        <div className="survival-lives"><IconSkull /> שגיאה אחת = Game Over</div>
         <div className="speed-controls">
           <button type="button" className="ctrl-btn up" onClick={() => handleAnswer('up')} disabled={phase !== 'playing'}>
             <span className="ctrl-arrow">↑</span><span className="ctrl-label">למעלה</span>
@@ -425,11 +430,11 @@ function SurvivalMode({ onBack, realPatterns }) {
       {phase === 'dead' && (
         <div className="game-over-overlay">
           <div className="game-over-card">
-            <div className="go-emoji">💀</div>
+            <div className="go-emoji"><IconSkull /></div>
             <h2 className="go-title">Game Over</h2>
             <div className="go-streak">{streak}</div>
             <div className="go-label">רצף</div>
-            {streak >= best && streak > 0 && <div className="go-new-best">🏆 שיא חדש!</div>}
+            {streak >= best && streak > 0 && <div className="go-new-best"><IconTrophy /> שיא חדש!</div>}
             <div className="go-best">שיא: {best}</div>
             <p className="go-pattern">
               פסלת על: <strong>{current.name}</strong>

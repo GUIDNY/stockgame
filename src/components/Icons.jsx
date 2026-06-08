@@ -132,3 +132,50 @@ export const IconFire = () => (
     <path d="M18 12c.5-1 1-2 .5-3.5-.5-1.5-1.5-2-2.5-2-1.5 0-2.5 1-3 2.5"></path>
   </svg>
 );
+
+export const IconTrophy = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2"></path>
+    <path d="M12 14v8M8 14H6a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2M18 14h-2"></path>
+    <polygon points="12 2 15 6 12 7 9 6 12 2"></polygon>
+  </svg>
+);
+
+export const IconClock = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"></circle>
+    <polyline points="12 6 12 12 16 14"></polyline>
+  </svg>
+);
+
+export const IconZap = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+  </svg>
+);
+
+export const IconSkull = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="9" cy="10" r="1"></circle>
+    <circle cx="15" cy="10" r="1"></circle>
+    <path d="M8 16c0 1.5.895 2.75 2.5 2.75.75 0 1.38-.362 1.84-.919.46.557 1.09.919 1.84.919C15.105 18.75 16 17.5 16 16"></path>
+    <path d="M12 2a8 8 0 0 0-8 8v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4a8 8 0 0 0-8-8z"></path>
+  </svg>
+);
+
+export const IconPuzzle = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 11a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path>
+    <path d="M14 11a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1z"></path>
+    <path d="M4 6a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path>
+    <path d="M14 6a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1z"></path>
+  </svg>
+);
+
+export const IconTarget = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="1"></circle>
+    <circle cx="12" cy="12" r="5"></circle>
+    <circle cx="12" cy="12" r="9"></circle>
+  </svg>
+);
