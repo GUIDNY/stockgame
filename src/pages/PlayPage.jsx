@@ -195,6 +195,18 @@ export default function PlayPage({
           {DIFF_LABEL[current.difficulty]}
         </span>
         <span className="question-count">{idx + 1} / {total}</span>
+
+        <div className="play-stats">
+          <div className="play-stat">
+            <span className="play-stat-label">ציון</span>
+            <span className="play-stat-val">{score}</span>
+          </div>
+          <div className="play-stat-sep" />
+          <div className="play-stat">
+            <span className="play-stat-label">סטריק</span>
+            <span className="play-stat-val">{streak}</span>
+          </div>
+        </div>
       </div>
 
       {/* Data loading notice */}
