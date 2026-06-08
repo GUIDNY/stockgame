@@ -1,25 +1,40 @@
+import { useState } from 'react';
+
 export default function Navbar({ page, onNavigate, score, streak }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleNavClick = (target) => {
+    onNavigate(target);
+    setMenuOpen(false);
+  };
+
   return (
     <nav className="navbar">
-      <button className="nav-brand" onClick={() => onNavigate('home')}>
+      <button className="nav-brand" onClick={() => handleNavClick('home')}>
         <span className="nav-logo">📊</span>
         <span className="nav-title">קרא את הגרף</span>
       </button>
 
-      <div className="nav-links">
-        <button className={`nav-link ${page === 'market' ? 'active' : ''}`} onClick={() => onNavigate('market')}>
+      <button className="nav-hamburger" onClick={() => setMenuOpen(!menuOpen)}>
+        <span className="hamburger-line"></span>
+        <span className="hamburger-line"></span>
+        <span className="hamburger-line"></span>
+      </button>
+
+      <div className={`nav-links ${menuOpen ? 'open' : ''}`}>
+        <button className={`nav-link ${page === 'market' ? 'active' : ''}`} onClick={() => handleNavClick('market')}>
           <span className="nav-link-icon">📈</span>שוק
         </button>
-        <button className={`nav-link ${page === 'lessons' ? 'active' : ''}`} onClick={() => onNavigate('lessons')}>
+        <button className={`nav-link ${page === 'lessons' ? 'active' : ''}`} onClick={() => handleNavClick('lessons')}>
           <span className="nav-link-icon">🎓</span>שיעורים
         </button>
-        <button className={`nav-link ${page === 'learn' ? 'active' : ''}`} onClick={() => onNavigate('learn')}>
+        <button className={`nav-link ${page === 'learn' ? 'active' : ''}`} onClick={() => handleNavClick('learn')}>
           <span className="nav-link-icon">📚</span>תבניות
         </button>
-        <button className={`nav-link ${page === 'practice' ? 'active' : ''}`} onClick={() => onNavigate('practice')}>
+        <button className={`nav-link ${page === 'practice' ? 'active' : ''}`} onClick={() => handleNavClick('practice')}>
           <span className="nav-link-icon">🏋️</span>תרגול
         </button>
-        <button className={`nav-link ${page === 'play' ? 'active' : ''}`} onClick={() => onNavigate('play')}>
+        <button className={`nav-link ${page === 'play' ? 'active' : ''}`} onClick={() => handleNavClick('play')}>
           <span className="nav-link-icon">🎮</span>משחק
         </button>
       </div>
