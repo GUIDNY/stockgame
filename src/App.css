@@ -125,14 +125,15 @@ ul { list-style: none; }
   cursor: pointer;
 }
 .nav-brand:hover .nav-title { opacity: .8; }
-.nav-logo { font-size: 22px; }
+.nav-logo { display: flex; align-items: center; color: var(--green-dark); }
+.nav-logo svg { width: 20px; height: 20px; }
 .nav-title { font-size: 18px; font-weight: 900; color: var(--green-dark); }
 
 .nav-links { display: flex; gap: 2px; }
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   border: none;
@@ -145,7 +146,8 @@ ul { list-style: none; }
 }
 .nav-link:hover { background: var(--surface-2); color: var(--text-2); }
 .nav-link.active { background: var(--green-dim); color: var(--green-dark); }
-.nav-link-icon { font-size: 15px; }
+.nav-link-icon { display: flex; align-items: center; width: 18px; height: 18px; color: inherit; }
+.nav-link-icon svg { width: 100%; height: 100%; stroke-width: 2.5; }
 
 .nav-game-stats { display: flex; align-items: center; gap: 8px; }
 .nav-stat { display: flex; flex-direction: column; align-items: center; min-width: 48px; }
@@ -890,8 +892,8 @@ ul { list-style: none; }
 /* ═══════════════════════════════════════════════════════════════
    MOBILE RESPONSIVE
 ════════════════════════════════════════════════════════════════ */
-.nav-hamburger { display: none; background: none; border: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 8px; }
-.hamburger-line { width: 24px; height: 3px; background: var(--text); border-radius: 2px; transition: all 300ms; }
+.nav-hamburger { display: none; background: none; border: none; cursor: pointer; padding: 8px; color: var(--text); }
+.nav-hamburger svg { width: 24px; height: 24px; }
 
 @media (max-width: 768px) {
   .navbar { flex-wrap: wrap; }
@@ -947,7 +949,7 @@ ul { list-style: none; }
   .navbar { padding: 12px 16px; }
   .nav-brand { flex: 1; }
   .nav-title { display: none; }
-  .nav-logo { font-size: 24px; }
+  .nav-logo svg { width: 22px; height: 22px; }
 
   /* Home page */
   .hero { padding: 24px 16px; }
