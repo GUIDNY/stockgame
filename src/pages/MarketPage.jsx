@@ -13,7 +13,7 @@ const TICKERS = [
 
 // Simulated market prices with realistic micro-movements
 function generatePrice(ticker, timestamp) {
-  const seed = ticker.charCodeAt(0) + timestamp / 1000;
+  const seed = ticker.symbol.charCodeAt(0) + timestamp / 1000;
   const noise = Math.sin(seed) * 0.5 + Math.sin(seed * 0.33) * 0.3;
   const drift = Math.sin(timestamp / 30000) * 0.1; // Slow drift
   const change = noise + drift;
