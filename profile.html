@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html class="light" lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ChartMaster - פרופיל</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface-container":         "#efeded",
+          "tertiary":                  "#bb1522",
+          "on-surface-variant":        "#3f4a36",
+          "surface-dim":               "#dbd9d9",
+          "outline":                   "#6f7b64",
+          "inverse-on-surface":        "#f2f0f0",
+          "on-primary":                "#ffffff",
+          "primary-container":         "#58cc02",
+          "secondary-fixed":           "#c8e6ff",
+          "primary-fixed-dim":         "#6be026",
+          "on-secondary-fixed":        "#001e2e",
+          "on-tertiary-container":     "#910013",
+          "surface-container-low":     "#f5f3f3",
+          "on-primary-container":      "#1e5000",
+          "on-error-container":        "#93000a",
+          "surface":                   "#fbf9f8",
+          "primary":                   "#2b6c00",
+          "tertiary-container":        "#ff9790",
+          "on-background":             "#1b1c1c",
+          "inverse-primary":           "#6be026",
+          "primary-fixed":             "#87fe45",
+          "secondary":                 "#006590",
+          "surface-bright":            "#fbf9f8",
+          "on-primary-fixed":          "#082100",
+          "on-surface":                "#1b1c1c",
+          "on-tertiary":               "#ffffff",
+          "on-secondary":              "#ffffff",
+          "secondary-fixed-dim":       "#88ceff",
+          "surface-tint":              "#2b6c00",
+          "secondary-container":       "#2fb8ff",
+          "on-error":                  "#ffffff",
+          "on-secondary-container":    "#004666",
+          "surface-container-lowest":  "#ffffff",
+          "on-secondary-fixed-variant":"#004c6e",
+          "surface-container-highest": "#e4e2e2",
+          "surface-container-high":    "#eae8e7",
+          "tertiary-fixed":            "#ffdad7",
+          "error-container":           "#ffdad6",
+          "outline-variant":           "#becbb1",
+          "error":                     "#ba1a1a",
+          "surface-variant":           "#e4e2e2",
+          "background":                "#fbf9f8",
+          "inverse-surface":           "#303030",
+          "gold":                      "#f59e0b",
+          "gold-container":            "#fef3c7",
+        },
+        borderRadius: {
+          DEFAULT: "0.25rem",
+          lg: "0.5rem",
+          xl: "0.75rem",
+          "2xl": "1rem",
+          full: "9999px",
+        },
+        fontFamily: {
+          body: ["Be Vietnam Pro"],
+        },
+        fontSize: {
+          "stat-lg": ["24px", { lineHeight: "28px", fontWeight: "800" }],
+          "body-md": ["15px", { lineHeight: "22px", fontWeight: "500" }],
+          "headline-lg": ["28px", { lineHeight: "36px", fontWeight: "800" }],
+          "label-bold": ["14px", { lineHeight: "20px", fontWeight: "700" }],
+          "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "800" }],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .filled-icon { font-variation-settings: 'FILL' 1; }
+
+  .pressable-card {
+    box-shadow: 0 4px 0 0 #d1d5db;
+    transition: all 0.1s ease;
+  }
+  .pressable-card:active {
+    transform: translateY(4px);
+    box-shadow: 0 0px 0 0 #d1d5db;
+  }
+  .pressable-green {
+    box-shadow: 0 4px 0 0 #1e5000;
+    transition: all 0.1s ease;
+  }
+  .pressable-green:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 0 #1e5000;
+  }
+  .pressable-blue {
+    box-shadow: 0 4px 0 0 #004c6e;
+    transition: all 0.1s ease;
+  }
+  .pressable-blue:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 0 #004c6e;
+  }
+
+  body { min-height: max(900px, 100dvh); font-family: 'Be Vietnam Pro', sans-serif; }
+
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .xp-bar-fill {
+    background: linear-gradient(90deg, #58cc02 0%, #87fe45 100%);
+    border-radius: 9999px;
+  }
+  .xp-bar-fill-blue {
+    background: linear-gradient(90deg, #006590 0%, #2fb8ff 100%);
+    border-radius: 9999px;
+  }
+
+  .league-badge {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%);
+  }
+  .league-badge-silver {
+    background: linear-gradient(135deg, #9ca3af 0%, #d1d5db 50%, #6b7280 100%);
+  }
+
+  @keyframes pulse-streak {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .streak-anim { animation: pulse-streak 2s ease-in-out infinite; }
+
+  /* nav active tab "press" effect */
+  .nav-active {
+    background-color: #58cc02;
+    color: #1e5000;
+    border-bottom: 4px solid #1e5000;
+    border-radius: 0.75rem;
+    transform: translateY(2px);
+  }
+</style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+
+<!-- ── Top AppBar ────────────────────────────────────────────────────── -->
+<header class="fixed top-0 right-0 w-full z-50 bg-surface border-b-2 border-outline-variant h-16 flex justify-between items-center px-6">
+  <!-- Brand -->
+  <div class="flex items-center gap-2">
+    <span class="material-symbols-outlined text-primary filled-icon" style="font-size:30px;">candlestick_chart</span>
+    <span class="text-headline-sm font-black text-primary">ChartMaster</span>
+  </div>
+  <!-- Right side: lives + settings -->
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-1 bg-red-50 border-2 border-red-200 px-3 py-1 rounded-full">
+      <span class="text-tertiary text-label-bold font-bold">5</span>
+      <span class="text-tertiary filled-icon material-symbols-outlined" style="font-size:18px;">favorite</span>
+    </div>
+    <button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container rounded-full p-2 transition-colors">settings</button>
+  </div>
+</header>
+
+<!-- ── Main Content ──────────────────────────────────────────────────── -->
+<main class="pt-24 pb-32 px-6 max-w-lg mx-auto space-y-8">
+
+  <!-- Profile Header -->
+  <section class="flex flex-col items-center text-center gap-3">
+    <div class="relative">
+      <div class="w-28 h-28 rounded-full border-4 border-primary p-1 bg-surface-container-lowest">
+        <div class="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary filled-icon" style="font-size:56px;">person</span>
+        </div>
+      </div>
+      <button class="absolute bottom-0 left-0 bg-primary-container text-on-primary-container p-2 rounded-full border-2 border-surface shadow-sm pressable-green">
+        <span class="material-symbols-outlined filled-icon" style="font-size:18px;">edit</span>
+      </button>
+    </div>
+    <div>
+      <h1 class="text-headline-lg">Alex הסוחר</h1>
+      <p class="text-on-surface-variant text-label-bold mt-1">הצטרף אוקטובר 2024</p>
+    </div>
+    <!-- XP Level bar -->
+    <div class="w-full max-w-xs">
+      <div class="flex justify-between text-xs text-on-surface-variant mb-1">
+        <span class="font-bold">רמה 7</span>
+        <span>2,450 / 3,000 XP</span>
+      </div>
+      <div class="w-full h-3 bg-surface-container rounded-full overflow-hidden">
+        <div class="xp-bar-fill h-full" style="width: 82%"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Grid -->
+  <section class="grid grid-cols-2 gap-4">
+
+    <!-- Streak -->
+    <div class="bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 pressable-card flex flex-col items-center gap-1 cursor-pointer">
+      <span class="material-symbols-outlined text-orange-400 filled-icon streak-anim" style="font-size:40px;">local_fire_department</span>
+      <span class="text-stat-lg">12</span>
+      <span class="text-on-surface-variant text-label-bold">רצף ימי</span>
+    </div>
+
+    <!-- XP -->
+    <div class="bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 pressable-card flex flex-col items-center gap-1 cursor-pointer">
+      <span class="material-symbols-outlined text-secondary filled-icon" style="font-size:40px;">bolt</span>
+      <span class="text-stat-lg">2,450</span>
+      <span class="text-on-surface-variant text-label-bold">סה"כ XP</span>
+    </div>
+
+    <!-- Lessons -->
+    <div class="bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 pressable-card flex flex-col items-center gap-1 cursor-pointer">
+      <span class="material-symbols-outlined text-tertiary filled-icon" style="font-size:40px;">school</span>
+      <span class="text-stat-lg">48</span>
+      <span class="text-on-surface-variant text-label-bold">שיעורים</span>
+    </div>
+
+    <!-- League -->
+    <div class="bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 pressable-card flex flex-col items-center gap-1 cursor-pointer">
+      <div class="w-10 h-10 league-badge rounded-full flex items-center justify-center mb-1">
+        <span class="material-symbols-outlined text-white filled-icon" style="font-size:22px;">emoji_events</span>
+      </div>
+      <span class="text-stat-lg">זהב</span>
+      <span class="text-on-surface-variant text-label-bold">ליגה</span>
+    </div>
+
+  </section>
+
+  <!-- Today's Stats strip -->
+  <section class="bg-primary/5 border-2 border-primary/20 rounded-xl p-4">
+    <h3 class="text-label-bold text-primary mb-3">📅 היום</h3>
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div>
+        <div class="text-xl font-black text-on-surface">7</div>
+        <div class="text-xs text-on-surface-variant font-bold">תרגולים</div>
+      </div>
+      <div class="border-x-2 border-outline-variant">
+        <div class="text-xl font-black text-primary">85%</div>
+        <div class="text-xs text-on-surface-variant font-bold">דיוק</div>
+      </div>
+      <div>
+        <div class="text-xl font-black text-secondary">+180</div>
+        <div class="text-xs text-on-surface-variant font-bold">XP</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Achievements -->
+  <section class="space-y-4">
+    <div class="flex justify-between items-center">
+      <h2 class="text-headline-sm">הישגים</h2>
+      <button class="text-primary text-label-bold hover:underline">הכל ←</button>
+    </div>
+
+    <div class="space-y-3">
+
+      <!-- Achievement 1: Chart Master -->
+      <div class="flex items-center gap-4 bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 pressable-card cursor-pointer">
+        <div class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-primary filled-icon" style="font-size:28px;">monitoring</span>
+        </div>
+        <div class="flex-grow min-w-0">
+          <div class="flex justify-between items-center">
+            <h3 class="text-label-bold">Chart Master</h3>
+            <span class="text-xs text-on-surface-variant font-bold">75/100</span>
+          </div>
+          <div class="w-full bg-surface-container h-2.5 rounded-full mt-2 overflow-hidden">
+            <div class="xp-bar-fill h-full" style="width:75%"></div>
+          </div>
+          <p class="text-xs text-on-surface-variant mt-1">75 תבניות זוהו נכון</p>
+        </div>
+      </div>
+
+      <!-- Achievement 2: Pattern Hunter -->
+      <div class="flex items-center gap-4 bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 pressable-card cursor-pointer">
+        <div class="w-14 h-14 bg-secondary/10 rounded-full flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-secondary filled-icon" style="font-size:28px;">search_insights</span>
+        </div>
+        <div class="flex-grow min-w-0">
+          <div class="flex justify-between items-center">
+            <h3 class="text-label-bold">Pattern Hunter</h3>
+            <span class="text-xs text-on-surface-variant font-bold">10/13</span>
+          </div>
+          <div class="w-full bg-surface-container h-2.5 rounded-full mt-2 overflow-hidden">
+            <div class="xp-bar-fill-blue h-full" style="width:77%"></div>
+          </div>
+          <p class="text-xs text-on-surface-variant mt-1">10/13 סוגי תבניות גולו</p>
+        </div>
+      </div>
+
+      <!-- Achievement 3: Survivor (in progress) -->
+      <div class="flex items-center gap-4 bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 pressable-card cursor-pointer">
+        <div class="w-14 h-14 bg-gold/10 rounded-full flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-gold filled-icon" style="font-size:28px;">emoji_events</span>
+        </div>
+        <div class="flex-grow min-w-0">
+          <div class="flex justify-between items-center">
+            <h3 class="text-label-bold">Survivor</h3>
+            <span class="text-xs text-on-surface-variant font-bold">8/20</span>
+          </div>
+          <div class="w-full bg-surface-container h-2.5 rounded-full mt-2 overflow-hidden">
+            <div class="h-full rounded-full bg-gold" style="width:40%"></div>
+          </div>
+          <p class="text-xs text-on-surface-variant mt-1">רצף 20 תשובות במצב הישרדות</p>
+        </div>
+      </div>
+
+      <!-- Achievement 4: Locked -->
+      <div class="flex items-center gap-4 bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 opacity-50 grayscale cursor-default">
+        <div class="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-on-surface-variant filled-icon" style="font-size:28px;">alarm</span>
+        </div>
+        <div class="flex-grow min-w-0">
+          <div class="flex justify-between items-center">
+            <h3 class="text-label-bold">Early Bird</h3>
+            <span class="text-xs text-on-surface-variant font-bold">0/5</span>
+          </div>
+          <div class="w-full bg-surface-container h-2.5 rounded-full mt-2 overflow-hidden">
+            <div class="h-full w-0 rounded-full bg-surface-container-highest"></div>
+          </div>
+          <p class="text-xs text-on-surface-variant mt-1">השלם 5 שיעורים לפני 8:00 בבוקר</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Daily Challenges -->
+  <section class="space-y-4">
+    <div class="flex justify-between items-center">
+      <h2 class="text-headline-sm">אתגרים יומיים</h2>
+      <span class="text-xs text-on-surface-variant font-bold bg-surface-container px-2 py-1 rounded-full">מתחדש בעוד 6:24</span>
+    </div>
+    <div class="space-y-3">
+      <!-- Challenge 1: completed -->
+      <div class="flex items-center gap-4 bg-primary/5 border-2 border-primary/30 rounded-xl p-4">
+        <div class="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-on-primary-container filled-icon" style="font-size:20px;">check_circle</span>
+        </div>
+        <div class="flex-grow">
+          <h3 class="text-label-bold text-primary">זהה 5 תבניות ✓</h3>
+          <p class="text-xs text-on-surface-variant mt-0.5">+50 XP הושלם!</p>
+        </div>
+        <span class="text-primary-container filled-icon material-symbols-outlined" style="font-size:28px;">check_circle</span>
+      </div>
+      <!-- Challenge 2: in progress -->
+      <div class="flex items-center gap-4 bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4">
+        <div class="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-secondary filled-icon" style="font-size:20px;">speed</span>
+        </div>
+        <div class="flex-grow">
+          <div class="flex justify-between">
+            <h3 class="text-label-bold">מרוץ הזמן — 3 ברצף</h3>
+            <span class="text-xs text-on-surface-variant font-bold">1/3</span>
+          </div>
+          <div class="w-full bg-surface-container h-2 rounded-full mt-2 overflow-hidden">
+            <div class="xp-bar-fill-blue h-full" style="width:33%"></div>
+          </div>
+          <p class="text-xs text-on-surface-variant mt-1">+75 XP</p>
+        </div>
+      </div>
+      <!-- Challenge 3: locked -->
+      <div class="flex items-center gap-4 bg-surface-container-lowest border-2 border-surface-container rounded-xl p-4 opacity-50">
+        <div class="w-10 h-10 bg-surface-container rounded-full flex items-center justify-center flex-shrink-0">
+          <span class="material-symbols-outlined text-on-surface-variant filled-icon" style="font-size:20px;">lock</span>
+        </div>
+        <div class="flex-grow">
+          <h3 class="text-label-bold">שיעור: ממוצעים נעים</h3>
+          <p class="text-xs text-on-surface-variant mt-0.5">השלם את האתגר הקודם תחילה</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Daily Shop -->
+  <section class="space-y-4">
+    <h2 class="text-headline-sm">חנות יומית</h2>
+    <div class="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
+      <!-- Refill lives -->
+      <button class="flex-shrink-0 bg-primary-container text-on-primary-container px-5 py-4 rounded-xl pressable-green text-label-bold flex items-center gap-2">
+        <span class="material-symbols-outlined filled-icon">favorite</span>
+        מלא חיים (200 XP)
+      </button>
+      <!-- Streak Freeze -->
+      <button class="flex-shrink-0 bg-secondary-container text-on-secondary-container px-5 py-4 rounded-xl pressable-blue text-label-bold border-2 border-on-secondary-container flex items-center gap-2">
+        <span class="material-symbols-outlined filled-icon">shield</span>
+        הגנת רצף (500 XP)
+      </button>
+      <!-- Double XP -->
+      <button class="flex-shrink-0 bg-gold-container text-amber-800 px-5 py-4 rounded-xl pressable-card text-label-bold border-2 border-gold flex items-center gap-2">
+        <span class="material-symbols-outlined filled-icon">bolt</span>
+        XP כפול (300 XP)
+      </button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Bottom Navigation ──────────────────────────────────────────────── -->
+<nav class="fixed bottom-0 right-0 w-full z-50 flex justify-around items-center px-2 py-2 bg-surface border-t-2 border-outline-variant rounded-t-2xl">
+
+  <a href="#" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 rounded-xl hover:bg-surface-container-high transition-all gap-0.5">
+    <span class="material-symbols-outlined" style="font-size:24px;">home</span>
+    <span class="text-xs font-bold">בית</span>
+  </a>
+
+  <a href="#" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 rounded-xl hover:bg-surface-container-high transition-all gap-0.5">
+    <span class="material-symbols-outlined" style="font-size:24px;">school</span>
+    <span class="text-xs font-bold">שיעורים</span>
+  </a>
+
+  <a href="#" class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 rounded-xl hover:bg-surface-container-high transition-all gap-0.5">
+    <span class="material-symbols-outlined" style="font-size:24px;">leaderboard</span>
+    <span class="text-xs font-bold">ליגות</span>
+  </a>
+
+  <a href="#" class="flex flex-col items-center justify-center nav-active px-4 py-1 gap-0.5">
+    <span class="material-symbols-outlined filled-icon" style="font-size:24px;">person</span>
+    <span class="text-xs font-bold">פרופיל</span>
+  </a>
+
+</nav>
+
+<script>
+  // Hide/show nav on scroll
+  let lastY = 0;
+  const nav = document.querySelector('nav');
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    nav.style.transition = 'transform 0.25s ease';
+    nav.style.transform = y > lastY && y > 60 ? 'translateY(100%)' : 'translateY(0)';
+    lastY = y;
+  });
+
+  // Animate XP bar fills on load
+  document.querySelectorAll('[style*="width:"]').forEach(el => {
+    const target = el.style.width;
+    el.style.width = '0%';
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        el.style.transition = 'width 0.8s cubic-bezier(0.4,0,0.2,1)';
+        el.style.width = target;
+      }, 200);
+    });
+  });
+</script>
+</body>
+</html>
