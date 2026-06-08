@@ -7,6 +7,9 @@ export default function Navbar({ page, onNavigate, score, streak }) {
       </button>
 
       <div className="nav-links">
+        <button className={`nav-link ${page === 'market' ? 'active' : ''}`} onClick={() => onNavigate('market')}>
+          <span className="nav-link-icon">📈</span>שוק
+        </button>
         <button className={`nav-link ${page === 'lessons' ? 'active' : ''}`} onClick={() => onNavigate('lessons')}>
           <span className="nav-link-icon">🎓</span>שיעורים
         </button>

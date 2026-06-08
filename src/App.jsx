@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import LearnPage from './pages/LearnPage';
 import LessonsPage from './pages/LessonsPage';
 import PracticePage from './pages/PracticePage';
+import MarketPage from './pages/MarketPage';
 import PlayPage from './pages/PlayPage';
 import { useMarketData } from './hooks/useMarketData';
 import './App.css';
@@ -49,6 +50,9 @@ export default function App() {
             dataStatus={marketData.status}
             realPatternCount={marketData.realPatterns.length}
           />
+        )}
+        {page === 'market' && (
+          <MarketPage />
         )}
         {page === 'lessons' && (
           <LessonsPage onNavigate={navigate} />
