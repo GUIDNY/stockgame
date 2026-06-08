@@ -68,7 +68,7 @@ export default function MarketPage() {
         ) : (
           <div className="ticker-grid">
             {TICKERS.map((ticker) => {
-              const data = prices[ticker];
+              const data = prices[ticker.symbol];
               if (!data) return null;
 
               const isGain = parseFloat(data.change) >= 0;
@@ -76,7 +76,7 @@ export default function MarketPage() {
 
               return (
                 <div
-                  key={ticker}
+                  key={ticker.symbol}
                   className="ticker-card"
                   style={{ borderLeftColor: color }}
                 >
