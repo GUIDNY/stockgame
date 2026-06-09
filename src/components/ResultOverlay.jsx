@@ -1,55 +1,48 @@
-const DIFF_LABEL = { easy: 'קל ⭐', medium: 'בינוני ⭐⭐', hard: 'קשה ⭐⭐⭐' };
+const DIFF_LABEL = { easy: 'קל', medium: 'בינוני', hard: 'קשה' };
 
 export default function ResultOverlay({ isCorrect, pattern, onNext }) {
   return (
-    <div className={`result-overlay ${isCorrect ? 'correct' : 'wrong'}`} onClick={onNext}>
-      <div className="result-card" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40 p-4" onClick={onNext}>
+      <div className={`bg-surface-container rounded-lg p-8 max-w-md text-center transition-transform transform ${
+        isCorrect ? 'scale-100' : 'scale-100'
+      }`} onClick={(e) => e.stopPropagation()}>
 
-        {/* Result badge */}
-        <div className={`result-badge ${isCorrect ? 'correct' : 'wrong'}`}>
-          <span className="result-icon">{isCorrect ? '✓' : '✗'}</span>
-          <div>
-            <div className="result-title">{isCorrect ? 'נכון!' : 'לא נכון'}</div>
-            {pattern.isReal && pattern.ticker && (
-              <div className="result-ticker">{pattern.ticker} — נתונים אמיתיים</div>
-            )}
-          </div>
+        <div className="text-6xl mb-4">
+          {isCorrect ? '✓' : '✗'}
         </div>
 
-        {/* Pattern details */}
-        <div className="result-pattern">
-          <div className="rp-header">
-            <span className={`rp-dir ${pattern.direction}`}>
-              {pattern.direction === 'bullish' ? '▲ שורי' : '▼ דובי'}
-            </span>
-            <span className="rp-diff">{DIFF_LABEL[pattern.difficulty]}</span>
+        <h2 className={`text-2xl font-bold mb-2 ${
+          isCorrect ? 'text-green-400' : 'text-red-400'
+        }`}>
+          {isCorrect ? 'נכון!' : 'טעות'}
+        </h2>
+
+        <p className="text-lg text-text mb-6">{pattern.name}</p>
+
+        {!isCorrect && (
+          <div className="bg-surface rounded-lg p-4 mb-6">
+            <p className="text-text-2 text-sm">
+              התשובה הנכונה היא: <span className="font-bold text-primary">{pattern.answer === 'up' ? '▲ עלייה' : '▼ ירידה'}</span>
+            </p>
           </div>
+        )}
 
-          <h3 className="rp-name">
-            {pattern.name}
-            <span className="rp-en"> {pattern.english}</span>
-          </h3>
-
-          <p className="rp-desc">{pattern.description}</p>
-
-          <div className="rp-tip">
-            <span>💡</span>
-            {pattern.tip}
-          </div>
-
-          <p className="rp-explanation">{pattern.explanation}</p>
-
-          {pattern.checklist && (
-            <ul className="rp-checklist">
-              {pattern.checklist.map((item, i) => (
-                <li key={i}><span className="rp-check">✓</span>{item}</li>
+        {pattern.checklist && (
+          <div className="mb-6 text-left">
+            <p className="text-sm text-text-2 font-bold mb-2">בדיקות:</p>
+            <ul className="text-xs text-text-2 space-y-1">
+              {pattern.checklist.slice(0, 2).map((item, i) => (
+                <li key={i}>• {item}</li>
               ))}
             </ul>
-          )}
-        </div>
+          </div>
+        )}
 
-        <button className="result-next-btn" onClick={onNext}>
-          הבא <span className="result-next-hint">Space / ←</span>
+        <button
+          onClick={onNext}
+          className="w-full bg-primary hover:bg-primary-dark text-surface py-3 rounded-lg font-bold transition-colors"
+        >
+          המשך →
         </button>
       </div>
     </div>
