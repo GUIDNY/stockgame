@@ -35,6 +35,31 @@ export default function LessonChart({ candles, overlays = [], width = 520, heigh
         );
       })}
 
+      {/* Fair Value Gaps (animated) */}
+      {overlays.filter((o) => o.type === 'fvg').map((o, i) => {
+        const y1 = toY(o.priceHigh);
+        const y2 = toY(o.priceLow);
+        const h = Math.max(3, y2 - y1);
+        return (
+          <g key={`fvg-${i}`}>
+            <defs>
+              <linearGradient id={`fvg-grad-${i}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor={o.color} stopOpacity="0.4" />
+                <stop offset="100%" stopColor={o.color} stopOpacity="0.1" />
+              </linearGradient>
+              <style>{`
+                @keyframes gapPulse-${i} { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+                .fvg-gap-${i} { animation: gapPulse-${i} 2s ease-in-out infinite; }
+              `}</style>
+            </defs>
+            <rect className={`fvg-gap-${i}`} x={PAD.left} y={y1} width={innerW} height={h} fill={`url(#fvg-grad-${i})`} />
+            <line x1={PAD.left} y1={y1} x2={PAD.left + innerW} y2={y1} stroke={o.color} strokeWidth="2" strokeDasharray="4,3" opacity="0.7" />
+            <line x1={PAD.left} y1={y2} x2={PAD.left + innerW} y2={y2} stroke={o.color} strokeWidth="2" strokeDasharray="4,3" opacity="0.7" />
+            {o.label && <text x={PAD.left + innerW + 4} y={(y1 + y2) / 2 + 4} fontSize="10" fill={o.color} fontWeight="600">{o.label}</text>}
+          </g>
+        );
+      })}
+
       {/* Zones */}
       {overlays.filter((o) => o.type === 'zone').map((o, i) => (
         <rect key={`z-${i}`} x={PAD.left} y={toY(o.priceHigh)} width={innerW} height={Math.max(2, toY(o.priceLow) - toY(o.priceHigh))} fill={o.color} opacity={0.14} />
