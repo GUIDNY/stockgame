@@ -968,7 +968,7 @@ ul { list-style: none; }
   .lesson-card { padding: 12px; }
 
   /* Play page */
-  .play-meta-bar { flex-wrap: wrap; gap: 8px; }
+  .play-meta { flex-wrap: wrap; gap: 8px; }
   .play-controls { gap: 8px; }
   .ctrl-btn { padding: 12px 20px; font-size: 13px; }
 }
@@ -978,7 +978,7 @@ ul { list-style: none; }
 ════════════════════════════════════════════════════════════════ */
 @media (max-width: 480px) {
   /* Play page layout improvements */
-  .play-meta-bar {
+  .play-meta {
     padding: 14px 14px;
     gap: 16px;
     flex-wrap: wrap;
@@ -989,32 +989,22 @@ ul { list-style: none; }
     flex-shrink: 0;
   }
 
-  .play-meta-bar-left,
-  .play-meta-bar-right {
+  .play-meta-left,
+  .play-meta-right {
     min-width: auto;
     display: flex;
     gap: 14px;
     align-items: center;
   }
 
-  .pmb-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-weight: 600;
-  }
-
-  .pmb-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-3);
-  }
-
-  .pmb-value {
+  .play-stat-val {
     font-size: 15px;
     font-weight: 900;
     color: var(--text);
+  }
+
+  .play-stats {
+    gap: 8px;
   }
 
   /* Chart takes more space */
