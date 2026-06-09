@@ -1,91 +1,78 @@
-import { IconBarChart, IconTarget, IconFire, IconMarket } from '../components/Icons';
 import MiniChart from '../components/MiniChart';
 import patternDefinitions from '../data/patternDefinitions';
 
 const FEATURES = [
-  { icon: IconBarChart, title: '12 תבניות', desc: 'מהנרות הפשוטים ועד תבניות מורכבות כמו כוכב הבוקר ושלושה חיילים' },
-  { icon: IconMarket, title: 'נתוני שוק אמיתיים', desc: 'דוגמאות אמיתיות מ-SPY, AAPL, TSLA ועוד מניות מובילות' },
-  { icon: IconTarget, title: 'קרא את הגרף', desc: 'לחץ ↑ או ↓ לנחש את הכיוון — וקבל הסבר מיד אחרי' },
-  { icon: IconFire, title: 'מעקב קדמה', desc: 'ציון, סטריק ואחוזי דיוק לכל תבנית' },
+  { icon: '📊', title: '12 תבניות', desc: 'מהנרות הפשוטים ועד תבניות מורכבות' },
+  { icon: '📡', title: 'נתוני שוק', desc: 'דוגמאות אמיתיות מהשוק' },
+  { icon: '🎯', title: 'אתגר עצמך', desc: 'לחץ ↑ או ↓ לנחש את הכיוון' },
+  { icon: '🔥', title: 'מעקב', desc: 'ציון וסטריק בזמן אמת' },
 ];
 
 export default function HomePage({ onNavigate, dataStatus, realPatternCount }) {
-  const previews = patternDefinitions.slice(0, 6);
-
   return (
-    <div className="home-page">
-      {/* Hero */}
-      <section className="hero">
-        <div className="hero-inner">
-          <div className="hero-eyebrow">
-            <span className="hero-badge"><IconBarChart /> גרפים פיננסיים</span>
+    <div className="bg-surface min-h-screen pt-20 pb-12">
+      <div className="max-w-6xl mx-auto px-6">
+        {/* Hero */}
+        <section className="text-center mb-16">
+          <div className="inline-block bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-semibold mb-6">
+            📊 אנליזה טכנית
           </div>
-          <h1 className="hero-title">
+          <h1 className="text-5xl md:text-6xl font-bold text-text mb-6">
             למד לקרוא<br />
-            <span className="hero-accent">גרפי נרות</span>
+            <span className="text-primary">גרפי נרות</span>
           </h1>
-          <p className="hero-sub">
-            זהה תבניות נרות יפניים, נחש לאן המחיר הולך ושפר את הניתוח הטכני שלך —
-            עם דוגמאות אמיתיות מהשוק.
+          <p className="text-xl text-text-2 mb-8 max-w-2xl mx-auto">
+            זהה תבניות נרות יפניים, נחש לאן המחיר הולך ושפר את הניתוח הטכני שלך
           </p>
 
-          <div className="hero-ctas">
-            <button className="btn-primary" onClick={() => onNavigate('play')}>
-              התחל לשחק
+          <div className="flex gap-4 justify-center mb-8">
+            <button
+              onClick={() => onNavigate('play')}
+              className="bg-primary hover:bg-primary-dark text-surface px-8 py-3 rounded-lg font-bold transition-colors"
+            >
+              🎮 התחל לשחק
             </button>
-            <button className="btn-secondary" onClick={() => onNavigate('learn')}>
-              לומד תבניות
+            <button
+              onClick={() => onNavigate('learn')}
+              className="bg-surface-bright hover:bg-surface-container text-text px-8 py-3 rounded-lg font-bold transition-colors"
+            >
+              📚 לומד תבניות
             </button>
           </div>
 
           {dataStatus === 'ready' && realPatternCount > 0 && (
-            <div className="hero-data-badge">
+            <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-semibold">
               ✓ {realPatternCount} דוגמאות אמיתיות נטענו מהשוק
             </div>
           )}
           {dataStatus === 'loading' && (
-            <div className="hero-data-badge loading">טוען נתוני שוק...</div>
+            <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-semibold">
+              ⏳ טוען נתוני שוק...
+            </div>
           )}
-        </div>
-      </section>
+        </section>
 
-      {/* Pattern preview strip */}
-      <section className="preview-section">
-        <h2 className="preview-title">תבניות שתלמד</h2>
-        <div className="preview-strip">
-          {previews.map((p) => (
-            <div key={p.id} className="preview-chip">
-              <MiniChart candles={p.questionCandles.slice(-8)} width={140} height={56} />
-              <div className="preview-chip-name">
-                <span className={`preview-dir ${p.direction}`}>
-                  {p.direction === 'bullish' ? '▲' : '▼'}
-                </span>
-                {p.name}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="features-section">
-        <div className="features-grid">
+        {/* Features */}
+        <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
           {FEATURES.map((f) => (
-            <div key={f.title} className="feature-card">
-              <div className="feature-icon"><f.icon /></div>
-              <h3 className="feature-title">{f.title}</h3>
-              <p className="feature-desc">{f.desc}</p>
+            <div key={f.title} className="bg-surface-container rounded-lg p-6 border border-border">
+              <div className="text-3xl mb-3">{f.icon}</div>
+              <h3 className="text-lg font-bold text-text mb-2">{f.title}</h3>
+              <p className="text-sm text-text-2">{f.desc}</p>
             </div>
           ))}
-        </div>
-      </section>
+        </section>
 
-      {/* Bottom CTA */}
-      <section className="home-bottom-cta">
-        <button className="btn-primary large" onClick={() => onNavigate('play')}>
-          מוכן? בוא נתחיל ←
-        </button>
-      </section>
+        {/* CTA */}
+        <section className="text-center py-12 bg-surface-container rounded-lg">
+          <button
+            onClick={() => onNavigate('play')}
+            className="bg-primary hover:bg-primary-dark text-surface px-12 py-4 rounded-lg font-bold text-lg transition-colors"
+          >
+            בוא נתחיל ←
+          </button>
+        </section>
+      </div>
     </div>
   );
 }

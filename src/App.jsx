@@ -7,7 +7,6 @@ import PracticePage from './pages/PracticePage';
 import MarketPage from './pages/MarketPage';
 import PlayPage from './pages/PlayPage';
 import { useMarketData } from './hooks/useMarketData';
-import './App.css';
 
 export default function App() {
   const [page, setPage] = useState('home');
@@ -40,10 +39,10 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app-shell" dir="rtl">
+    <div className="min-h-screen bg-surface flex flex-col" dir="rtl">
       <Navbar page={page} onNavigate={navigate} score={score} streak={streak} />
 
-      <main className={`app-main page-${page}`}>
+      <main className="flex-1 overflow-y-auto flex flex-col min-h-0">
         {page === 'home' && (
           <HomePage
             onNavigate={navigate}
