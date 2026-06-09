@@ -499,6 +499,75 @@ const lessons = [
         visual:{ candles:psychoCandles, overlays:[{type:'hline',price:80,color:'#3fb950',label:'קנה כאן (תוכנית)!'},{type:'hline',price:103,color:'#f85149',label:'כולם קונים כאן (FOMO)',dashed:true}], caption:"תוכנית לפני הרגש: קנה בתחתית, לא בשיא" }},
     ],
   },
+
+  // ═══ LESSON 14: SMC - מבנה שוק חכם ═══════════════════════════════════════════
+  {
+    id: 'smc-structure', icon: '📐', title: 'SMC — מבנה שוק חכם', color: '#9333ea',
+    duration: '10 דקות', description: 'הבנת מבנה השוק — איך הכסף החכם משאיר רמזים',
+    slides: [
+      { title:'מה זה SMC?', body:'SMC = Smart Money Concept\nשיטה המתמקדת בהבנת תנועות הכסף הגדול בשוק.\n\nהכסף החכם (בנקים, קרנות גדולות) משאיר ״עקבות״ בגרף.\nעקבות אלו = הזדמנויות לסוחרים קטנים.',
+        keyPoints:['SMC = עקבות של הכסף הגדול','השוק בנוי על מבנה ספציפי','אותו מבנה חוזר שוב ושוב','כלים קטנים יכולים ללכוד אותו'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:108},{o:108,c:103,wd:2},{o:103,c:107,wu:1.5},{o:107,c:110},{o:110,c:106,wd:1.8}]), overlays:[{type:'zone',fromIdx:2,toIdx:3,color:'#9333ea',label:'מבנה SMC'},{type:'arrow',idx:3,text:'כאן הכסף הגדול נכנס',color:'#9333ea',position:'bottom'}], caption:'SMC מזהה נקודות שבהן הכסף הגדול פוגע' }},
+      { title:'Order Blocks', body:'Order Block = רמה שבה נוצר ״רעש״ גדול בגרף.\n\nהכסף החכם מוציא הזמנות בסדר גדול — מה שיוצר תנודה חזקה.\n\nלאחר זה, המחיר חוזר לאותה רמה כדי לאסוף הזמנות נוספות.',
+        keyPoints:['Order Block = רמת Liquidity','המחיר חוזר לrob liquidity','זה קורה מדי פעם בנוסחה','יוצר הזדמנויות חוזרות'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:108},{o:108,c:104,wd:3},{o:104,c:102},{o:102,c:98},{o:98,c:105,wu:2.5}]), overlays:[{type:'zone',fromIdx:1,toIdx:2,color:'#9333ea',label:'Order Block'},{type:'hline',price:104,color:'#f85149',label:'מחיר חוזר לrob',dashed:true}], caption:'כסף גדול משאיר "עדויות" בגרף' }},
+      { title:'Fair Value Gap (FVG)', body:'FVG = פער במחיר שלא נטופל.\n\nנניח המחיר יצא מ-100 ל-105 בקפיצה חדה.\nפער זה (100-105) נשאר ״פתוח״.\n\nהמחיר בדרך כלל חוזר למלא פערים אלו.',
+        keyPoints:['FVG = פערים לא מטופלים','המחיר "זוכר" פערים','פערים = אזורי ספיגה','אפשר לסחור על ״מילוי״ פערים'],
+        visual:{ candles:buildCandles([{o:100,c:100},{o:100,c:105,wu:2.5},{o:105,c:107},{o:107,c:104},{o:104,c:100,wd:3.5}]), overlays:[{type:'zone',fromIdx:0,toIdx:1,color:'#3fb950',label:'FVG - פער שלא מטופל'},{type:'arrow',idx:4,text:'חזרה למלא את הפער',color:'#3fb950',position:'bottom'}], caption:'המחיר חוזר למלא את הפערים' }},
+      { title:'Liquidity Levels', body:'Liquidity = נקודות בעלות "נזילות" גבוהה.\n\nנקודות כמו Support/Resistance, High/Low החזקות — כלקות שבהן מרבצים Stop Losses של סוחרים.\n\nהכסף החכם מטרף אותן נקודות כדי לספוג הזמנות.',
+        keyPoints:['Liquidity = אזורי ריכוז הזמנות','High/Low חדשים = liquidity levels','כסף גדול "קולע" לlevels אלו','סוחרים קטנים עולים במלכודת'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:110,wu:1.5},{o:110,c:108},{o:108,c:112,wu:2.2},{o:112,c:107,wd:3.5},{o:107,c:110}]), overlays:[{type:'hline',price:110,color:'#d29922',label:'Liquidity Level'},{type:'arrow',idx:1,text:'כסף גדול פוגע',color:'#d29922',position:'top'}], caption:'liquidity levels = מלכודות של כסף חכם' }},
+      { title:'איך להשתמש בSMC?', body:'3 צעדים:\n\n1. מצא Order Blocks ו-FVGs\n2. חכה שהמחיר יחזור לאזור\n3. כנס כשהוא משחזר את ה-Liquidity\n\nRisk: הכסף החכם עלול לשנות כיוון בכל רגע!',
+        keyPoints:['SMC = כלי חזק אך לא יחיד','צריך Stop Loss תמיד','צירוף עם תבניות אחרות = עוצמה','ממשמעת בהמתנה = מפתח'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:108},{o:108,c:103,wd:2.5},{o:103,c:107,wu:1.5},{o:107,c:110},{o:110,c:105,wd:2},{o:105,c:109,wu:2}]), overlays:[{type:'zone',fromIdx:1,toIdx:2,color:'#9333ea',label:'Order Block'},{type:'arrow',idx:4,text:'Liquidity מספיגה',color:'#3fb950',position:'bottom'},{type:'hline',price:103.5,color:'#f85149',label:'Stop Loss תמיד'}], caption:'SMC בפעולה: התאמה + ממשמעת = הצלחה' }},
+    ],
+  },
+
+  // ═══ LESSON 15: SMC - Breaker Blocks ═══════════════════════════════════════════
+  {
+    id: 'smc-breaker', icon: '🔨', title: 'SMC — Breaker Blocks', color: '#9333ea',
+    duration: '8 דקות', description: 'זיהוי נקודות שינוי כיוון דרך Breaker Blocks',
+    slides: [
+      { title:'מה זה Breaker Block?', body:'Breaker Block = Order Block שכישל.\n\nהכסף החכם התחיל לרוב, אך לא הצליח.\nהמחיר פרץ דרך הרמה.\n\nכעת הרמה הופכת ללמש חדשה בכיוון הנמוך.',
+        keyPoints:['Breaker = Order Block שלא עמד','הרמה הופכת ללמש הפוכה','זה אות שינוי כיוון חזק','יוצר הזדמנויות גדולות'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:108,wu:1.5},{o:108,c:106},{o:106,c:103,wd:2.5},{o:103,c:100},{o:100,c:97}]), overlays:[{type:'zone',fromIdx:1,toIdx:2,color:'#f85149',label:'Order Block — כישל'},{type:'hline',price:108,color:'#3fb950',label:'Breaker Level'},{type:'arrow',idx:5,text:'פריצה למטה',color:'#f85149',position:'bottom'}], caption:'כאשר Order Block נכשל — הופך ל-Breaker' }},
+      { title:'זיהוי Breaker', body:'4 סימנים ל-Breaker:\n\n1. Order Block ברור בגרף\n2. פריצה חדה דרך הרמה\n3. המחיר לא חוזר מעל הרמה\n4. יש momentum בכיוון המתנגד\n\nכש-4 סימנים מוכחים = Breaker טבעי.',
+        keyPoints:['Breaker = כישלון של קנייה/מכירה','פריצה חדה + no retrace = Breaker','Breaker Level = resistance הפוכה','סוחרים קטנים נתפסים בו'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:108},{o:108,c:106},{o:106,c:103},{o:103,c:100},{o:100,c:97},{o:97,c:95}]), overlays:[{type:'hline',price:108,color:'#d29922',label:'Breaker Level'},{type:'zone',fromIdx:3,toIdx:5,color:'#f85149',label:'כיוון הפריצה'},{type:'arrow',idx:6,text:'התחזוקה של הBreaker',color:'#3fb950',position:'bottom'}], caption:'Breaker נשמר — האות חזקה' }},
+      { title:'סחר על Breaker', body:'אסטרטגיה קלאסית:\n\n1. חכה ל-Breaker ברור בגרף\n2. כנס כשהמחיר חוזר לBreaker Level\n3. Stop Loss מעל ה-Breaker\n4. Target = הנמך הבא של Order Block\n\nRisk/Reward: בדרך כלל 1:2 ויותר.',
+        keyPoints:['Breaker = ליווי חזק','חזרה ל-Breaker = מחזור טבעי','Risk/Reward טוב = key להצלחה','סבלנות בהמתנה ללכידה'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:108},{o:108,c:103},{o:103,c:99},{o:99,c:96},{o:96,c:102,wu:2},{o:102,c:97}]), overlays:[{type:'hline',price:108,color:'#d29922',label:'Breaker Level'},{type:'arrow',idx:5,text:'כניסה בחזרה',color:'#3fb950',position:'top'},{type:'hline',price:109,color:'#f85149',label:'Stop Loss',dashed:true}], caption:'סחר על Breaker עם Risk Management חזק' }},
+      { title:'טעויות נפוצות', body:'❌ טעות 1: סחר כל Breaker\n➜ רק Breaker עם momentum חזק!\n\n❌ טעות 2: Stop Loss גבוה מדי\n➜ יפגע בכל retrace קטן\n\n❌ טעות 3: חוסר ממשמעת\n➜ כול Breaker לא מתפתח לטרנד',
+        keyPoints:['לא כל פריצה = Breaker אמיתי','Momentum + Structure = מפתח','Stop Loss הדוק = חיוני','סלקטיביות > נפח עסקות'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:108},{o:108,c:104},{o:104,c:101},{o:101,c:99},{o:99,c:98},{o:98,c:100,wu:1.5}]), overlays:[{type:'hline',price:108,color:'#f85149',label:'כאן לא היה Breaker חזק'},{type:'zone',fromIdx:5,toIdx:6,color:'#6e7681',label:'חוסר momentum = בדויה'}], caption:'Breaker חלשה — לא סחור!' }},
+      { title:'Breaker בעולם האמיתי', body:'Breaker Blocks עובדים כי:\n\n1. סוחרים קטנים מנחשים Stop Loss מעל High\n2. כסף גדול דוקר את ה-Stop Loss\n3. סוחרים קטנים נכנסים באבדון\n4. כסף גדול סוחר בכיוון הנכון\n\nהפסיכולוגיה אנושית חוזרת שוב ושוב.',
+        keyPoints:['Breaker = טרנד טבעי','סוחרים קטנים מציבים Stop Losses דומים','כסף גדול דוקר אותם','מחזור זה חוזר בכל שוק'],
+        visual:{ candles:buildCandles([{o:100,c:105},{o:105,c:110},{o:110,c:107},{o:107,c:102},{o:102,c:98},{o:98,c:95},{o:95,c:100,wu:2.5}]), overlays:[{type:'zone',fromIdx:1,toIdx:2,color:'#9333ea',label:'סוחרים קטנים → Stop Loss'},{type:'arrow',idx:3,text:'דיקור Stop Loss',color:'#f85149',position:'top'},{type:'arrow',idx:6,text:'כסף גדול + מומנטום',color:'#3fb950',position:'bottom'}], caption:'Breaker פסיכולוגיה — אותה תבנית כל פעם' }},
+    ],
+  },
+
+  // ═══ LESSON 16: SMC - Internal Liquidity ═══════════════════════════════════════
+  {
+    id: 'smc-internal', icon: '💧', title: 'SMC — Internal Liquidity', color: '#9333ea',
+    duration: '7 דקות', description: 'זיהוי רמות שמטופלות פנימית בתנודה',
+    slides: [
+      { title:'מה זה Internal Liquidity?', body:'Internal Liquidity = רמה שנטופלת בתוך תנודה אחת.\n\nדוגמה:\nהמחיר עולה מ-100 ל-115.\nדרך הדרך, הוא יוצר High בנתיים (בחציון) של 110.\n\nרמה זו של 110 = Internal Liquidity.',
+        keyPoints:['Internal = בתוך תנודה','High/Low בחציון = Liquidity','מזהה מציא רמות חדשות','כסף חכם טרף אותן מדי פעם'],
+        visual:{ candles:buildCandles([{o:100,c:102},{o:102,c:105},{o:105,c:108},{o:108,c:110,wu:1.8},{o:110,c:107},{o:107,c:111},{o:111,c:113},{o:113,c:115}]), overlays:[{type:'hline',price:110,color:'#9333ea',label:'Internal Liquidity High'},{type:'arrow',idx:3,text:'Internal High',color:'#9333ea',position:'top'}], caption:'Internal Liquidity בתוך עלייה' }},
+      { title:'משמעות ההתנגדות הפנימית', body:'כאשר המחיר חוזר ל-Internal Liquidity:\n\n1. אם ספוג — סוחרים קטנים הוצאו\n2. אם פריצה — momentum חזק\n3. אם retrace — הסוד הבא מתחיל\n\nInternal Liquidity = נקודת חידוש.',
+        keyPoints:['Internal = התאמה בתנודה','חזרה ל-Internal = בדיקת סיעור','רמה זו מוגנת יותר משאר','סוחרים קטנים לא מצפים לה'],
+        visual:{ candles:buildCandles([{o:100,c:108},{o:108,c:112,wu:2},{o:112,c:109},{o:109,c:115,wu:1.5},{o:115,c:110,wd:2.5},{o:110,c:113}]), overlays:[{type:'hline',price:112,color:'#9333ea',label:'Internal Liquidity'},{type:'arrow',idx:3,text:'חזרה לInternal',color:'#3fb950',position:'bottom'},{type:'arrow',idx:5,text:'עלייה חדשה',color:'#3fb950',position:'top'}], caption:'Internal Liquidity = מחזור תוך-תנודה' }},
+      { title:'סחר על Internal Liquidity', body:'הגישה:\n\n1. מצא תנודה ברורה (up או down)\n2. זהה את ה-High או Low בחציון\n3. כשהמחיר חוזר — רמה זו משמשת כמגנט\n4. כנס כשהוא מגע ה-Internal Level\n\nעוצמה: High/Low פנימיות עוצמתיות יותר.',
+        keyPoints:['Internal = רמה מסתתרת','סוחרים רבים לא רואים אותה','נמשמעת → בדיקה של רמה זו','ממשמעת = מפתח!'],
+        visual:{ candles:buildCandles([{o:100,c:108},{o:108,c:115,wu:2.5},{o:115,c:110},{o:110,c:105},{o:105,c:110,wu:1.5},{o:110,c:114}]), overlays:[{type:'hline',price:115,color:'#f85149',label:'High החיצוני'},{type:'hline',price:112,color:'#9333ea',label:'Internal High'},{type:'arrow',idx:4,text:'בדיקה של Internal',color:'#3fb950',position:'bottom'}], caption:'Internal Liquidity בדיקה טבעית' }},
+      { title:'איך זה עובד בשוק?', body:'סוחרים קטנים שמים Stop Loss על High הראשי (115).\n\nכסף גדול יודע זאת.\nהוא מטרף את ה-Internal High (112) תחילה.\nסוחרים קטנים לא רואים, ממשיכים.\nכסף גדול נכנס ברציניות בכיוון החדש.',
+        keyPoints:['Liquidity Pyramids = יירוטים בשכבות','סוחרים קטנים חושבים בHigh אחד','כסף גדול חושב בשכבות','המשחק = יירוט שכבתי'],
+        visual:{ candles:buildCandles([{o:100,c:110},{o:110,c:115,wu:2},{o:115,c:108},{o:108,c:105},{o:105,c:110},{o:110,c:118,wu:2.5}]), overlays:[{type:'hline',price:115,color:'#f85149',label:'High ראשי — Stop Loss שם'},{type:'hline',price:113,color:'#9333ea',label:'Internal High — יירוט'},{type:'arrow',idx:5,text:'טרנד חדש בכיוון אחר',color:'#3fb950',position:'top'}], caption:'יירוטי כסף חכם בשכבות' }},
+      { title:'Internal Liquidity בפרקטיקה', body:'כדי לזהות Internal Liquidity:\n\n1. צפה בתנודה בעלת טווח גדול\n2. מצא High/Low משניים בדרך\n3. תייג אותן (אל תעשה עסקה בכל)\n4. חכה שהמחיר יחזור\n5. כנס עם Risk Management חזק\n\nזה דורש תרגול ותבונה חזקה.',
+        keyPoints:['Internal = דקיקות בנתוח','לא כל High/Low משני = Internal','רק High/Low עם נפח → Internal','סבלנות + Discipline = הצלחה'],
+        visual:{ candles:buildCandles([{o:100,c:110},{o:110,c:115},{o:115,c:105},{o:105,c:112,wu:1.8},{o:112,c:108},{o:108,c:114},{o:114,c:120,wu:2}]), overlays:[{type:'hline',price:115,color:'#d29922',label:'High חיצוני'},{type:'hline',price:112,color:'#9333ea',label:'Internal High'},{type:'hline',price:105,color:'#9333ea',label:'Internal Low'}], caption:'SMC Internal Liquidity - מלא הרמות' }},
+    ],
+  },
 ];
 
 export default lessons;
