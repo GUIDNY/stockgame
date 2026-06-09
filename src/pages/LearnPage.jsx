@@ -3,101 +3,95 @@ import PatternCard from '../components/PatternCard';
 import PatternModal from '../components/PatternModal';
 import patternDefinitions from '../data/patternDefinitions';
 
-const FILTERS = [
-  { id: 'all', label: 'הכל' },
-  { id: 'bullish', label: '▲ שוריות' },
-  { id: 'bearish', label: '▼ דוביות' },
-  { id: 'easy', label: 'קל ⭐' },
-  { id: 'medium', label: 'בינוני ⭐⭐' },
-  { id: 'hard', label: 'קשה ⭐⭐⭐' },
-];
+const FILTERS = ['all', 'bullish', 'bearish', 'easy', 'medium', 'hard'];
+const FILTER_LABELS = {
+  all: 'הכל',
+  bullish: '▲ שוריות',
+  bearish: '▼ דוביות',
+  easy: 'קל',
+  medium: 'בינוני',
+  hard: 'קשה',
+};
 
 export default function LearnPage({ onPractice }) {
   const [filter, setFilter] = useState('all');
-  const [selected, setSelected] = useState(null);
+  const [selectedPattern, setSelectedPattern] = useState(null);
 
   const filtered = patternDefinitions.filter((p) => {
     if (filter === 'all') return true;
-    return p.direction === filter || p.difficulty === filter;
+    if (filter === 'bullish' || filter === 'bearish') return p.direction === filter;
+    if (filter === 'easy' || filter === 'medium' || filter === 'hard') return p.difficulty === filter;
+    return true;
   });
 
   const bullish = filtered.filter((p) => p.direction === 'bullish');
   const bearish = filtered.filter((p) => p.direction === 'bearish');
 
   return (
-    <div className="learn-page">
-      {/* Page header */}
-      <div className="learn-header">
-        <div className="learn-header-inner">
-          <h1 className="learn-title">מדריך תבניות</h1>
-          <p className="learn-subtitle">
-            {patternDefinitions.length} תבניות נרות יפניים עם דוגמאות ואחוזי דיוק
-          </p>
-        </div>
-      </div>
+    <div className="bg-surface min-h-screen pt-20 pb-12">
+      <div className="max-w-7xl mx-auto px-6">
+        <h1 className="text-4xl font-bold text-text mb-8">ספריית תבניות</h1>
 
-      {/* Filter bar */}
-      <div className="filter-bar">
-        <div className="filter-bar-inner">
+        {/* Filters */}
+        <div className="flex gap-2 mb-8 flex-wrap">
           {FILTERS.map((f) => (
             <button
-              key={f.id}
-              className={`filter-btn ${filter === f.id ? 'active' : ''}`}
-              onClick={() => setFilter(f.id)}
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                filter === f
+                  ? 'bg-primary text-surface'
+                  : 'bg-surface-container text-text-2 hover:bg-surface-bright'
+              }`}
             >
-              {f.label}
+              {FILTER_LABELS[f]}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Pattern grid */}
-      <div className="learn-content">
+        {/* Bullish */}
         {bullish.length > 0 && (
-          <section className="pattern-section">
-            <h2 className="section-heading">
-              <span className="section-dot bullish" />
-              תבניות שוריות
-              <span className="section-count">{bullish.length}</span>
-            </h2>
-            <div className="pattern-grid">
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-text mb-6">▲ תבניות עלייה</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {bullish.map((p) => (
-                <PatternCard key={p.id} pattern={p} onClick={setSelected} />
+                <PatternCard
+                  key={p.id}
+                  pattern={p}
+                  onClick={() => setSelectedPattern(p)}
+                />
               ))}
             </div>
-          </section>
-        )}
-
-        {bearish.length > 0 && (
-          <section className="pattern-section">
-            <h2 className="section-heading">
-              <span className="section-dot bearish" />
-              תבניות דוביות
-              <span className="section-count">{bearish.length}</span>
-            </h2>
-            <div className="pattern-grid">
-              {bearish.map((p) => (
-                <PatternCard key={p.id} pattern={p} onClick={setSelected} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {filtered.length === 0 && (
-          <div className="learn-empty">
-            <p>אין תבניות לסינון זה</p>
           </div>
         )}
-      </div>
 
-      {/* Modal */}
-      {selected && (
-        <PatternModal
-          pattern={selected}
-          onClose={() => setSelected(null)}
-          onPractice={(p) => { setSelected(null); onPractice(p); }}
-        />
-      )}
+        {/* Bearish */}
+        {bearish.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-bold text-text mb-6">▼ תבניות ירידה</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bearish.map((p) => (
+                <PatternCard
+                  key={p.id}
+                  pattern={p}
+                  onClick={() => setSelectedPattern(p)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedPattern && (
+          <PatternModal
+            pattern={selectedPattern}
+            onClose={() => setSelectedPattern(null)}
+            onPractice={(p) => {
+              onPractice(p);
+              setSelectedPattern(null);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

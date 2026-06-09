@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { IconTrendingUp, IconTrendingDown } from '../components/Icons';
 
-// Real market data - these are actual closing prices we fetch once
 const TICKERS = [
-  { symbol: 'SPY',  name: 'S&P 500 ETF' },
+  { symbol: 'SPY', name: 'S&P 500' },
   { symbol: 'AAPL', name: 'Apple' },
   { symbol: 'TSLA', name: 'Tesla' },
   { symbol: 'MSFT', name: 'Microsoft' },
@@ -13,21 +11,15 @@ const TICKERS = [
   { symbol: 'GOOG', name: 'Google' },
 ];
 
-// Realistic intraday price simulator - actual prices with micro-movements
 function simulateIntradeayPrice(basePrice, minutesSinceOpen, ticker) {
-  // Deterministic but different per stock
   const seed = ticker.charCodeAt(0) * 73;
-
-  // Realistic trading patterns: morning spike, midday consolidation, afternoon move
   const timeFactors = {
-    opening: Math.sin(minutesSinceOpen * 0.05) * 0.8, // +/- 0.8% morning volatility
-    trend: Math.sin((minutesSinceOpen / 100) + seed) * 0.3, // Slow trend
-    noise: Math.sin((minutesSinceOpen * 3.7 + seed) * 0.0001) * 0.15, // Small noise
+    opening: Math.sin(minutesSinceOpen * 0.05) * 0.8,
+    trend: Math.sin((minutesSinceOpen / 100) + seed) * 0.3,
+    noise: Math.sin((minutesSinceOpen * 3.7 + seed) * 0.0001) * 0.15,
   };
-
   const change = timeFactors.opening + timeFactors.trend + timeFactors.noise;
   const price = basePrice * (1 + change * 0.01);
-
   return {
     current: price,
     previous: basePrice * (1 + (timeFactors.opening + timeFactors.trend) * 0.01),
@@ -61,48 +53,30 @@ export default function MarketPage() {
       };
     });
 
-    if (Object.keys(newPrices).length > 0) {
-      setPrices(newPrices);
-    }
+    if (Object.keys(newPrices).length > 0) setPrices(newPrices);
     if (loading) setLoading(false);
   };
 
-  // Fetch base prices once from IEX Cloud API (CORS-enabled)
   useEffect(() => {
     const fetchBasePrices = async () => {
       try {
-        // Using iexcloud free tier or finnhub - both support CORS
-        const tickerString = TICKERS.map((t) => t.symbol).join(',');
-
-        // Try finnhub (free, CORS enabled)
-        const res = await fetch(
-          `https://finnhub.io/api/v1/quote?symbol=SPY&token=demo`,
-          { mode: 'cors' }
-        );
-
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=SPY&token=demo`, { mode: 'cors' });
         if (!res.ok) throw new Error('API failed');
 
-        // If we get here, API works - fetch all
         const promises = TICKERS.map((ticker) =>
-          fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.symbol}&token=demo`, {
-            mode: 'cors',
-          })
+          fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker.symbol}&token=demo`, { mode: 'cors' })
             .then((r) => r.json())
             .then((data) => {
               const price = data?.c || data?.pc || 0;
               if (price > 0) basePricesRef.current[ticker.symbol] = price;
-              return price;
             })
             .catch(() => null)
         );
-
         await Promise.all(promises);
         setLoading(false);
         updatePrices();
         timerRef.current = setInterval(updatePrices, 1000);
       } catch (e) {
-        // Fallback: use demo prices
-        console.log('Using demo market data');
         TICKERS.forEach((ticker) => {
           basePricesRef.current[ticker.symbol] = 100 + Math.random() * 800;
         });
@@ -117,19 +91,17 @@ export default function MarketPage() {
   }, []);
 
   return (
-    <div className="market-page">
-      <div className="market-header">
-        <div className="market-header-inner">
-          <h1 className="market-title"><IconTrendingUp /> שוק לייב</h1>
-          <p className="market-sub">עדכונים בזמן אמת של מניות שנבחרות</p>
-        </div>
-      </div>
+    <div className="bg-surface min-h-screen pt-20 pb-12">
+      <div className="max-w-7xl mx-auto px-6">
+        <h1 className="text-4xl font-bold text-text mb-2">📈 שוק לייב</h1>
+        <p className="text-text-2 mb-8">עדכונים בזמן אמת של מניות</p>
 
-      <div className="market-content">
         {loading ? (
-          <div className="market-loading">טוען נתוני שוק...</div>
+          <div className="text-center py-12">
+            <div className="text-text-2">⏳ טוען נתוני שוק...</div>
+          </div>
         ) : (
-          <div className="ticker-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {TICKERS.map((ticker) => {
               const data = prices[ticker.symbol];
               if (!data) return null;
@@ -140,27 +112,18 @@ export default function MarketPage() {
               return (
                 <div
                   key={ticker.symbol}
-                  className="ticker-card"
-                  style={{ borderLeftColor: color }}
+                  className="bg-surface-container border-l-4 border-solid rounded-lg p-4"
+                  style={{ borderColor: color }}
                 >
-                  <div className="tc-header">
-                    <span className="tc-ticker">{ticker.symbol}</span>
-                    <span className="tc-change" style={{ color }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="font-bold text-text">{ticker.symbol}</span>
+                    <span style={{ color }} className="font-bold">
                       {isGain ? '▲' : '▼'} {Math.abs(data.pct)}%
                     </span>
                   </div>
-
-                  <div className="tc-price">${data.price}</div>
-
-                  <div className="tc-change-amount" style={{ color }}>
+                  <div className="text-2xl font-bold text-text mb-2">${data.price}</div>
+                  <div style={{ color }} className="text-sm font-semibold">
                     {isGain ? '+' : ''}{data.change}
-                  </div>
-
-                  <div className="tc-meta">
-                    <span className="tc-badge">
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', marginRight: 6 }} />
-                      {isGain ? 'עליה' : 'ירידה'}
-                    </span>
                   </div>
                 </div>
               );
@@ -168,12 +131,10 @@ export default function MarketPage() {
           </div>
         )}
 
-        <div className="market-note">
-          <span className="note-icon">!</span>
-          <span>
-            הנתונים מתעדכנים כל שנייה בזמני מסחר (9:30 AM - 4:00 PM ET ימי חול).
-            בחוץ מזמני מסחר, הנתונים הם מהסגירה האחרונה.
-          </span>
+        <div className="mt-12 bg-surface-container rounded-lg p-6 border border-border">
+          <div className="text-sm text-text-2">
+            ⚠️ הנתונים מתעדכנים כל שנייה בזמני מסחר (9:30 AM - 4:00 PM ET ימי חול).
+          </div>
         </div>
       </div>
     </div>

@@ -1,76 +1,74 @@
 import { useEffect } from 'react';
-import MiniChart from './MiniChart';
+import LessonChart from './LessonChart';
 
-const DIFF_LABEL = { easy: 'קל ⭐', medium: 'בינוני ⭐⭐', hard: 'קשה ⭐⭐⭐' };
+const DIFF_LABEL = { easy: 'קל', medium: 'בינוני', hard: 'קשה' };
 const DIFF_COLOR = { easy: '#3fb950', medium: '#d29922', hard: '#f85149' };
 
 export default function PatternModal({ pattern, onClose, onPractice }) {
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const handle = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
   }, [onClose]);
 
-  const allCandles = [...pattern.questionCandles, ...pattern.revealCandles];
+  if (!pattern) return null;
+
+  const combined = [...pattern.questionCandles, ...pattern.revealCandles];
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="סגור">✕</button>
-
-        {/* Header */}
-        <div className="modal-header">
-          <div className="modal-tags">
-            <span className={`modal-dir ${pattern.direction}`}>
-              {pattern.direction === 'bullish' ? '▲ שורי' : '▼ דובי'}
-            </span>
-            <span className="modal-diff" style={{ color: DIFF_COLOR[pattern.difficulty] }}>
-              {DIFF_LABEL[pattern.difficulty]}
-            </span>
-            <span className="modal-winrate">✓ {pattern.winRate}% דיוק</span>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-surface-container rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6 border-b border-border">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-text mb-2">{pattern.name}</h2>
+              <div className="flex gap-3">
+                <span className="text-sm font-semibold" style={{ color: DIFF_COLOR[pattern.difficulty] }}>
+                  {DIFF_LABEL[pattern.difficulty]}
+                </span>
+                <span className="text-sm text-text-2">ניצחון: {pattern.winRate}%</span>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-text-2 hover:text-text">✕</button>
           </div>
-          <h2 className="modal-name">{pattern.name}</h2>
-          <p className="modal-en">{pattern.english}</p>
+          <p className="text-text-2">{pattern.description}</p>
         </div>
 
-        {/* Chart */}
-        <div className="modal-chart-wrap">
-          <MiniChart candles={allCandles} width={480} height={160} />
-          <div className="modal-chart-label">תבנית מלאה כולל המשך</div>
+        <div className="p-6 border-b border-border">
+          <h3 className="font-bold text-text mb-4">תרשים</h3>
+          <LessonChart candles={combined} />
         </div>
 
-        {/* Description */}
-        <p className="modal-desc">{pattern.description}</p>
+        <div className="p-6">
+          <div className="mb-6">
+            <h3 className="font-bold text-text mb-3">בדיקות:</h3>
+            <ul className="space-y-2">
+              {pattern.checklist.map((item, i) => (
+                <li key={i} className="flex gap-2 text-sm text-text-2">
+                  <span className="text-primary">✓</span> {item}
+                </li>
+              ))}
+            </ul>
+          </div>
 
-        {/* Checklist */}
-        <div className="modal-section">
-          <h4 className="modal-section-title">מה לחפש</h4>
-          <ul className="modal-checklist">
-            {pattern.checklist.map((item, i) => (
-              <li key={i} className="modal-check-item">
-                <span className="check-icon">✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
+          <div className="mb-6 p-4 bg-surface rounded-lg border border-border">
+            <p className="text-sm text-text-2 italic">{pattern.tip}</p>
+          </div>
+
+          <div className="mb-6">
+            <h3 className="font-bold text-text mb-2">הסבר:</h3>
+            <p className="text-sm text-text-2">{pattern.explanation}</p>
+          </div>
+
+          <button
+            onClick={() => onPractice(pattern)}
+            className="w-full bg-primary hover:bg-primary-dark text-surface py-3 rounded-lg font-bold transition-colors"
+          >
+            תרגל דפוס זה →
+          </button>
         </div>
-
-        {/* Explanation */}
-        <div className="modal-section">
-          <h4 className="modal-section-title">הסבר</h4>
-          <p className="modal-explanation">{pattern.explanation}</p>
-        </div>
-
-        {/* Tip */}
-        <div className="modal-tip">
-          <span className="tip-bulb">💡</span>
-          <span>{pattern.tip}</span>
-        </div>
-
-        {/* CTA */}
-        <button className="modal-practice-btn" onClick={() => onPractice(pattern)}>
-          תרגל תבנית זו ←
-        </button>
       </div>
     </div>
   );
