@@ -133,7 +133,7 @@ export default function PlayPage({
 
   return (
     <div
-      className={`bg-surface min-h-screen pt-20 pb-4 flex flex-col transition-colors ${flashBg}`}
+      className={`bg-surface h-screen flex flex-col transition-colors ${flashBg}`}
       onClick={() => showTfMenu && setShowTfMenu(false)}
     >
       {/* Progress bar */}
@@ -210,7 +210,7 @@ export default function PlayPage({
       )}
 
       {/* Chart */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 bg-surface-bright">
         <CandlestickChart
           key={`${current.id || idx}-${timeframe}`}
           candles={current.questionCandles}
