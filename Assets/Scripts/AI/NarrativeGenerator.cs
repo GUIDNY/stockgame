@@ -261,7 +261,7 @@ namespace Echobound.AI
             {
                 Id = "TRUTH_CORE", IsCore = true,
                 Summary = $"{villain} is behind what happened to {victim}. " + vNpc.Secret,
-                KnownBy = new List<string> { c.Villain, c.Accomplice },
+                KnownBy = c.VictimDead ? new List<string> { c.Villain, c.Accomplice } : new List<string> { c.Villain, c.Accomplice, c.Victim },
                 EvidenceLocation = c.EvidenceLocation, EvidenceItem = c.Archetype == "SMUGGLING_RING" ? "LEDGER" : "LETTER",
                 EvidenceLabel = c.Archetype == "SMUGGLING_RING" ? $"{villain}'s ledger" : $"A letter in {villain}'s hand"
             });

@@ -69,6 +69,7 @@ namespace Echobound.Dialogue
         public void Begin(NpcState npc)
         {
             if (npc == null || !npc.Alive || _busy) return;
+            if (Current != null) End();
             Current = npc;
             _openingDone = false;
             var offer = _state.PendingOffers.FirstOrDefault(o => o.GiverNpc == npc.NpcId);
@@ -85,7 +86,6 @@ namespace Echobound.Dialogue
                 TurnReady?.Invoke(turn);
                 return;
             }
-            var decision = _quests.Active.FirstOrDefault(q => q.DecisionPending && (q.GiverNpc == npc.NpcId || q.RelevantNpcs.Contains(npc.NpcId)));
             _ = ProcessAsync("GREET", "", "", 0, null);
         }
 
@@ -102,14 +102,12 @@ namespace Echobound.Dialogue
                 npc.Memory.Remember(option.AcceptOffer ? "HELPED" : "DECLINED_OFFER", 5, option.AcceptOffer ? $"The stranger accepted my job: {option.Offer.Title}." : $"The stranger turned down my offer: {option.Offer.Title}.", _state.ElapsedMinutes, true);
                 if (option.AcceptOffer) GameEvents.RaisePlayerActed(new PlayerAction { Type = PlayerActionType.HELPED, TargetNpcId = npc.NpcId, LocationId = _state.Player.Location, Detail = "accepted " + option.Offer.Title, Importance = 3, GameMinute = _state.ElapsedMinutes });
                 TurnReady?.Invoke(new DialogueTurn { NpcId = npc.NpcId, NpcName = npc.DisplayName, NpcLine = line, Mood = npc.Mood, Ended = true });
-                End();
-                return;
+                return; // the UI calls End() when the player continues
             }
             if (option.Resolution != null && option.ResolutionQuest != null)
             {
                 _quests.Resolve(option.ResolutionQuest, option.Resolution);
                 TurnReady?.Invoke(new DialogueTurn { NpcId = Current.NpcId, NpcName = Current.DisplayName, NpcLine = option.Resolution.OutcomeText, Mood = Current.Mood, Ended = true });
-                End();
                 return;
             }
             if (option.Intent == "LEAVE") { End(); return; }
@@ -255,7 +253,7 @@ namespace Echobound.Dialogue
             var turn = new DialogueTurn { NpcId = npc.NpcId, NpcName = npc.DisplayName, NpcLine = line, Mood = npc.Mood, Ended = ended };
             if (!ended) turn.Options = BuildOptions(npc, suggested);
             TurnReady?.Invoke(turn);
-            if (ended) End();
+            // When ended, the conversation stays open on the last line until End() is called by the UI (or a new Begin).
         }
 
         private List<DialogueOption> BuildOptions(NpcState npc, List<string> suggested)

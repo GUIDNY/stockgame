@@ -31,6 +31,13 @@ namespace Echobound.World
     }
 
     [Serializable]
+    public class PlacedItem
+    {
+        [JsonProperty("location")] public string Location = "";
+        [JsonProperty("item")] public Inventory.Item Item;
+    }
+
+    [Serializable]
     public class EventLogEntry
     {
         [JsonProperty("minute")] public int Minute;
@@ -64,6 +71,8 @@ namespace Echobound.World
         [JsonProperty("next_quest_number")] public int NextQuestNumber = 1;
         [JsonProperty("next_event_number")] public int NextEventNumber = 1;
         [JsonProperty("ending_reached")] public string EndingReached = "";
+        /// <summary>Items physically present in search spots, keyed by location. Saved so evidence survives load.</summary>
+        [JsonProperty("placed_items")] public List<PlacedItem> PlacedItems = new List<PlacedItem>();
 
         public NpcState GetNpc(string id) => Npcs.Find(n => n.NpcId == id);
         public IEnumerable<NpcState> AliveNpcs => Npcs.Where(n => n.Alive);

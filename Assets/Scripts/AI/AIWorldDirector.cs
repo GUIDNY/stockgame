@@ -32,6 +32,7 @@ namespace Echobound.AI
         private bool _disposed;
 
         public bool OpportunityDelivered { get; private set; }
+        public void MarkOpportunityDelivered() => OpportunityDelivered = true;
         public int InFlightRequests => _inFlight;
         public event Action<DirectorEvent> EventApplied;
 

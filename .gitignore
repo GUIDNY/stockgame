@@ -28,6 +28,8 @@ crashlytics-build.properties
 # Local AI configuration (never commit keys)
 Assets/StreamingAssets/ai_config.local.json
 Assets/StreamingAssets/ai_config.local.json.meta
-# Compile-check harness output
-/tools/compilecheck/bin/
-/tools/compilecheck/obj/
+# Dev tool projects are tracked; their build output is not
+!tools/**/*.csproj
+tools/**/bin/
+tools/**/obj/
+tools/simharness/corefiles.props

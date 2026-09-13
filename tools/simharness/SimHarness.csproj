@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Development harness: compiles every Unity-independent script under Assets/Scripts against the same
+    Newtonsoft.Json version Unity uses, then runs a deterministic simulation smoke test.
+    Files that reference UnityEngine are excluded automatically (see run.sh).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>Echobound.SimHarness</RootNamespace>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <Import Project="corefiles.props" Condition="Exists('corefiles.props')" />
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="@(CoreFiles)" />
+  </ItemGroup>
+</Project>
