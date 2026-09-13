@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "qiF8PFaCFCY=",
+  "success": true,
+  "projectFilePath": "/home/user/stockgame/tools/simharness/SimHarness.csproj",
+  "expectedPackageFiles": [
+    "/root/.nuget/packages/newtonsoft.json/13.0.3/newtonsoft.json.13.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

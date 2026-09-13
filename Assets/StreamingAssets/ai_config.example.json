@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy this file to ai_config.local.json (git-ignored) for local development. Never ship an API key inside the client build; in production set proxy_url to your backend and leave api_key empty.",
+  "provider": "mock",
+  "model": "claude-opus-5",
+  "api_key": "",
+  "proxy_url": "",
+  "timeout_seconds": 30,
+  "max_retries": 2,
+  "min_seconds_between_requests": 0.5,
+  "max_tokens_dialogue": 400,
+  "max_tokens_event": 800,
+  "max_tokens_world": 6000
+}
