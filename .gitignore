@@ -1,13 +1,13 @@
-# Unity
-/[Ll]ibrary/
-/[Tt]emp/
-/[Oo]bj/
-/[Bb]uild/
-/[Bb]uilds/
-/[Ll]ogs/
-/[Uu]ser[Ss]ettings/
-/[Mm]emoryCaptures/
-/[Rr]ecordings/
+# Unity generated folders (root project and football/ project)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
 *.pidb.meta
 *.pdb.meta
 *.mdb.meta
@@ -19,18 +19,18 @@ sysinfo.txt
 crashlytics-build.properties
 # IDE
 .vs/
+.vscode/
 .idea/
 *.csproj
 *.sln
 *.suo
 *.user
 *.userprefs
-# Local AI configuration (never commit keys)
 # Dev tool projects are tracked; their build output is not
 !tools/**/*.csproj
 tools/**/bin/
 tools/**/obj/
 tools/coretest/corefiles.props
-
 # WebGL builds are committed so they can be deployed
 !football/WebBuild/
+!WebBuild/
