@@ -54,7 +54,7 @@ namespace Echobound.UI
             go.transform.SetParent(parent, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = anchorMin; rt.anchorMax = anchorMax; rt.offsetMin = offsetMin; rt.offsetMax = offsetMax;
-            if (color.a > 0f) { var img = go.AddComponent<Image>(); img.color = color; img.raycastTarget = color.a > 0.5f; }
+            var img = go.AddComponent<Image>(); img.color = color; img.raycastTarget = color.a > 0.5f;
             return rt;
         }
 

@@ -46,7 +46,7 @@ namespace Echobound.Core
             float f = _clock.DayFraction;                 // 0 = midnight, 0.5 = noon
             float elevation = Mathf.Sin((f - 0.25f) * Mathf.PI * 2f); // -1 midnight, +1 noon
             _sun.transform.rotation = Quaternion.Euler(elevation * 80f + 10f, f * 360f, 0f);
-            float day = Mathf.Clamp01(elevation * 1.6f);
+            float day = Mathf.Clamp01((elevation + 0.3f) * 1.5f); // 18:00 dusk, 21:00 night, 06:00 dawn
             _sun.intensity = Mathf.Lerp(0.05f, 1.1f, day);
             _sun.color = Color.Lerp(DuskSun, DaySun, Mathf.Clamp01(elevation * 3f));
             RenderSettings.ambientLight = Color.Lerp(NightAmbient, DayAmbient, day);
