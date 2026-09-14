@@ -11,6 +11,7 @@ namespace StrikerFive.Ball
         public PlayerAgent Owner;
         public PlayerAgent LastTouch;
         public float KickCooldownUntil;
+        private Transform _shadow;
         public Vector3 Position => transform.position;
         public Vector3 Velocity => Body.velocity;
 
@@ -29,7 +30,25 @@ namespace StrikerFive.Ball
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             var b = go.AddComponent<BallController>();
             b.Body = rb;
+            var shadow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            shadow.name = "Shadow";
+            Destroy(shadow.GetComponent<Collider>());
+            shadow.transform.SetParent(parent, false);
+            shadow.transform.localScale = new Vector3(0.9f, 0.01f, 0.9f);
+            var sm = new Material(Materials.Standard) { color = new Color(0f, 0f, 0f, 0.45f) };
+            sm.SetFloat("_Mode", 3f); sm.SetInt("_SrcBlend", 5); sm.SetInt("_DstBlend", 10); sm.SetInt("_ZWrite", 0); sm.EnableKeyword("_ALPHABLEND_ON"); sm.renderQueue = 3000;
+            shadow.GetComponent<Renderer>().sharedMaterial = sm;
+            b._shadow = shadow.transform;
             return b;
+        }
+
+        private void LateUpdate()
+        {
+            if (_shadow == null) return;
+            var p = transform.position;
+            float h = Mathf.Clamp01(p.y / 4f);
+            _shadow.position = new Vector3(p.x, 0.02f, p.z);
+            _shadow.localScale = new Vector3(0.9f + h * 0.8f, 0.01f, 0.9f + h * 0.8f);
         }
 
         private void FixedUpdate()

@@ -118,9 +118,16 @@ namespace StrikerFive.Players
                 float lean = IsTackling ? 55f : moving * 8f;
                 _body.localRotation = Quaternion.Euler(lean, 0f, Mathf.Sin(_bob) * moving * 3f);
                 _body.localPosition = new Vector3(0f, IsTackling ? -0.5f : Mathf.Abs(Mathf.Sin(_bob)) * moving * 0.06f, 0f);
+                float swing = Mathf.Sin(_bob) * (18f + moving * 40f) * Mathf.Clamp01(moving * 3f);
+                if (_legL != null) _legL.localRotation = Quaternion.Euler(swing, 0f, 0f);
+                if (_legR != null) _legR.localRotation = Quaternion.Euler(-swing, 0f, 0f);
+                if (_armL != null) _armL.localRotation = Quaternion.Euler(-swing * 0.7f, 0f, 12f);
+                if (_armR != null) _armR.localRotation = Quaternion.Euler(swing * 0.7f, 0f, -12f);
             }
         }
 
         public void AttachBody(Transform body) { _body = body; }
+        public void AttachLimbs(Transform legL, Transform legR, Transform armL, Transform armR) { _legL = legL; _legR = legR; _armL = armL; _armR = armR; }
+        private Transform _legL, _legR, _armL, _armR;
     }
 }

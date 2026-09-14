@@ -37,13 +37,13 @@ namespace StrikerFive.Core
                 return;
             }
             Vector3 b = Target.position;
-            float x = Mathf.Clamp(b.x * 0.9f, -PitchGeometry.HalfLength + 6f, PitchGeometry.HalfLength - 6f);
+            float x = Mathf.Clamp(b.x * 0.95f, -PitchGeometry.HalfLength + 4f, PitchGeometry.HalfLength - 4f);
             float nearGoal = Mathf.Clamp01((Mathf.Abs(b.x) - 16f) / 16f);
-            Vector3 desired = new Vector3(x, 27f - nearGoal * 5f, -46f + nearGoal * 8f + b.z * 0.15f);
-            transform.position = Vector3.SmoothDamp(transform.position, desired, ref _vel, 0.35f);
-            Vector3 lookAt = new Vector3(x, 0.5f, b.z * 0.35f);
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookAt - transform.position, Vector3.up), 6f * Time.deltaTime);
-            _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, 36f + nearGoal * 4f, 2f * Time.deltaTime);
+            Vector3 desired = new Vector3(x, 17f - nearGoal * 3f, -30f + nearGoal * 6f + b.z * 0.25f);
+            transform.position = Vector3.SmoothDamp(transform.position, desired, ref _vel, 0.22f);
+            Vector3 lookAt = new Vector3(x, 0.8f, b.z * 0.5f);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookAt - transform.position, Vector3.up), 8f * Time.deltaTime);
+            _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, 44f + nearGoal * 4f, 2f * Time.deltaTime);
         }
     }
 }

@@ -31,3 +31,6 @@ crashlytics-build.properties
 tools/**/bin/
 tools/**/obj/
 tools/coretest/corefiles.props
+
+# WebGL builds are committed so they can be deployed
+!football/WebBuild/

@@ -12,7 +12,7 @@ namespace StrikerFive.Core
         public const float GoalDepth = 2.2f;
         public const float BoxLength = 10f;    // penalty area depth from the goal line
         public const float BoxHalfWidth = 11f;
-        public const float BallRadius = 0.22f;
+        public const float BallRadius = 0.32f;
 
         /// <summary>Goal centre for the goal that team `side` attacks (side = +1 attacks +x).</summary>
         public static (float x, float z) AttackGoal(int side) => (HalfLength * side, 0f);

@@ -24,22 +24,30 @@ namespace StrikerFive.Players
             var skin = Materials.Get(new Color(0.85f, 0.65f, 0.5f), 0f, 0.3f);
             var socks = Materials.Get(team.Def.Shirt * 0.8f, 0f, 0.3f);
             var boots = Materials.Get(new Color(0.1f, 0.1f, 0.1f), 0.2f, 0.5f);
-            Part(body, PrimitiveType.Capsule, new Vector3(0f, 1.15f, 0f), new Vector3(0.72f, 0.42f, 0.5f), shirtMat, "Torso");
-            Part(body, PrimitiveType.Cube, new Vector3(0f, 0.72f, 0f), new Vector3(0.62f, 0.28f, 0.42f), shortsMat, "Shorts");
-            Part(body, PrimitiveType.Sphere, new Vector3(0f, 1.78f, 0f), new Vector3(0.36f, 0.4f, 0.36f), skin, "Head");
-            Part(body, PrimitiveType.Sphere, new Vector3(0f, 1.9f, -0.02f), new Vector3(0.37f, 0.22f, 0.37f), Materials.Get(new Color(0.15f, 0.1f, 0.08f)), "Hair");
-            Part(body, PrimitiveType.Cylinder, new Vector3(-0.16f, 0.32f, 0f), new Vector3(0.2f, 0.28f, 0.2f), socks, "LegL");
-            Part(body, PrimitiveType.Cylinder, new Vector3(0.16f, 0.32f, 0f), new Vector3(0.2f, 0.28f, 0.2f), socks, "LegR");
-            Part(body, PrimitiveType.Cube, new Vector3(-0.16f, 0.06f, 0.06f), new Vector3(0.22f, 0.12f, 0.36f), boots, "BootL");
-            Part(body, PrimitiveType.Cube, new Vector3(0.16f, 0.06f, 0.06f), new Vector3(0.22f, 0.12f, 0.36f), boots, "BootR");
-            Part(body, PrimitiveType.Capsule, new Vector3(-0.42f, 1.12f, 0f), new Vector3(0.18f, 0.32f, 0.18f), shirtMat, "ArmL");
-            Part(body, PrimitiveType.Capsule, new Vector3(0.42f, 1.12f, 0f), new Vector3(0.18f, 0.32f, 0.18f), shirtMat, "ArmR");
+            Part(body, PrimitiveType.Capsule, new Vector3(0f, 1.2f, 0f), new Vector3(0.95f, 0.46f, 0.62f), shirtMat, "Torso");
+            Part(body, PrimitiveType.Cube, new Vector3(0f, 0.74f, 0f), new Vector3(0.82f, 0.3f, 0.52f), shortsMat, "Shorts");
+            Part(body, PrimitiveType.Sphere, new Vector3(0f, 1.9f, 0f), new Vector3(0.56f, 0.58f, 0.56f), skin, "Head");
+            Part(body, PrimitiveType.Sphere, new Vector3(0f, 2.08f, -0.04f), new Vector3(0.58f, 0.3f, 0.58f), Materials.Get(new Color(0.15f, 0.1f, 0.08f)), "Hair");
+            // Legs and arms hang from pivots so they can swing while running.
+            var legL = Pivot(body, new Vector3(-0.2f, 0.6f, 0f));
+            var legR = Pivot(body, new Vector3(0.2f, 0.6f, 0f));
+            Part(legL, PrimitiveType.Cylinder, new Vector3(0f, -0.3f, 0f), new Vector3(0.26f, 0.3f, 0.26f), socks, "Leg");
+            Part(legL, PrimitiveType.Cube, new Vector3(0f, -0.56f, 0.08f), new Vector3(0.28f, 0.14f, 0.44f), boots, "Boot");
+            Part(legR, PrimitiveType.Cylinder, new Vector3(0f, -0.3f, 0f), new Vector3(0.26f, 0.3f, 0.26f), socks, "Leg");
+            Part(legR, PrimitiveType.Cube, new Vector3(0f, -0.56f, 0.08f), new Vector3(0.28f, 0.14f, 0.44f), boots, "Boot");
+            var armL = Pivot(body, new Vector3(-0.56f, 1.42f, 0f));
+            var armR = Pivot(body, new Vector3(0.56f, 1.42f, 0f));
+            Part(armL, PrimitiveType.Capsule, new Vector3(0f, -0.3f, 0f), new Vector3(0.22f, 0.32f, 0.22f), shirtMat, "Arm");
+            Part(armL, PrimitiveType.Sphere, new Vector3(0f, -0.62f, 0f), new Vector3(0.2f, 0.2f, 0.2f), skin, "Hand");
+            Part(armR, PrimitiveType.Capsule, new Vector3(0f, -0.3f, 0f), new Vector3(0.22f, 0.32f, 0.22f), shirtMat, "Arm");
+            Part(armR, PrimitiveType.Sphere, new Vector3(0f, -0.62f, 0f), new Vector3(0.2f, 0.2f, 0.2f), skin, "Hand");
+            agent.AttachLimbs(legL, legR, armL, armR);
             var numberGo = new GameObject("Number");
             numberGo.transform.SetParent(body, false);
-            numberGo.transform.localPosition = new Vector3(0f, 1.25f, -0.27f);
+            numberGo.transform.localPosition = new Vector3(0f, 1.3f, -0.33f);
             numberGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             var tm = numberGo.AddComponent<TextMesh>();
-            tm.text = number.ToString(); tm.fontSize = 40; tm.characterSize = 0.06f; tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = team.Def.Accent;
+            tm.text = number.ToString(); tm.fontSize = 40; tm.characterSize = 0.09f; tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = team.Def.Accent;
             var font = UI.UIFactory.DefaultFont;
             if (font != null) { tm.font = font; numberGo.GetComponent<MeshRenderer>().sharedMaterial = font.material; }
 
@@ -49,19 +57,27 @@ namespace StrikerFive.Players
             Object.Destroy(ring.GetComponent<Collider>());
             ring.transform.SetParent(go.transform, false);
             ring.transform.localPosition = new Vector3(0f, 0.02f, 0f);
-            ring.transform.localScale = new Vector3(1.4f, 0.01f, 1.4f);
+            ring.transform.localScale = new Vector3(1.8f, 0.01f, 1.8f);
             ring.GetComponent<Renderer>().sharedMaterial = Materials.Emissive(team.Def.Accent == Color.white ? new Color(1f, 0.9f, 0.3f) : team.Def.Accent, 1.5f);
             agent.Ring = ring.transform;
             var label = new GameObject("Label");
             label.transform.SetParent(go.transform, false);
-            label.transform.localPosition = new Vector3(0f, 2.5f, 0f);
+            label.transform.localPosition = new Vector3(0f, 2.75f, 0f);
             var lt = label.AddComponent<TextMesh>();
-            lt.text = name; lt.fontSize = 48; lt.characterSize = 0.07f; lt.anchor = TextAnchor.MiddleCenter; lt.alignment = TextAlignment.Center; lt.color = Color.white;
+            lt.text = name; lt.fontSize = 48; lt.characterSize = 0.09f; lt.anchor = TextAnchor.MiddleCenter; lt.alignment = TextAlignment.Center; lt.color = Color.white;
             if (font != null) { lt.font = font; label.GetComponent<MeshRenderer>().sharedMaterial = font.material; }
             label.AddComponent<Billboard>();
             agent.Label = lt;
             agent.SetControlled(false);
             return agent;
+        }
+
+        private static Transform Pivot(Transform parent, Vector3 localPos)
+        {
+            var go = new GameObject("Pivot").transform;
+            go.SetParent(parent, false);
+            go.localPosition = localPos;
+            return go;
         }
 
         private static GameObject Part(Transform parent, PrimitiveType type, Vector3 localPos, Vector3 scale, Material mat, string name)
