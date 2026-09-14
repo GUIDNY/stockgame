@@ -33,6 +33,7 @@ namespace StrikerFive.Players
         private float _bob;
         private Animator _animator;
         private bool _hasAnimator;
+        private PlayerAnimationHooks _hooks;
 
         private void Awake() { _cc = GetComponent<CharacterController>(); }
 
@@ -70,7 +71,7 @@ namespace StrikerFive.Players
             if (_hasAnimator) _animator.SetTrigger("Tackle");
         }
 
-        public void Stumble(float seconds) { _stumbleTimer = Mathf.Max(_stumbleTimer, seconds); }
+        public void Stumble(float seconds) { _stumbleTimer = Mathf.Max(_stumbleTimer, seconds); PlayStumble(); }
 
         public void SetControlled(bool on)
         {
@@ -141,9 +142,17 @@ namespace StrikerFive.Players
         {
             _animator = animator;
             _hasAnimator = animator != null && animator.runtimeAnimatorController != null;
+            _hooks = animator != null ? animator.GetComponent<PlayerAnimationHooks>() : null;
         }
 
-        public void PlayKick() { if (_hasAnimator) _animator.SetTrigger("Kick"); }
+        public void PlayKick()
+        {
+            if (!_hasAnimator) return;
+            if (_hooks != null) _hooks.StartKick(Facing); else _animator.SetTrigger("Kick");
+        }
+
+        public void PlayStumble() { if (_hasAnimator) _animator.SetTrigger("Stumble"); }
+        public void SetCelebrating(bool on) { if (_hasAnimator) _animator.SetBool("Celebrate", on); }
         public void AttachLimbs(Transform legL, Transform legR, Transform armL, Transform armR) { _legL = legL; _legR = legR; _armL = armL; _armR = armR; }
         private Transform _legL, _legR, _armL, _armR;
     }

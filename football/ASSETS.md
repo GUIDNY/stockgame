@@ -1,6 +1,18 @@
-# Upgrading STRIKER FIVE with real assets
+# STRIKER FIVE assets
 
-The game runs with primitive players out of the box. Drop in a rigged character and it switches automatically.
+## Included: Quaternius Universal Animation Library (CC0)
+
+`Assets/Characters/UAL1_Standard.fbx` ships with the project: a rigged mannequin plus 50 animations
+(idle, walk, jog, sprint, roll, dance, hits, ...). Public domain, see `Assets/Characters/LICENSE.txt`.
+
+First time only: open the project in Unity, wait for the import, then **Striker Five → Build Character Rig**.
+That creates `Assets/Resources/PlayerModel.prefab` and every player becomes an animated mannequin tinted in
+team colours. Kicks are procedural (foot IK swings at the ball), tackles use the roll, goals trigger the dance.
+
+## Swapping in your own character (Mixamo, free)
+
+The game runs with primitive players out of the box and with the mannequin after the step above. To use a
+better-looking character, drop in a Mixamo model and animations; the same button rebuilds the rig.
 
 ## 1. Animated character (Mixamo, free)
 

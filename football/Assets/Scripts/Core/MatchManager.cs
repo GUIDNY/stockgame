@@ -129,6 +129,7 @@ namespace StrikerFive.Core
         private void KickOff(TeamRuntime kicking)
         {
             Ball.PlaceAt(Vector3.zero);
+            foreach (var team in new[] { Home, Away }) foreach (var p in team.Players) p.SetCelebrating(false);
             foreach (var team in new[] { Home, Away })
                 foreach (var p in team.Players)
                 {
@@ -313,6 +314,7 @@ namespace StrikerFive.Core
         {
             scorer.Score++;
             _concededTeam = Opponent(scorer);
+            foreach (var p in scorer.Players) { p.SetCelebrating(true); p.MoveDirection(Vector3.zero, false); }
             Audio.Goal();
             Audio.Whistle(1);
             Show(scorer == Home ? "GOAL!" : "GOAL " + scorer.Def.Short, 3f);

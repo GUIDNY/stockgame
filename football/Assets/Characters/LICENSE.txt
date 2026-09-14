@@ -1,0 +1,4 @@
+UAL1_Standard.fbx: "Universal Animation Library [Standard]" by Quaternius (https://quaternius.com)
+License: CC0 1.0 Universal (Public Domain Dedication) https://creativecommons.org/publicdomain/zero/1.0/
+Contains a rigged mannequin character and 50 animation takes (Idle_Loop, Walk_Loop, Jog_Fwd_Loop, Sprint_Loop,
+Roll, Dance_Loop, Hit_Chest, ...). Consider supporting the author: https://www.patreon.com/quaternius
