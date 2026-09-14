@@ -21,7 +21,10 @@ namespace StrikerFive.Ball
             go.name = "Ball";
             go.transform.SetParent(parent, false);
             go.transform.localScale = Vector3.one * PitchGeometry.BallRadius * 2f;
-            go.GetComponent<Renderer>().sharedMaterial = Materials.Textured(Materials.Checker(Color.white, new Color(0.12f, 0.12f, 0.12f), 6), new Vector2(2f, 1f), 0.6f);
+            var ballMat = Materials.Textured(Materials.Checker(Color.white, new Color(0.12f, 0.12f, 0.12f), 6), new Vector2(2f, 1f), 0.6f);
+            ballMat.EnableKeyword("_EMISSION");
+            ballMat.SetColor("_EmissionColor", new Color(0.35f, 0.35f, 0.35f)); // pops against the grass from any distance
+            go.GetComponent<Renderer>().sharedMaterial = ballMat;
             var col = go.GetComponent<SphereCollider>();
             col.material = new PhysicMaterial("Ball") { bounciness = 0.55f, dynamicFriction = 0.45f, staticFriction = 0.45f, bounceCombine = PhysicMaterialCombine.Maximum, frictionCombine = PhysicMaterialCombine.Average };
             var rb = go.AddComponent<Rigidbody>();
