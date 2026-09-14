@@ -1,19 +1,15 @@
 using UnityEngine;
 
-namespace Echobound.Core
+namespace TurboLoop.Core
 {
-    /// <summary>
-    /// Makes any scene playable: if no GameManager exists after the scene loads, one is created.
-    /// Open an empty scene in Unity and press Play; the whole game is assembled at runtime.
-    /// </summary>
+    /// <summary>Any scene becomes the game: if no RaceManager exists after load, one is created and builds everything.</summary>
     public static class GameBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
         {
-            if (Object.FindObjectOfType<GameManager>() != null) return;
-            var root = new GameObject("Echobound");
-            root.AddComponent<GameManager>();
+            if (Object.FindObjectOfType<RaceManager>() != null) return;
+            new GameObject("TurboLoop").AddComponent<RaceManager>();
         }
     }
 }

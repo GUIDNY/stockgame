@@ -2,4 +2,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 dotnet build -c Release --nologo -v quiet
-echo "Unity-facing scripts compiled against the stub API."
+dotnet run -c Release --no-build

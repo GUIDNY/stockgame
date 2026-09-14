@@ -1,25 +1,21 @@
-# ECHOBOUND - Claude Code configuration
+# TURBO LOOP - Claude Code configuration
 
-## Project
-Unity 2022.3 LTS (C#, built-in render pipeline, legacy Input Manager, uGUI built at runtime, Newtonsoft Json package).
-A third-person narrative RPG whose story is generated per New Game by an AI Director and adapts to the player.
+Unity 2022.3 LTS, C#, built-in render pipeline, legacy Input Manager, runtime-built uGUI. Arcade racing game.
+Everything is generated at runtime from primitives; there are no prefabs, scenes or art assets to maintain.
 
 ## Layout
-- `Assets/Scripts/{Core,Player,AI,NPC,Dialogue,Quests,World,Combat,Inventory,UI,SaveSystem}` - see `docs/ARCHITECTURE.md`
-- Pure simulation code has no `using UnityEngine`; keep it that way so `tools/simharness` can compile and test it.
-- `Assets/Editor/EchoboundMenu.cs` - editor menu (create scene, local AI config).
-- `docs/WORLD_BIBLE.md` - the closed vocabulary the AI may use. Add identifiers in `WorldBible.cs` first.
+- `Assets/Scripts/{Track,Vehicles,AI,Core,UI,Audio,Effects}` - see README.md for the map.
+- `Assets/Scripts/Track/{Vec2,TrackSpline,TrackLayouts,LapTracker}.cs` are pure C# (no UnityEngine): keep them that
+  way so `tools/coretest` can validate layouts and lap logic.
+- `Assets/Editor/TurboLoopMenu.cs` creates the bootstrap scene.
 
 ## Commands
 ```bash
-cd tools/simharness && ./run.sh        # compile pure core + headless narrative smoke test (.NET 8 SDK)
-cd tools/unitystubs && ./run.sh        # compile Unity-facing scripts against a UnityEngine stub
+cd tools/coretest && ./run.sh      # validate track layouts + lap tracker (.NET 8 SDK)
+cd tools/unitystubs && ./run.sh    # type-check Unity scripts against a stub API
 ```
 
 ## Rules
-- The AI never executes game code: it returns JSON, a validator in `AI/Schemas` checks it, `WorldChangeApplier` applies it.
-- Every AI call goes through `AIRequestManager` and must provide a deterministic fallback.
-- Never hardcode API keys. Config comes from `Assets/StreamingAssets/ai_config.local.json` (git-ignored) or env vars.
-- Quests mutate instead of failing when the world changes underneath them (`QuestManager.MutateForDeath`).
-- NPCs only know facts they witnessed or that spread through `KnowledgeSystem` channels.
-- Prefer a small working system over an impressive fake one. State explicitly what is not implemented.
+- New tracks go in `TrackLayouts.cs`; run coretest, it rejects self-overlapping or undriveable layouts.
+- Car handling lives only in `CarController.FixedUpdate`; AI reads the same `CarController` values as the HUD.
+- Keep it looking good: bright daylight, saturated colours, no debug primitives left in the scene.

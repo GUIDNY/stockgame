@@ -26,10 +26,8 @@ crashlytics-build.properties
 *.user
 *.userprefs
 # Local AI configuration (never commit keys)
-Assets/StreamingAssets/ai_config.local.json
-Assets/StreamingAssets/ai_config.local.json.meta
 # Dev tool projects are tracked; their build output is not
 !tools/**/*.csproj
 tools/**/bin/
 tools/**/obj/
-tools/simharness/corefiles.props
+tools/coretest/corefiles.props
