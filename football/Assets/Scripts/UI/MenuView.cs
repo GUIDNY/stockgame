@@ -7,7 +7,9 @@ namespace StrikerFive.UI
     public class MenuView : MonoBehaviour
     {
         private RectTransform _root;
-        private Button[] _home, _away, _half, _diff;
+        private Button[] _home, _away, _half, _diff, _format;
+        private static readonly int[] FormatOptions = { 1, 2, 5 };
+        private static readonly string[] FormatNames = { "1 v 1", "2 v 2", "5 v 5" };
         private static readonly float[] HalfOptions = { 2f, 3f, 5f };
         private static readonly string[] DiffNames = { "Easy", "Normal", "Hard" };
 
@@ -19,7 +21,11 @@ namespace StrikerFive.UI
             var panel = UIFactory.Panel(v._root, "Panel", UIFactory.Bg, new Vector2(0, 0), new Vector2(0, 1), new Vector2(40, 40), new Vector2(700, -40));
             UIFactory.VLayout(panel, 8f, 26);
             UIFactory.Paragraph(panel, "STRIKER FIVE", 64, UIFactory.Accent, TextAnchor.MiddleLeft, FontStyle.Bold, 80);
-            UIFactory.Paragraph(panel, "Five-a-side arcade football.", 20, UIFactory.TextDim, TextAnchor.MiddleLeft, FontStyle.Normal, 30);
+            UIFactory.Paragraph(panel, "Arcade football: 1 v 1 duels up to five-a-side.", 20, UIFactory.TextDim, TextAnchor.MiddleLeft, FontStyle.Normal, 30);
+
+            UIFactory.Paragraph(panel, "FORMAT", 18, UIFactory.TextDim, TextAnchor.MiddleLeft, FontStyle.Bold, 28);
+            var fmtRow = UIFactory.Row(panel); v._format = new Button[FormatOptions.Length];
+            for (int i = 0; i < FormatOptions.Length; i++) { int n = FormatOptions[i]; v._format[i] = UIFactory.Button(fmtRow, FormatNames[i], () => { MatchSettings.PlayersPerSide = n; mm.EnsurePitch(); v.Refresh(); }, 22); }
 
             UIFactory.Paragraph(panel, "YOUR TEAM", 18, UIFactory.TextDim, TextAnchor.MiddleLeft, FontStyle.Bold, 28);
             v._home = TeamGrid(panel, i => { MatchSettings.HomeTeam = i; if (MatchSettings.AwayTeam == i) MatchSettings.AwayTeam = (i + 1) % MatchSettings.Teams.Length; v.Refresh(); });
@@ -70,6 +76,7 @@ namespace StrikerFive.UI
                 _away[i].image.color = i == MatchSettings.AwayTeam ? def.Shirt : Color.Lerp(def.Shirt, Color.black, 0.55f);
                 _away[i].interactable = i != MatchSettings.HomeTeam;
             }
+            for (int i = 0; i < _format.Length; i++) _format[i].image.color = FormatOptions[i] == MatchSettings.PlayersPerSide ? UIFactory.ButtonSelected : UIFactory.ButtonBg;
             for (int i = 0; i < _half.Length; i++) _half[i].image.color = Mathf.Approximately(HalfOptions[i], MatchSettings.HalfMinutes) ? UIFactory.ButtonSelected : UIFactory.ButtonBg;
             for (int i = 0; i < _diff.Length; i++) _diff[i].image.color = i == MatchSettings.Difficulty ? UIFactory.ButtonSelected : UIFactory.ButtonBg;
         }

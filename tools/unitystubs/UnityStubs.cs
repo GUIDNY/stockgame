@@ -6,8 +6,8 @@ using System.Collections.Generic;
 
 namespace UnityEngine
 {
-    public class Object { public string name { get; set; } public static void Destroy(Object o) { } public static void Destroy(Object o, float t) { } public static void DontDestroyOnLoad(Object o) { } public static T FindObjectOfType<T>() where T : Object => default; public static implicit operator bool(Object o) => o != null; }
-    public class Component : Object { public GameObject gameObject { get; } = new GameObject("stub"); public Transform transform => gameObject.transform; public T GetComponent<T>() => default; public T GetComponentInParent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponents<T>() => new T[0]; }
+    public class Object { public string name { get; set; } public static void Destroy(Object o) { } public static void Destroy(Object o, float t) { } public static void DontDestroyOnLoad(Object o) { } public static T FindObjectOfType<T>() where T : Object => default; public static T Instantiate<T>(T o, Transform parent) where T : Object => o; public static T Instantiate<T>(T o) where T : Object => o; public static implicit operator bool(Object o) => o != null; }
+    public class Component : Object { public GameObject gameObject { get; } = new GameObject("stub"); public Transform transform => gameObject.transform; public T GetComponent<T>() => default; public T GetComponentInParent<T>() => default; public T GetComponentInChildren<T>() => default; public T[] GetComponents<T>() => new T[0]; public T[] GetComponentsInChildren<T>() => new T[0]; }
     public class Behaviour : Component { public bool enabled { get; set; } }
     public class Coroutine { }
     public class MonoBehaviour : Behaviour { public Coroutine StartCoroutine(IEnumerator e) => null; }
@@ -25,6 +25,7 @@ namespace UnityEngine
         public T GetComponent<T>() => default;
         public T GetComponentInParent<T>() => default;
         public T GetComponentInChildren<T>() => default;
+        public T[] GetComponentsInChildren<T>() => new T[0];
         public static GameObject CreatePrimitive(PrimitiveType t) => new GameObject();
     }
     public class Transform : Component
@@ -84,7 +85,11 @@ namespace UnityEngine
     public enum FilterMode { Point, Bilinear, Trilinear }
     public class Texture2D : Texture { public Texture2D(int w, int h) { } public Texture2D(int w, int h, TextureFormat f, bool mip) { } public TextureWrapMode wrapMode { get; set; } public FilterMode filterMode { get; set; } public void SetPixels(Color[] c) { } public void Apply() { } }
     public class Material : Object { public Material(Shader s) { } public Color color { get; set; } public Texture mainTexture { get; set; } public Vector2 mainTextureScale { get; set; } public void SetFloat(string n, float v) { } public void SetColor(string n, Color c) { } public void SetInt(string n, int v) { } public int renderQueue { get; set; } public void EnableKeyword(string k) { } }
-    public class Renderer : Component { public Material sharedMaterial { get; set; } public Material material { get; set; } }
+    public class Renderer : Component { public Material sharedMaterial { get; set; } public Material material { get; set; } public Material[] materials { get; set; } public Bounds bounds { get; } }
+    public struct Bounds { public Vector3 size; }
+    public class SkinnedMeshRenderer : Renderer { }
+    public class RuntimeAnimatorController : Object { }
+    public class Animator : Behaviour { public RuntimeAnimatorController runtimeAnimatorController { get; set; } public bool applyRootMotion { get; set; } public void SetFloat(string n, float v) { } public void SetFloat(string n, float v, float damp, float dt) { } public void SetBool(string n, bool v) { } public void SetTrigger(string n) { } }
     public class MeshRenderer : Renderer { }
     public class ParticleSystemRenderer : Renderer { }
     public class Mesh : Object { public Vector3[] vertices { get; set; } public Vector2[] uv { get; set; } public Vector3[] normals { get; set; } public int[] triangles { get; set; } public Rendering.IndexFormat indexFormat { get; set; } public void RecalculateBounds() { } public void RecalculateNormals() { } }
@@ -105,7 +110,7 @@ namespace UnityEngine
     public enum VerticalWrapMode { Truncate, Overflow }
     public class Font : Object { public Material material { get; } }
     public class TextMesh : Component { public string text { get; set; } public int fontSize { get; set; } public float characterSize { get; set; } public TextAnchor anchor { get; set; } public TextAlignment alignment { get; set; } public Color color { get; set; } public Font font { get; set; } public bool richText { get; set; } }
-    public static class Resources { public static T GetBuiltinResource<T>(string path) where T : Object => default; }
+    public static class Resources { public static T GetBuiltinResource<T>(string path) where T : Object => default; public static T Load<T>(string path) where T : Object => default; }
     public enum FogMode { Linear = 1, Exponential, ExponentialSquared }
     public static class RenderSettings { public static bool fog; public static FogMode fogMode; public static float fogStartDistance; public static float fogEndDistance; public static Color ambientLight; public static Color fogColor; public static Material skybox; public static Light sun; public static Rendering.AmbientMode ambientMode; public static Color ambientSkyColor, ambientEquatorColor, ambientGroundColor; }
     public static class DynamicGI { public static void UpdateEnvironment() { } }

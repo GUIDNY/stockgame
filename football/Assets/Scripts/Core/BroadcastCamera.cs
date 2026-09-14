@@ -30,16 +30,18 @@ namespace StrikerFive.Core
             if (MenuMode || Target == null)
             {
                 _orbit += Time.deltaTime * 5f;
-                var pos = new Vector3(Mathf.Cos(_orbit * Mathf.Deg2Rad) * 70f, 32f, Mathf.Sin(_orbit * Mathf.Deg2Rad) * 70f);
+                float r = 70f * PitchGeometry.Scale;
+                var pos = new Vector3(Mathf.Cos(_orbit * Mathf.Deg2Rad) * r, 32f * PitchGeometry.Scale, Mathf.Sin(_orbit * Mathf.Deg2Rad) * r);
                 transform.position = Vector3.Lerp(transform.position, pos, 2f * Time.deltaTime);
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(Vector3.zero - transform.position), 2f * Time.deltaTime);
                 _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView, 45f, Time.deltaTime);
                 return;
             }
             Vector3 b = Target.position;
-            float x = Mathf.Clamp(b.x * 0.95f, -PitchGeometry.HalfLength + 4f, PitchGeometry.HalfLength - 4f);
-            float nearGoal = Mathf.Clamp01((Mathf.Abs(b.x) - 16f) / 16f);
-            Vector3 desired = new Vector3(x, 17f - nearGoal * 3f, -30f + nearGoal * 6f + b.z * 0.25f);
+            float s = Mathf.Lerp(0.72f, 1f, (PitchGeometry.Scale - 0.6f) / 0.4f);
+            float x = Mathf.Clamp(b.x * 0.95f, -PitchGeometry.HalfLength + 4f * s, PitchGeometry.HalfLength - 4f * s);
+            float nearGoal = Mathf.Clamp01((Mathf.Abs(b.x) - PitchGeometry.HalfLength * 0.5f) / (PitchGeometry.HalfLength * 0.5f));
+            Vector3 desired = new Vector3(x, (17f - nearGoal * 3f) * s, (-30f + nearGoal * 6f) * s + b.z * 0.25f);
             transform.position = Vector3.SmoothDamp(transform.position, desired, ref _vel, 0.22f);
             Vector3 lookAt = new Vector3(x, 0.8f, b.z * 0.5f);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(lookAt - transform.position, Vector3.up), 8f * Time.deltaTime);

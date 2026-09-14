@@ -18,6 +18,8 @@ namespace StrikerFive.Core
         public static float HalfMinutes = 3f;
         /// <summary>0 easy, 1 normal, 2 hard: scales AI speed and reaction.</summary>
         public static int Difficulty = 1;
+        /// <summary>1, 2 or 5 players per side. 1v1 and 2v2 use a small pitch and no goalkeeper.</summary>
+        public static int PlayersPerSide = 1;
 
         public static readonly TeamDef[] Teams =
         {

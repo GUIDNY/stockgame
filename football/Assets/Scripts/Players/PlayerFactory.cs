@@ -15,6 +15,21 @@ namespace StrikerFive.Players
             var agent = go.AddComponent<PlayerAgent>();
             agent.Team = team; agent.Role = role; agent.PlayerName = name; agent.Number = number;
 
+            var model = Resources.Load<GameObject>("PlayerModel");
+            if (model != null)
+            {
+                var inst = Object.Instantiate(model, go.transform);
+                inst.transform.localPosition = Vector3.zero;
+                inst.transform.localRotation = Quaternion.identity;
+                var animator = inst.GetComponentInChildren<Animator>();
+                agent.AttachAnimator(animator);
+                // Tint the kit: multiply every material colour by the team shirt colour.
+                foreach (var r in inst.GetComponentsInChildren<Renderer>())
+                    foreach (var m in r.materials) m.color = Color.Lerp(m.color, isKeeper ? Color.Lerp(team.Def.Accent, new Color(0.2f, 0.9f, 0.4f), 0.6f) : team.Def.Shirt, 0.65f);
+                AddIndicators(agent, go.transform, team, name);
+                agent.SetControlled(false);
+                return agent;
+            }
             var body = new GameObject("Body").transform;
             body.SetParent(go.transform, false);
             agent.AttachBody(body);
@@ -51,7 +66,15 @@ namespace StrikerFive.Players
             var font = UI.UIFactory.DefaultFont;
             if (font != null) { tm.font = font; numberGo.GetComponent<MeshRenderer>().sharedMaterial = font.material; }
 
-            // Controlled-player indicator: glowing ring on the grass and a name label above the head.
+            AddIndicators(agent, go.transform, team, name);
+            agent.SetControlled(false);
+            return agent;
+        }
+
+        private static void AddIndicators(PlayerAgent agent, Transform root, TeamRuntime team, string name)
+        {
+            var font = UI.UIFactory.DefaultFont;
+            var go = root.gameObject;
             var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             ring.name = "Ring";
             Object.Destroy(ring.GetComponent<Collider>());
@@ -68,8 +91,6 @@ namespace StrikerFive.Players
             if (font != null) { lt.font = font; label.GetComponent<MeshRenderer>().sharedMaterial = font.material; }
             label.AddComponent<Billboard>();
             agent.Label = lt;
-            agent.SetControlled(false);
-            return agent;
         }
 
         private static Transform Pivot(Transform parent, Vector3 localPos)

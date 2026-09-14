@@ -31,6 +31,8 @@ namespace StrikerFive.Players
         private Vector3 _tackleDir;
         private Transform _body;
         private float _bob;
+        private Animator _animator;
+        private bool _hasAnimator;
 
         private void Awake() { _cc = GetComponent<CharacterController>(); }
 
@@ -65,6 +67,7 @@ namespace StrikerFive.Players
             _tackleDir = dir.sqrMagnitude > 0.01f ? dir.normalized : Facing;
             _tackleTimer = 0.45f;
             _tackleCooldown = 1.1f;
+            if (_hasAnimator) _animator.SetTrigger("Tackle");
         }
 
         public void Stumble(float seconds) { _stumbleTimer = Mathf.Max(_stumbleTimer, seconds); }
@@ -111,7 +114,12 @@ namespace StrikerFive.Players
             else if (_moveDir.sqrMagnitude > 0.01f) Facing = Vector3.Slerp(Facing, _moveDir.normalized, 10f * dt).normalized;
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(Facing, Vector3.up), 14f * dt);
 
-            if (_body != null)
+            if (_hasAnimator)
+            {
+                _animator.SetFloat("Speed", Mathf.Clamp01(vel.magnitude / SprintSpeed), 0.08f, dt);
+                _animator.SetBool("HasBall", HasBall);
+            }
+            else if (_body != null)
             {
                 float moving = Mathf.Clamp01(vel.magnitude / SprintSpeed);
                 _bob += dt * (6f + moving * 10f);
@@ -127,6 +135,15 @@ namespace StrikerFive.Players
         }
 
         public void AttachBody(Transform body) { _body = body; }
+
+        /// <summary>Use an imported humanoid model (built by Striker Five → Build Character Rig) instead of the primitive body.</summary>
+        public void AttachAnimator(Animator animator)
+        {
+            _animator = animator;
+            _hasAnimator = animator != null && animator.runtimeAnimatorController != null;
+        }
+
+        public void PlayKick() { if (_hasAnimator) _animator.SetTrigger("Kick"); }
         public void AttachLimbs(Transform legL, Transform legR, Transform armL, Transform armR) { _legL = legL; _legR = legR; _armL = armL; _armR = armR; }
         private Transform _legL, _legR, _armL, _armR;
     }

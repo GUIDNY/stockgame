@@ -52,6 +52,16 @@ namespace StrikerFive.Players
         private void OffBall(PlayerAgent p, bool inPossession)
         {
             var ball = _match.Ball.Position;
+            if (_team.Goalkeeper == null && !inPossession)
+            {
+                // No keeper: stand between the ball and our goal.
+                Vector3 own = _team.OwnGoal;
+                Vector3 guard = Vector3.Lerp(own, ball, 0.35f);
+                guard.x = Mathf.Clamp(guard.x * _team.Side, -PitchGeometry.HalfLength + 1.5f, 0f) * _team.Side;
+                p.MoveTowards(guard, Vector3.Distance(p.Position, guard) > 6f, 0.4f);
+                p.Face(ball - p.Position);
+                return;
+            }
             var (hx, hz) = Formation.Home(p.Role, _team.Side, ball.x, ball.z, inPossession);
             var home = new Vector3(hx, 0f, hz);
             // Light attraction to the ball keeps play compact.
@@ -85,7 +95,7 @@ namespace StrikerFive.Players
             float pressure = NearestOpponentDistance(p.Position);
 
             // Shoot when close and the lane is open.
-            if (distGoal < 21f && LaneClear(p.Position, goal, 2.2f))
+            if (distGoal < 21f * PitchGeometry.Scale && LaneClear(p.Position, goal, 2.2f))
             {
                 Vector3 aim = goal + new Vector3(0f, 0f, Random.Range(-2.4f, 2.4f)) - p.Position;
                 p.Face(aim);
@@ -100,13 +110,13 @@ namespace StrikerFive.Players
                 if (mate == p || mate.Role == Role.Goalkeeper) continue;
                 Vector3 to = mate.Position - p.Position; to.y = 0f;
                 float dist = to.magnitude;
-                if (dist < 3f || dist > 32f) continue;
+                if (dist < 3f || dist > 32f * PitchGeometry.Scale) continue;
                 float forward = (mate.Position.x - p.Position.x) * _team.Side;
                 float open = NearestOpponentDistance(mate.Position);
                 float score = forward * 0.5f + Mathf.Min(open, 8f) * 1.2f + (LaneClear(p.Position, mate.Position, 1.6f) ? 4f : -8f) - dist * 0.1f;
                 if (score > bestScore) { bestScore = score; best = mate; }
             }
-            bool wantPass = best != null && bestScore > 5f && (pressure < 3.2f || Random.value < 0.3f || distGoal > 30f);
+            bool wantPass = best != null && bestScore > 5f && (pressure < 3.2f || Random.value < 0.3f || distGoal > 30f * PitchGeometry.Scale);
             if (wantPass)
             {
                 Vector3 target = best.Position + best.Velocity * 0.4f;

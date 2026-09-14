@@ -80,6 +80,20 @@ public static class Program
                 var (hx, hz) = Formation.Home(role, 1, bx, 15f, true);
                 Check(Math.Abs(hx) <= 31f && Math.Abs(hz) <= 19f, "home position stays on the pitch");
             }
+        // Small formats: geometry shrinks, formations stay inside, no keeper role.
+        PitchGeometry.Configure(1);
+        Check(PitchGeometry.HalfLength < 25f && PitchGeometry.GoalHalfWidth < 3f, "1v1 uses a small pitch and goals");
+        Check(Formation.RolesFor(1).Length == 1 && Formation.RolesFor(2).Length == 2 && Formation.RolesFor(5).Length == 5, "roles per format");
+        Check(Array.IndexOf(Formation.RolesFor(1), Role.Goalkeeper) < 0, "1v1 has no keeper");
+        foreach (var role in Formation.RolesFor(2))
+            for (float bx = -20; bx <= 20; bx += 5)
+            {
+                var (hx, hz) = Formation.Home(role, -1, bx, -8f, false);
+                Check(Math.Abs(hx) < PitchGeometry.HalfLength && Math.Abs(hz) < PitchGeometry.HalfWidth, "small-pitch home position on the pitch");
+            }
+        Check(PitchGeometry.IsGoal(20.6f, 1f, 0f, 1) && !PitchGeometry.IsGoal(20.6f, 1f, 3f, 1), "1v1 goal detection uses the small goal");
+        PitchGeometry.Configure(5);
+        Check(Math.Abs(PitchGeometry.HalfLength - 32f) < 0.01f, "configure back to 5v5");
         Console.WriteLine(_fail == 0 ? "ALL CHECKS PASSED" : _fail + " FAILURE(S)");
         return _fail == 0 ? 0 : 1;
     }

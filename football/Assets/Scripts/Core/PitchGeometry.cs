@@ -2,23 +2,38 @@ namespace StrikerFive.Core
 {
     public enum OutKind { None, Sideline, GoalLine }
 
-    /// <summary>Pitch dimensions and rules geometry. Pure C#, unit tested. X runs goal to goal, Z across the pitch.</summary>
+    /// <summary>
+    /// Pitch dimensions and rules geometry. Sized per match format (1v1 plays on a small pitch with small goals).
+    /// Pure C#, unit tested. X runs goal to goal, Z across the pitch.
+    /// </summary>
     public static class PitchGeometry
     {
-        public const float HalfLength = 32f;   // goal lines at x = ±32
-        public const float HalfWidth = 21f;    // touchlines at z = ±21
-        public const float GoalHalfWidth = 3.2f;
-        public const float GoalHeight = 2.3f;
-        public const float GoalDepth = 2.2f;
-        public const float BoxLength = 10f;    // penalty area depth from the goal line
-        public const float BoxHalfWidth = 11f;
+        public static float HalfLength = 32f;   // goal lines at x = ±HalfLength
+        public static float HalfWidth = 21f;    // touchlines at z = ±HalfWidth
+        public static float GoalHalfWidth = 3.2f;
+        public static float GoalHeight = 2.3f;
+        public static float GoalDepth = 2.2f;
+        public static float BoxLength = 10f;    // penalty area depth from the goal line
+        public static float BoxHalfWidth = 11f;
         public const float BallRadius = 0.32f;
 
-        /// <summary>Goal centre for the goal that team `side` attacks (side = +1 attacks +x).</summary>
+        /// <summary>Relative size compared with the full five-a-side pitch; used to scale formations and camera.</summary>
+        public static float Scale => HalfLength / 32f;
+
+        public static void Configure(int playersPerSide)
+        {
+            switch (playersPerSide)
+            {
+                case 1: HalfLength = 20f; HalfWidth = 13f; GoalHalfWidth = 2.4f; GoalHeight = 2.0f; BoxLength = 6f; BoxHalfWidth = 7f; break;
+                case 2: HalfLength = 25f; HalfWidth = 16f; GoalHalfWidth = 2.8f; GoalHeight = 2.2f; BoxLength = 8f; BoxHalfWidth = 9f; break;
+                default: HalfLength = 32f; HalfWidth = 21f; GoalHalfWidth = 3.2f; GoalHeight = 2.3f; BoxLength = 10f; BoxHalfWidth = 11f; break;
+            }
+        }
+
         public static (float x, float z) AttackGoal(int side) => (HalfLength * side, 0f);
         public static (float x, float z) OwnGoal(int side) => (-HalfLength * side, 0f);
 
-        /// <summary>True when the ball is fully over the line inside the goal at x = 32*goalSide.</summary>
+        /// <summary>True when the ball is fully over the line inside the goal at x = HalfLength*goalSide.</summary>
         public static bool IsGoal(float x, float y, float z, int goalSide)
         {
             bool overLine = goalSide > 0 ? x - BallRadius > HalfLength : x + BallRadius < -HalfLength;

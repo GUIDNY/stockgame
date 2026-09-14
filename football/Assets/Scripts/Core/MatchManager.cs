@@ -32,6 +32,7 @@ namespace StrikerFive.Core
         public TeamRuntime RestartTeam { get; private set; }
 
         private Transform _world, _playersRoot;
+        private int _builtFormat = -1;
         private float _stateTimer;
         private MatchState _afterTimer;
         private float _possessionHome, _possessionTotal;
@@ -49,6 +50,8 @@ namespace StrikerFive.Core
             sun.transform.SetParent(_world, false);
             sun.type = LightType.Directional;
             Materials.SetupSky(sun);
+            PitchGeometry.Configure(MatchSettings.PlayersPerSide);
+            _builtFormat = MatchSettings.PlayersPerSide;
             Pitch = PitchBuilder.Build(_world);
             Ball = BallController.Create(_world);
             Ball.PlaceAt(Vector3.zero);
@@ -72,6 +75,7 @@ namespace StrikerFive.Core
         public void StartMatch()
         {
             ClearPlayers();
+            EnsurePitch();
             Clock = 0f; Half = 1; _possessionHome = 0f; _possessionTotal = 0f;
             int away = MatchSettings.AwayTeam == MatchSettings.HomeTeam ? (MatchSettings.HomeTeam + 1) % MatchSettings.Teams.Length : MatchSettings.AwayTeam;
             Home = BuildTeam(MatchSettings.Teams[MatchSettings.HomeTeam], +1, true, 0);
@@ -85,13 +89,24 @@ namespace StrikerFive.Core
             Audio.Whistle(1);
         }
 
+        /// <summary>Rebuilds the stadium when the match format (and therefore pitch size) changed.</summary>
+        public void EnsurePitch()
+        {
+            if (_builtFormat == MatchSettings.PlayersPerSide && Pitch != null) return;
+            PitchGeometry.Configure(MatchSettings.PlayersPerSide);
+            if (Pitch != null) Destroy(Pitch.gameObject);
+            Pitch = PitchBuilder.Build(_world);
+            _builtFormat = MatchSettings.PlayersPerSide;
+            Ball.PlaceAt(Vector3.zero);
+        }
+
         private TeamRuntime BuildTeam(TeamDef def, int side, bool human, int seed)
         {
             var team = new TeamRuntime { Def = def, Side = side, IsHuman = human };
             var rng = new System.Random(def.Name.GetHashCode() + seed);
             var names = new List<string>(MatchSettings.Surnames);
             int number = 1;
-            foreach (var role in Formation.Roles)
+            foreach (var role in Formation.RolesFor(MatchSettings.PlayersPerSide))
             {
                 string name = names[rng.Next(names.Count)]; names.Remove(name);
                 var (x, z) = Formation.Home(role, side, 0f, 0f, false);
@@ -119,7 +134,7 @@ namespace StrikerFive.Core
                 {
                     var (x, z) = Formation.Home(p.Role, team.Side, 0f, 0f, team == kicking);
                     if (team == kicking && p.Role == Role.Forward) { x = -1.2f * team.Side; z = 0.6f; }
-                    if (team != kicking && p.Role == Role.Forward) x = -9f * team.Side;
+                    if (team != kicking && p.Role == Role.Forward) x = -9f * team.Side * PitchGeometry.Scale;
                     p.transform.position = new Vector3(x, 0f, z);
                     p.Face(new Vector3(team.Side, 0f, 0f));
                     p.MoveDirection(Vector3.zero, false);
@@ -267,7 +282,7 @@ namespace StrikerFive.Core
             int goalLineSide = b.x > 0f ? 1 : -1;
             bool lastTeamAttacksThisGoal = lastTeam.Side == goalLineSide;
             if (lastTeamAttacksThisGoal)
-                Restart(other, new Vector3(goalLineSide * (PitchGeometry.HalfLength - 6f), 0f, Mathf.Sign(b.z) * 6f), "GOAL KICK");
+                Restart(other, new Vector3(goalLineSide * (PitchGeometry.HalfLength - 6f * PitchGeometry.Scale), 0f, Mathf.Sign(b.z) * 6f * PitchGeometry.Scale), "GOAL KICK");
             else
                 Restart(other, new Vector3(goalLineSide * (PitchGeometry.HalfLength - 0.8f), 0f, Mathf.Sign(b.z) * (PitchGeometry.HalfWidth - 0.8f)), "CORNER");
         }

@@ -56,7 +56,12 @@ namespace StrikerFive.Ball
 
         private void FixedUpdate()
         {
-            if (Owner == null) return;
+            if (Owner == null)
+            {
+                // Magnus effect: side spin bends the flight of a kicked ball.
+                if (Body.velocity.sqrMagnitude > 9f) Body.AddForce(Vector3.Cross(Body.angularVelocity, Body.velocity) * 0.012f, ForceMode.Acceleration);
+                return;
+            }
             float ahead = Owner.Sprinting ? 1.25f : 0.8f;
             Vector3 target = Owner.Position + Owner.Facing * ahead + Vector3.up * PitchGeometry.BallRadius;
             Vector3 vel = (target - transform.position) * 10f + Owner.Velocity;
@@ -66,15 +71,16 @@ namespace StrikerFive.Ball
             Body.angularVelocity = Vector3.Cross(Vector3.up, vel) / PitchGeometry.BallRadius;
         }
 
-        public void Kick(PlayerAgent kicker, Vector3 direction, float power, float lift)
+        public void Kick(PlayerAgent kicker, Vector3 direction, float power, float lift, float curve = 0f)
         {
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.001f) direction = kicker.Facing;
+            kicker.PlayKick();
             Owner = null;
             LastTouch = kicker;
             KickCooldownUntil = Time.time + 0.35f;
             Body.velocity = direction.normalized * power + Vector3.up * lift;
-            Body.angularVelocity = Vector3.Cross(Vector3.up, direction.normalized) * power * 2f;
+            Body.angularVelocity = Vector3.Cross(Vector3.up, direction.normalized) * power * 2f + Vector3.up * curve * 40f;
             MatchManager.Instance?.Audio?.Kick(power);
         }
 

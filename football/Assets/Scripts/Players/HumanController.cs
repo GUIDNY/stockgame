@@ -104,7 +104,7 @@ namespace StrikerFive.Players
             float power = Mathf.Lerp(14f, 31f, charge);
             float lift = Mathf.Lerp(0.8f, 4.5f, charge) * (toGoal.magnitude > 14f ? 1f : 0.5f);
             p.Face(dir);
-            _match.Ball.Kick(p, dir, power, lift);
+            _match.Ball.Kick(p, dir, power, lift, -lateral * charge);
         }
     }
 }
