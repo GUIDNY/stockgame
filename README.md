@@ -35,3 +35,7 @@ Assets/Scripts
 
 `tools/coretest` compiles the pure track core and validates every layout (no self-overlap, driveable radii) and the
 lap tracker. `tools/unitystubs` type-checks the Unity scripts against a stub API. Neither replaces opening Unity.
+
+## Also in this repository
+
+`football/` is a second, independent Unity project: **STRIKER FIVE**, five-a-side arcade football. See `football/README.md`.

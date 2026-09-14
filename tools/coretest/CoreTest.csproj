@@ -13,5 +13,7 @@
     <Compile Include="../../Assets/Scripts/Track/TrackSpline.cs" />
     <Compile Include="../../Assets/Scripts/Track/TrackLayouts.cs" />
     <Compile Include="../../Assets/Scripts/Track/LapTracker.cs" />
+    <Compile Include="../../football/Assets/Scripts/Core/PitchGeometry.cs" />
+    <Compile Include="../../football/Assets/Scripts/Core/Formation.cs" />
   </ItemGroup>
 </Project>

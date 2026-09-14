@@ -10,5 +10,6 @@
   <ItemGroup>
     <Compile Include="UnityStubs.cs" />
     <Compile Include="../../Assets/Scripts/**/*.cs" />
+    <Compile Include="../../football/Assets/Scripts/**/*.cs" />
   </ItemGroup>
 </Project>

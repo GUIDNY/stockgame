@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using TurboLoop.Track;
+using StrikerFive.Core;
 
 public static class Program
 {
@@ -54,6 +55,31 @@ public static class Program
         Check(!lap2.WrongWay, "wrong way clears when driving forward again");
         Check(lap2.Lap == 1, "no lap credited without covering the loop");
         Check(LapTracker.Format(83.456f) == "1:23.456", "time format");
+        // Football rules geometry.
+        Check(PitchGeometry.IsGoal(32.5f, 1f, 0f, 1), "ball over the +x line inside posts is a goal");
+        Check(!PitchGeometry.IsGoal(32.5f, 1f, 4f, 1), "wide of the post is not a goal");
+        Check(!PitchGeometry.IsGoal(32.5f, 2.6f, 0f, 1), "over the bar is not a goal");
+        Check(!PitchGeometry.IsGoal(31.9f, 1f, 0f, 1), "on the line is not a goal");
+        Check(PitchGeometry.IsGoal(-32.5f, 0.5f, -1f, -1), "goal at -x");
+        Check(PitchGeometry.Out(0f, 21.5f) == OutKind.Sideline, "sideline out");
+        Check(PitchGeometry.Out(32.6f, 5f) == OutKind.GoalLine, "goal line out");
+        Check(PitchGeometry.Out(10f, 10f) == OutKind.None, "in play");
+        Check(PitchGeometry.InBox(28f, 3f, 1) && !PitchGeometry.InBox(15f, 3f, 1) && !PitchGeometry.InBox(28f, 15f, 1), "penalty box");
+        // Formation slides with the ball and mirrors by side.
+        var (gx, gz) = Formation.Home(Role.Goalkeeper, 1, 0f, 0f, false);
+        Check(gx < -25f && Math.Abs(gz) < 0.1f, "keeper starts near own goal");
+        var (fx, _) = Formation.Home(Role.Forward, 1, 20f, 0f, true);
+        var (fx2, _) = Formation.Home(Role.Forward, 1, -20f, 0f, false);
+        Check(fx > fx2 + 10f, "forward pushes up with the ball");
+        var (mx, mz) = Formation.Home(Role.Midfielder, -1, 10f, 5f, false);
+        var (mxp, mzp) = Formation.Home(Role.Midfielder, 1, -10f, 5f, false);
+        Check(Math.Abs(mx + mxp) < 0.01f && Math.Abs(mz - mzp) < 0.01f, "formation mirrors across sides");
+        foreach (var role in Formation.Roles)
+            for (float bx = -32; bx <= 32; bx += 8)
+            {
+                var (hx, hz) = Formation.Home(role, 1, bx, 15f, true);
+                Check(Math.Abs(hx) <= 31f && Math.Abs(hz) <= 19f, "home position stays on the pitch");
+            }
         Console.WriteLine(_fail == 0 ? "ALL CHECKS PASSED" : _fail + " FAILURE(S)");
         return _fail == 0 ? 0 : 1;
     }
