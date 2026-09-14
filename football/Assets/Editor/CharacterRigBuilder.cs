@@ -45,22 +45,31 @@ namespace StrikerFive.EditorTools
 
             // 2. Collect every clip across all files, look them up by keyword (first keyword that matches wins).
             var allClips = models.SelectMany(p => AssetDatabase.LoadAllAssetsAtPath(p).OfType<AnimationClip>()).Where(c => !c.name.StartsWith("__preview")).ToList();
+            // Clip names look like "Armature|Idle_Loop" (Quaternius) or "mixamo.com" / file names (Mixamo).
+            string Short(AnimationClip c) { var n = c.name.ToLowerInvariant(); int bar = n.LastIndexOf('|'); return bar >= 0 ? n.Substring(bar + 1) : n; }
             AnimationClip Find(params string[] keys)
             {
                 foreach (var k in keys)
                 {
-                    var hit = allClips.FirstOrDefault(c => c.name.ToLowerInvariant().Contains(k));
-                    if (hit != null) return hit;
+                    var exact = allClips.FirstOrDefault(c => Short(c) == k);
+                    if (exact != null) return exact;
+                    var starts = allClips.FirstOrDefault(c => Short(c).StartsWith(k));
+                    if (starts != null) return starts;
+                }
+                foreach (var k in keys)
+                {
+                    var contains = allClips.FirstOrDefault(c => Short(c).Contains(k));
+                    if (contains != null) return contains;
                 }
                 return null;
             }
             var idle = Find("idle_loop", "idle");
-            var run = Find("jog_fwd", "run", "jog");
-            var sprint = Find("sprint") ?? run;
-            var kick = Find("kick", "shoot");
+            var run = Find("jog_fwd_loop", "run", "jog");
+            var sprint = Find("sprint_loop", "sprint") ?? run;
+            var kick = Find("soccer", "kick");                       // none in the bundled library: procedural IK kick is used
             var tackle = Find("tackle", "slide", "roll");
-            var celebrate = Find("dance", "celebrat", "victory");
-            var stumble = Find("hit_chest", "hit", "stumble");
+            var celebrate = Find("dance_loop", "dance", "celebrat", "victory");
+            var stumble = Find("hit_chest", "stumble", "hit");
             if (idle == null || run == null) { Debug.LogError("Striker Five: need at least an idle and a run/jog clip. Clips found: " + string.Join(", ", allClips.Select(c => c.name))); return; }
 
             // 3. Animator controller.
