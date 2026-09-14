@@ -13,7 +13,7 @@ deterministic fallbacks, save/load, and an AI Director debug panel.
 
 ## Running it
 
-1. Open the project folder in **Unity 2022.3 LTS** (any 2022.3.x; the `Newtonsoft Json` package is pulled from the
+1. Open the project folder in **Unity 2022.3 LTS** (a regular LTS build such as 2022.3.20f1; the 2022.3.7x "Extended LTS" builds need a paid Industry/Enterprise license; the `Newtonsoft Json` package is pulled from the
    package registry automatically).
 2. Either use menu **Echobound → Create Town Scene** and press Play, or simply create an empty scene and press Play.
    `GameBootstrap` assembles the whole game at runtime; there are no prefabs or hand-authored scenes.
