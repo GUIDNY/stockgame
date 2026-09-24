@@ -236,7 +236,19 @@
   .catgrid a .ico svg{width:17px;height:17px;}
   .catgrid a.wide{grid-column:1/-1;justify-content:center;background:var(--brand);color:#fff;}
   .empty{padding:24px;text-align:center;color:#6b7289;font-size:14px;}
-  #loading{position:fixed;inset:0;display:grid;place-items:center;background:#101530;color:var(--ink-dim);font-size:15px;direction:rtl;}
+  #loading{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;background:radial-gradient(90% 60% at 50% 40%,#1b2350,#0b0f26);color:var(--ink-dim);font-size:14px;direction:rtl;z-index:20;}
+  #loading .logo{height:40px;font-size:19px;padding:0 16px;border-radius:12px;}
+  #loading .bar{width:180px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;}
+  #loading .bar i{display:block;width:40%;height:100%;border-radius:2px;background:var(--brand);animation:load 1.1s ease-in-out infinite;}
+  @keyframes load{0%{transform:translateX(160%)}100%{transform:translateX(-260%)}}
+  @keyframes rise{from{transform:translate(-50%,14px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+  @keyframes sheetUp{from{transform:translateY(48px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
+  .sheet:not([hidden]){animation:rise .22s cubic-bezier(.2,.8,.2,1);}
+  .dir:not([hidden]) .dpanel,.creator:not([hidden]) .csheet{animation:sheetUp .3s cubic-bezier(.2,.8,.2,1);}
+  .screen:not([hidden]) .panel{animation:pop .25s ease-out;}
+  .drive:active,.prod:active,.drow:active,.catgrid a:active,.seg button:active,.sw button:active,#map:active,#cartBtn:active,#meBtn:active{transform:scale(.96);}
+  @media (prefers-reduced-motion: reduce){ .sheet,.dpanel,.csheet,.panel,#loading .bar i{animation:none!important;} }
   @media (prefers-reduced-motion: reduce){ #toast,.quest-h svg{transition:none;} #clockPill.late b{animation:none;} }
 </style>
 
@@ -347,7 +359,7 @@
   </div>
 </div>
 
-<div id="loading">פותחים את הקניון…</div>
+<div id="loading"><span class="logo">BuyToday</span><span>פותחים את הקניון…</span><div class="bar"><i></i></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -931,6 +943,22 @@ function buildItems(){
   });
 }
 
+const faceCache={};
+const hx=c=>'#'+c.toString(16).padStart(6,'0');
+function faceMat(o){
+  const k=[o.skin,o.hair,!!o.girl].join('_'); if(faceCache[k]) return faceCache[k];
+  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  g.fillStyle=hx(o.skin); g.fillRect(0,0,128,128);
+  g.fillStyle='rgba(255,110,110,.28)'; [[26,88],[102,88]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,10,0,7); g.fill(); });
+  [40,88].forEach(x=>{ g.fillStyle='#1d1b26'; rrect(g,x-11,50,22,28,10); g.fill();
+    g.fillStyle='#fff'; g.beginPath(); g.arc(x-4,58,4.6,0,7); g.fill(); g.beginPath(); g.arc(x+4,70,2.2,0,7); g.fill();
+    g.fillStyle=hx(o.hair); if(o.girl){ g.fillRect(x-12,38,24,4); g.fillStyle='#1d1b26'; g.fillRect(x-14,50,4,3); g.fillRect(x+10,50,4,3); } else g.fillRect(x-13,36,26,7); });
+  g.strokeStyle=o.girl?'#c0506a':'#7a3b2e'; g.lineWidth=5; g.lineCap='round'; g.beginPath(); g.arc(64,84,13,.2*Math.PI,.8*Math.PI); g.stroke();
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.LinearEncoding; t.anisotropy=4;   // linear so it matches the plain skin colour of the head
+  return faceCache[k]=new THREE.MeshStandardMaterial({map:t,roughness:.6});
+}
+const BLOB=new THREE.MeshBasicMaterial({map:canvasTex(64,64,(g,W)=>{ const gr=g.createRadialGradient(W/2,W/2,2,W/2,W/2,W/2); gr.addColorStop(0,'rgba(0,0,0,.55)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,W,W); }),transparent:true,depthWrite:false});
+const blobGeo=new THREE.PlaneGeometry(1.2,1.2);
 function mkGuy(o){
   const g=new THREE.Group(), body=new THREE.Group(); g.add(body);
   const skin=mat(o.skin,{roughness:.6}), shirt=mat(o.shirt), pants=mat(o.pants), hair=mat(o.hair,{roughness:.9}), shoe=mat(o.girl?0x7a2a3a:0x1b1b1f);
@@ -943,14 +971,12 @@ function mkGuy(o){
   if(o.vest){ box(.76,.62,.46,mat(o.vest),0,1.26,0,body); box(.14,.1,.02,M.white,-.18,1.4,.24,body,false); }
   if(o.logo){ box(.3,.12,.02,M.white,0,1.36,.215,body,false); }
   const head=new THREE.Group(); head.position.y=1.6; body.add(head);
-  box(.56,.56,.52,skin,0,.3,0,head);
+  const hm=new THREE.Mesh(bgeo(.56,.56,.52),[skin,skin,skin,skin,faceMat(o),skin]); hm.position.y=.3; hm.castShadow=true; head.add(hm);
+  const blob=new THREE.Mesh(blobGeo,BLOB); blob.rotation.x=-Math.PI/2; blob.position.y=.02; blob.renderOrder=1; g.add(blob);
   box(.6,.16,.56,hair,0,.62,-.01,head); box(.6,.42,.12,hair,0,.42,-.23,head);
   if(o.girl){ box(.62,.78,.14,hair,0,.2,-.25,head); [-1,1].forEach(s=>box(.1,.62,.34,hair,s*.31,.3,-.06,head)); box(.5,.1,.08,hair,0,.54,.24,head);
     if(o.pony){ box(.18,.46,.16,hair,0,.28,-.38,head); box(.14,.08,.08,mat(BRAND),0,.52,-.34,head,false); } }
   else if(o.tuft!==false) box(.2,.14,.3,hair,.12,.74,.06,head);
-  box(.08,.1,.02,M.black,-.12,.33,.265,head,false); box(.08,.1,.02,M.black,.12,.33,.265,head,false);
-  if(o.girl){ box(.1,.02,.02,M.black,-.12,.4,.266,head,false); box(.1,.02,.02,M.black,.12,.4,.266,head,false); }
-  box(.14,.03,.02,mat(o.girl?0xc0506a:0x7a3b2e),0,.16,.265,head,false);
   if(o.extra==='glasses'){ const fr=mat(0x16181d); [-.12,.12].forEach(x=>{ box(.18,.13,.015,fr,x,.33,.275,head,false); box(.13,.08,.012,mat(0x9fc4e8,{roughness:.1}),x,.33,.283,head,false); }); box(.08,.025,.015,fr,0,.35,.275,head,false); }
   if(o.extra==='cap'){ const cm=mat(o.capColor||BRAND); box(.62,.14,.58,cm,0,.67,0,head); box(.5,.04,.28,cm,0,.62,.38,head); box(.12,.06,.02,M.white,0,.68,.291,head,false); }
   const arms=[-1,1].map(s=>{ const a=new THREE.Group(); a.position.set((o.girl?.44:.47)*s,1.52,0); body.add(a); box(o.girl?.18:.2,.62,.22,shirt,0,-.28,0,a); box(.18,.16,.2,skin,0,-.66,0,a); return a; });
@@ -962,7 +988,10 @@ function animGuy(G,speed,dt,pushing){
   G.legs[0].rotation.x=s; G.legs[1].rotation.x=-s;
   if(pushing){ G.arms[0].rotation.x=G.arms[1].rotation.x=-1.2+Math.sin(G.phase*2)*.03; }
   else { G.arms[0].rotation.x=-s*.9; G.arms[1].rotation.x=s*.9; }
-  G.body.position.y=Math.abs(Math.cos(G.phase))*.06*Math.min(1,speed/2);
+  const m=Math.min(1,speed/3);
+  G.body.position.y=Math.abs(Math.cos(G.phase))*.06*m+Math.sin(G.phase*.35)*.008*(1-m);
+  G.body.rotation.x=m*.07; G.body.rotation.z=Math.sin(G.phase)*.03*m;
+  G.head.rotation.x=-m*.05;
 }
 function mkCart(){
   const c=new THREE.Group(); const metal=mat(0xc9ced6,{metalness:.6,roughness:.35}); const red=mat(0xe63946,{roughness:.4});
@@ -980,18 +1009,52 @@ function mkCart(){
 
 
 
+/* ---------- deal ads on the big screens ---------- */
+const AD=(function(){
+  const c=document.createElement('canvas'); c.width=768; c.height=384; const g=c.getContext('2d'); const tex=new THREE.CanvasTexture(c); tex.encoding=THREE.sRGBEncoding;
+  const pool=CATALOG.filter(i=>i.old).concat(CATALOG.filter(i=>!i.old&&i.img)).concat(CATALOG.filter(i=>!i.old&&!i.img)).slice(0,24);
+  const imgs={}; pool.forEach(it=>{ if(it.img){ const im=new Image(); im.onload=()=>{ imgs[it.slug]=im; }; im.src=it.img; } });
+  let idx=0, t=0;
+  function draw(){
+    const W=768,H=384, it=pool[idx%pool.length]; if(!it) return;
+    const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#1b2350'); gr.addColorStop(1,'#0e1330'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+    g.fillStyle='#f55304'; g.fillRect(0,H-54,W,54);
+    g.fillStyle='#fff'; rrect(g,W-330,34,296,H-122,26); g.fill();
+    const im=imgs[it.slug]; if(im){ const k=Math.min(260/im.width,220/im.height); g.drawImage(im,W-182-im.width*k/2,34+(H-122)/2-im.height*k/2,im.width*k,im.height*k); }
+    else { g.fillStyle='#c3c8d6'; g.font='700 34px Rubik, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(it.brand||'BuyToday',W-182,34+(H-122)/2); }
+    g.direction='rtl'; g.textAlign='right'; g.textBaseline='alphabetic';
+    g.fillStyle='#ff8a4c'; g.font='700 30px Rubik, sans-serif'; g.fillText((it.old?'מבצע · ':'')+(it.brand||''),W-360,80);
+    g.fillStyle='#fff'; g.font='700 40px Rubik, sans-serif';
+    const words=it.full.split(' '); let line='', y=132, lines=0;
+    for(const w of words){ const tl=line?line+' '+w:w; if(g.measureText(tl).width>W-400&&line){ g.fillText(line,W-360,y); y+=48; line=w; if(++lines===2) break; } else line=tl; }
+    if(lines<2&&line) g.fillText(line,W-360,y);
+    g.direction='ltr'; g.textAlign='right'; g.font='800 76px Rubik, sans-serif'; g.fillStyle='#fff'; const pr='₪'+it.price.toLocaleString('he-IL'); g.fillText(pr,W-360,H-88);
+    if(it.old){ const pw=g.measureText(pr).width; g.font='500 34px Rubik, sans-serif'; g.fillStyle='#aab1c8'; const o='₪'+it.old.toLocaleString('he-IL'); const x=W-380-pw; g.fillText(o,x,H-94); const ow=g.measureText(o).width; g.fillRect(x-ow,H-106,ow,3);
+      g.fillStyle='#e0342a'; rrect(g,x-ow-120,H-140,104,52,12); g.fill(); g.fillStyle='#fff'; g.font='800 32px Rubik, sans-serif'; g.textAlign='center'; g.fillText('-'+it.disc+'%',x-ow-68,H-102); }
+    g.direction='rtl'; g.textAlign='right'; g.fillStyle='#fff'; g.font='700 28px Rubik, sans-serif'; g.fillText('זמין עכשיו ב־BuyToday · buytoday.co.il',W-36,H-18);
+    tex.needsUpdate=true;
+  }
+  draw();
+  return {tex,update(dt){ t+=dt; if(t>5){ t=0; idx++; draw(); } }, redraw:draw};
+})();
+
 /* ---------- jumbotron ---------- */
 let jumbo=null;
+function buildAdBoard(){
+  const m=new THREE.MeshBasicMaterial({map:AD.tex}), g=new THREE.Group(); g.position.set(0,4.2,16); scene.add(g);
+  box(4.2,2.2,.14,M.black,0,0,0,g,false); [1,-1].forEach(s=>{ const p=new THREE.Mesh(new THREE.PlaneGeometry(4,2),m); p.position.z=s*.075; p.rotation.y=s>0?0:Math.PI; g.add(p); });
+  box(4.3,.06,.16,M.led,0,1.12,0,g,false); box(.03,1.4,.03,M.dark,-1.6,1.8,0,g,false); box(.03,1.4,.03,M.dark,1.6,1.8,0,g,false);
+}
 function buildJumbo(){
   const g=new THREE.Group(); g.position.set(0,8.2,2.4); scene.add(g); jumbo=g;
   box(4.4,2.4,4.4,M.black,0,0,0,g,false);
-  for(let k=0;k<4;k++){ const a=k*Math.PI/2; const s=new THREE.Mesh(new THREE.PlaneGeometry(4.1,2.1),new THREE.MeshBasicMaterial({map:(k%2?logoTex():screens[k%3].tex)})); s.position.set(Math.sin(a)*2.21,0,Math.cos(a)*2.21); s.rotation.y=a; g.add(s); }
+  for(let k=0;k<4;k++){ const a=k*Math.PI/2; const s=new THREE.Mesh(new THREE.PlaneGeometry(4.1,2.1),new THREE.MeshBasicMaterial({map:(k%2?logoTex():AD.tex)})); s.position.set(Math.sin(a)*2.21,0,Math.cos(a)*2.21); s.rotation.y=a; g.add(s); }
   box(4.5,.1,4.5,M.led,0,1.25,0,g,false); box(4.5,.1,4.5,M.led,0,-1.25,0,g,false);
   [[-1.8,-1.8],[1.8,-1.8],[-1.8,1.8],[1.8,1.8]].forEach(([x,z])=>box(.03,2.6,.03,M.dark,x,10.7,2.4+z,STATIC[0],false));
 }
 
 /* ---------- build + bake ---------- */
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildItems(); buildJumbo();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildItems(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -1182,7 +1245,7 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
 };
 
 
-Sound.ding=function(){ this.tone(988,.5,'sine',.12); this.tone(784,.7,'sine',.1,.18); };
+Sound.ding=function(){ buzz(12); this.tone(988,.5,'sine',.12); this.tone(784,.7,'sine',.1,.18); };
 
 /* ---------- UI ---------- */
 const ui={hud:$('#hud'),clock:null,clockPill:$('#clockPill'),money:$('#money'),moneyPill:$('#moneyPill'),items:$('#items'),count:$('#count'),list:$('#list'),mapBtn:$('#map'),
@@ -1191,6 +1254,7 @@ function bubble(cls){ const d=document.createElement('div'); d.className='bubble
 const shopperBubble=bubble();
 $('#dealsLink').href=utm(SITE+'/deals','end-screen'); $('#clockPill').href=utm(SITE+'/','hud-logo');
 let toastT=null;
+function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
 function toast(msg,kind){ ui.toast.textContent=msg; ui.toast.className='glass show '+(kind||''); clearTimeout(toastT); toastT=setTimeout(()=>ui.toast.className='glass',2200); }
 function loadBest(){ try{ return +localStorage.getItem('closing-time-best')||0; }catch(e){ return 0; } }
 function saveBest(v){ try{ localStorage.setItem('closing-time-best',String(v)); }catch(e){} }
@@ -1317,7 +1381,7 @@ function doAction(){
     const fm=it.model.clone(); const wp=new THREE.Vector3(); it.model.getWorldPosition(wp); fm.position.copy(wp); fm.scale.copy(it.model.scale); scene.add(fm);
     it.model.visible=false; flyers.push({m:fm,from:wp.clone(),t:0,it});
     Sound.pickup(); renderMoney(); renderList();
-    toast(it.name+' נוסף לעגלה','good');
+    toast(it.name+' נוסף לעגלה','good'); buzz(18);
   } else if(near.type==='checkout'){
     openReceipt();
   }
@@ -1610,6 +1674,7 @@ function loop(now){
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
+  AD.update(dt);
   for(let i=flyers.length-1;i>=0;i--){ const f=flyers[i]; f.t+=dt/.45; cart.load.getWorldPosition(tmp); const k=Math.min(1,f.t);
     f.m.position.lerpVectors(f.from,tmp,k); f.m.position.y+=Math.sin(k*Math.PI)*1.4; f.m.scale.multiplyScalar(1-dt*1.5);
     if(k>=1){ scene.remove(f.m); flyers.splice(i,1); addToCart(f.it); updateCartBadge(true); } }
