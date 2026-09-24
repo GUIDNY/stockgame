@@ -1,5 +1,7 @@
 {
   "note": "רשימת המוצרים שמופיעים במשחק. slug = הכתובת באתר אחרי /product/. kind = הדגם התלת־ממדי. short = השם הקצר על תג המחיר. הסדר קובע את המיקום בחנות.",
+  "checkout_url": "",
+  "checkout_note": "כשיהיה באתר עמוד שממלא את העגלה מרשימת slugs, שימו כאן את הכתובת עם {items}, למשל https://buytoday.co.il/game-checkout?items={items}",
   "products": [
     {"slug": "lg-tvs-55nano80a6a",                          "kind": "tv",          "short": "LG NanoCell 55\""},
     {"slug": "samsung-tvs-qe55qn85d",                       "kind": "tv",          "short": "Samsung Neo QLED 55\""},

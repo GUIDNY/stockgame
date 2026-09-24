@@ -71,7 +71,7 @@ def main():
     if '--offline' in sys.argv:
         prev = (out / 'index.html').read_text(encoding='utf-8')
         data = json.loads(re.search(r'/\*__PRODUCTS__\*/(.*?)/\*__END__\*/', prev, re.S).group(1))
-        return write(data, out)
+        return write(data, out, cfg_checkout())
     cfg = json.loads((ROOT / 'products.config.json').read_text(encoding='utf-8'))
     olds = old_prices()
     items = []
@@ -92,11 +92,15 @@ def main():
         print(f'  {c["short"]:<24} ₪{p["price"]:>6,}' + (f'  (במקום ₪{old:,}, -{disc}%)' if old else ''))
         time.sleep(.3)
     if len(items) < 6: sys.exit('too few products fetched, not writing')
-    write({'updated': datetime.date.today().isoformat(), 'items': items}, out)
+    write({'updated': datetime.date.today().isoformat(), 'items': items}, out, cfg.get('checkout_url', ''))
 
-def write(data, out):
+def cfg_checkout():
+    return json.loads((ROOT / 'products.config.json').read_text(encoding='utf-8')).get('checkout_url', '')
+
+def write(data, out, checkout=''):
     src = (ROOT / 'game.html').read_text(encoding='utf-8')
     frag = re.sub(r'/\*__PRODUCTS__\*/.*?/\*__END__\*/', lambda m: '/*__PRODUCTS__*/' + json.dumps(data, ensure_ascii=False) + '/*__END__*/', src, flags=re.S)
+    frag = re.sub(r'/\*__CHECKOUT__\*/.*?/\*__END__\*/', lambda m: '/*__CHECKOUT__*/' + json.dumps(checkout) + '/*__END__*/', frag, flags=re.S)
     (ROOT / 'dist').mkdir(exist_ok=True)
     (ROOT / 'dist' / 'game.html').write_text(frag, encoding='utf-8')
     head = ('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">'

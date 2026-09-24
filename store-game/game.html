@@ -149,6 +149,39 @@
   .ghost span{color:var(--orange-text);}
   .real{margin:-4px 0 16px;font-size:13px;color:var(--ink-dim);line-height:1.5;}
   .real b{color:var(--orange-text);font-weight:700;}
+  #mapBtn{position:fixed;left:12px;top:calc(var(--st) + 274px);height:46px;padding:0 14px;display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;}
+  #mapBtn svg{width:20px;height:20px;}
+  #map{pointer-events:auto!important;cursor:pointer;}
+  #card a.buy{pointer-events:auto;margin-inline-start:auto;font-size:13px;font-weight:700;color:#fff;background:#f55304;text-decoration:none;white-space:nowrap;padding:7px 12px;border-radius:12px;box-shadow:0 3px 0 #a33500;}
+  .dir{align-items:flex-start;overflow-y:auto;padding-block:calc(var(--st) + 14px) calc(var(--sb) + 20px);touch-action:pan-y;}
+  .dpanel{width:100%;max-width:480px;margin-inline:auto;padding:18px 16px 20px;border-radius:26px;background:rgba(19,26,60,.96);border:1px solid var(--line);box-shadow:0 30px 60px rgba(0,0,0,.45);}
+  .dhead{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .dhead h2{margin:0;font-family:var(--display);font-weight:400;font-size:28px;color:var(--orange-text);}
+  .dhead button{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);font-size:18px;}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0 12px;padding:4px;border-radius:14px;background:rgba(255,255,255,.06);}
+  .tabs button{padding:9px;border-radius:10px;font-weight:700;font-size:14px;color:var(--ink-dim);}
+  .tabs button.on{background:#f55304;color:#fff;}
+  #bigmap{display:block;width:100%;max-width:340px;margin:0 auto;aspect-ratio:3/4;border-radius:16px;touch-action:manipulation;cursor:pointer;}
+  .dhint{margin:10px 0 14px;text-align:center;font-size:13px;color:var(--ink-dim);}
+  #depts{display:grid;gap:10px;}
+  .dept{padding:12px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid var(--line);}
+  .dept .top{display:flex;align-items:center;gap:10px;}
+  .dept .chip{flex:none;width:12px;height:36px;border-radius:6px;}
+  .dept .tt{flex:1;min-width:0;}
+  .dept b{display:block;font-size:16px;}
+  .dept small{display:block;font-size:12.5px;color:var(--ink-dim);}
+  .drive{flex:none;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:12px;background:#f55304;color:#fff;font-weight:700;font-size:14px;box-shadow:0 3px 0 #a33500;}
+  .drive svg{width:16px;height:16px;}
+  .prods{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:2px;touch-action:pan-x;}
+  .prod{flex:none;width:112px;padding:7px;border-radius:14px;background:rgba(255,255,255,.07);text-align:right;display:grid;gap:3px;}
+  .prod img{width:100%;height:70px;object-fit:contain;background:#fff;border-radius:10px;}
+  .prod span{font-size:12px;font-weight:500;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .prod em{font-style:normal;font-size:12px;color:var(--orange-text);font-variant-numeric:tabular-nums;}
+  .prod .noimg{height:70px;border-radius:10px;background:#fff;color:#8a90a3;font-style:normal;font-weight:700;font-size:12px;display:grid;place-items:center;}
+  .prod.want{outline:2px solid #f55304;}
+  .prod.got{opacity:.45;}
+  .paybtn{display:block;text-align:center;margin:0 0 12px;padding:15px;border-radius:18px;background:var(--mint);color:#0d2a1c;font-family:var(--display);font-size:20px;text-decoration:none;box-shadow:0 6px 0 #2e9e68;}
+  .receipt a.buy{color:#fff;background:#f55304;border-color:#f55304;}
   #loading{position:fixed;inset:0;display:grid;place-items:center;background:#141a30;font-family:var(--display);color:var(--orange-text);font-size:22px;direction:rtl;}
   @media (prefers-reduced-motion: reduce){ #toast{transition:none;} .clock.late span{animation:none;} }
 </style>
@@ -162,7 +195,8 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="xmark" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg>
     </button>
   </div>
-  <canvas id="map" width="184" height="246"></canvas>
+  <canvas id="map" width="184" height="246" aria-label="מפת הקניון"></canvas>
+  <button id="mapBtn" class="pill" aria-label="מפת הקניון"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>מפה</button>
   <div class="tr">
     <div class="pill money" id="moneyPill"><small>בכרטיס</small><span id="money">₪0</span></div>
     <div class="pill list" id="list">
@@ -172,7 +206,7 @@
   </div>
   <div id="toast"></div>
   <div id="hint" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
-  <div id="card" hidden><img id="cardImg" alt=""><div><div class="b" id="cardBrand"></div><div class="nm" id="cardName"></div><div class="row"><span class="pr" id="cardPrice"></span><s id="cardOld"></s><span class="dc" id="cardDisc" dir="ltr"></span><span class="tagw" id="cardWant">ברשימה</span><a id="cardLink" target="_blank" rel="noopener">לקנייה באתר ↗</a></div></div></div>
+  <div id="card" hidden><img id="cardImg" alt=""><div><div class="b" id="cardBrand"></div><div class="nm" id="cardName"></div><div class="row"><span class="pr" id="cardPrice"></span><s id="cardOld"></s><span class="dc" id="cardDisc" dir="ltr"></span><span class="tagw" id="cardWant">ברשימה</span><a id="cardLink" class="buy" target="_blank" rel="noopener">קנה עכשיו ↗</a></div></div></div>
   <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div></div></div>
   <button id="act" class="off" aria-label="פעולה">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/></svg>
@@ -197,6 +231,16 @@
   </div>
 </div>
 
+<div class="screen dir" id="dir" hidden>
+  <div class="dpanel">
+    <div class="dhead"><h2>מפת הקניון</h2><button id="dirClose" aria-label="סגירת המפה">✕</button></div>
+    <div class="tabs" id="tabs"><button data-f="0" class="on">קומת קרקע</button><button data-f="1">קומה 1</button></div>
+    <canvas id="bigmap" width="600" height="800"></canvas>
+    <p class="dhint">הקישו על מחלקה או על מוצר, והדמות תיסע לשם לבד. גם במעלית.</p>
+    <div id="depts"></div>
+  </div>
+</div>
+
 <div class="screen" id="end" hidden>
   <div class="panel">
     <span class="eyebrow" id="endEyebrow">קבלה</span>
@@ -208,6 +252,7 @@
       <div class="stat wide"><small>ניקוד</small><b id="stScore">0</b></div>
     </div>
     <ul class="receipt" id="receipt"></ul>
+    <a class="paybtn" id="payLink" target="_blank" rel="noopener" hidden>לתשלום באתר</a>
     <button class="go" id="againBtn">עוד סיבוב</button>
     <a class="ghost" id="dealsLink" target="_blank" rel="noopener">כל המבצעים ב־BuyToday <span>↗</span></a>
     <p class="best" id="bestLine2"></p>
@@ -225,6 +270,8 @@ whenFonts(function(){
 const $ = s => document.querySelector(s);
 const STORE = /*__PRODUCTS__*/{"updated":"","items":[]}/*__END__*/;
 const SITE = 'https://buytoday.co.il';
+// Direct checkout with all cart items. Empty until the site has a page that fills its cart from a list of slugs.
+const CHECKOUT_URL = /*__CHECKOUT__*/''/*__END__*/;
 const utm = (url,where) => url + (url.includes('?')?'&':'?') + 'utm_source=closing-time-game&utm_medium=game&utm_campaign=' + where;
 const rand = (a,b) => a + Math.random()*(b-a);
 const pick = a => a[(Math.random()*a.length)|0];
@@ -244,6 +291,7 @@ const FLOOR_NAME = ['קומת קרקע','קומה 1'];
 const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+let last=performance.now();
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -252,6 +300,15 @@ renderer.toneMappingExposure = .95;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1d2438);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 180);
+scene.fog = new THREE.Fog(0xaeb6c6, 42, 130);
+// soft reflections: a tiny procedural "mall" lit by ceiling panels and orange strips
+(function(){ const pm=new THREE.PMREMGenerator(renderer), es=new THREE.Scene();
+  es.add(new THREE.Mesh(new THREE.BoxGeometry(60,16,80),new THREE.MeshBasicMaterial({color:0x4a5270,side:THREE.BackSide})));
+  const floorE=new THREE.Mesh(new THREE.PlaneGeometry(60,80),new THREE.MeshBasicMaterial({color:0x8a90a0})); floorE.rotation.x=-Math.PI/2; floorE.position.y=-7.9; es.add(floorE);
+  const pan=new THREE.MeshBasicMaterial({color:0xffffff}), org=new THREE.MeshBasicMaterial({color:0xff7a2a});
+  for(let x=-20;x<=20;x+=8) for(let z=-32;z<=32;z+=8){ const m=new THREE.Mesh(new THREE.PlaneGeometry(4,1),pan); m.rotation.x=Math.PI/2; m.position.set(x,7.9,z); es.add(m); }
+  [[0,-39.5,60,0],[0,39.5,60,0]].forEach(([x,z,w])=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,.8,.5),org); b.position.set(x,1,z); es.add(b); });
+  scene.environment=pm.fromScene(es,.035).texture; pm.dispose(); })();
 
 /* ---------- helpers ---------- */
 const STATIC = [new THREE.Group(), new THREE.Group()];   // baked into few meshes per floor
@@ -285,8 +342,7 @@ const M = {
 const overlay = o => Object.assign({polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-4},o||{});
 
 /* ---------- lights ---------- */
-scene.add(new THREE.HemisphereLight(0xfff8ee, 0x5d6479, .55));
-scene.add(new THREE.AmbientLight(0xffffff, .1));
+scene.add(new THREE.HemisphereLight(0xfff8ee, 0x5d6479, .32));
 const sun = new THREE.DirectionalLight(0xfff2e0, .8);
 sun.position.set(12,40,18); sun.target.position.set(0,0,-2);
 sun.castShadow = true; sun.shadow.mapSize.set(2048,2048);
@@ -340,6 +396,8 @@ function floorPlane(x0,x1,z0,z1,y,m,parent,ts){ ts=ts||4; const w=x1-x0,d=z1-z0;
 function ceilPlane(x0,x1,z0,z1,y,m,parent){ const me=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0),m); me.rotation.x=Math.PI/2; me.position.set((x0+x1)/2,y,(z0+z1)/2); (parent||SG).add(me); return me; }
 
 /* ---------- signs ---------- */
+const GLOW=new THREE.MeshBasicMaterial({map:canvasTex(128,64,(g,W,H)=>{ const gr=g.createRadialGradient(W/2,W/2,4,W/2,W/2,W/2); gr.addColorStop(0,'rgba(255,120,40,.55)'); gr.addColorStop(.5,'rgba(255,100,30,.18)'); gr.addColorStop(1,'rgba(255,90,20,0)');
+  g.save(); g.scale(1,H/W); g.fillStyle=gr; g.fillRect(0,0,W,W); g.restore(); }),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
 function neon(text,x,y,z,ry,w,both,sub,noCord){
   const W=1024, H=sub?300:240;
   const t=canvasTex(W,H,(g)=>{ g.fillStyle='rgba(18,22,48,.92)'; rrect(g,6,6,W-12,H-12,48); g.fill();
@@ -348,7 +406,10 @@ function neon(text,x,y,z,ry,w,both,sub,noCord){
     g.font='108px "Secular One", sans-serif'; g.fillText(text,W/2,sub?112:H/2+6);
     if(sub){ g.shadowBlur=0; g.fillStyle='#ffb27a'; g.font='500 44px Rubik, sans-serif'; g.fillText(sub,W/2,212); } });
   const m=new THREE.MeshBasicMaterial({map:t,transparent:true});
-  const h=w*H/W, a=plane(w,h,m,x,y,z,ry);
+  const h=w*H/W;
+  const nx=Math.sin(ry||0), nz=Math.cos(ry||0);
+  plane(w*1.35,h*1.9,GLOW,x-nx*.015,y,z-nz*.015,ry); if(both) plane(w*1.35,h*1.9,GLOW,x-nx*.005,y,z-nz*.005,(ry||0)+Math.PI);
+  const a=plane(w,h,m,x,y,z,ry);
   if(both) plane(w,h,m,x-Math.sin(ry||0)*.02,y,z-Math.cos(ry||0)*.02,(ry||0)+Math.PI);
   if(!noCord){ const top=y<FH?FH-.3:12, L=top-(y+h/2), cy=y+h/2+L/2;
     box(.03,L,.03,M.dark,x-Math.cos(ry||0)*w*.35,cy,z+Math.sin(ry||0)*w*.35,null,false);
@@ -390,7 +451,8 @@ const floorCasters=[];
 function buildShell(){
   SG=STATIC[0];
   const t0=tileTex('#aeb3bd','#b9bec8','#c6cad2'), t1=tileTex('#b3b7c1','#c0c4cd','#cbced6');
-  const fm0=new THREE.MeshStandardMaterial({map:t0,roughness:.3,metalness:.05}), fm1=new THREE.MeshStandardMaterial({map:t1,roughness:.3,metalness:.05});
+  const fm0=new THREE.MeshStandardMaterial({map:t0,roughness:.16,metalness:.05}), fm1=new THREE.MeshStandardMaterial({map:t1,roughness:.16,metalness:.05});
+  t0.anisotropy=t1.anisotropy=renderer.capabilities.getMaxAnisotropy();
   floorPlane(-BX,BX,-BZ,BZ,0,fm0);
   // floor 1 slab around the atrium, plus the bridge to the elevator's back door
   const slabs=[[-BX,VOID.minX,-BZ,BZ],[VOID.maxX,BX,-BZ,BZ],[VOID.minX,VOID.maxX,-BZ,VOID.minZ],[VOID.minX,VOID.maxX,VOID.maxZ,BZ],[SH.x0,SH.x1,VOID.minZ,SH.z0]];
@@ -684,8 +746,8 @@ const ZONES={
 };
 const KIND_ZONE={tv:'tv',receiver:'tv',coffee:'kitchen',kettle:'kitchen',blender:'kitchen',processor:'kitchen',airfryer:'kitchen',grill:'kitchen',toasteroven:'kitchen',fridge:'home',washer:'home',microwave:'home',stickvac:'clean'};
 const CATALOG=(function(){
-  const items=STORE.items.slice(), used={}; const take=z=>{ const s=ZONES[z]; used[z]=used[z]||0; return used[z]<s.length ? s[used[z]++] : null; };
-  const out=[]; const add=(p,slot)=>{ const m=MODELS[p.kind]||MODELS.microwave; out.push(Object.assign({},p,{id:p.slug,name:p.short,full:p.name,f:slot.f,x:slot.x,z:slot.z,y:slot.y||0,mk:m[0],sc:m[1]})); };
+  const items=STORE.items.slice(), used={}; const take=z=>{ const s=ZONES[z]; used[z]=used[z]||0; return used[z]<s.length ? Object.assign({zone:z},s[used[z]++]) : null; };
+  const out=[]; const add=(p,slot)=>{ const m=MODELS[p.kind]||MODELS.microwave; out.push(Object.assign({},p,{id:p.slug,name:p.short,full:p.name,f:slot.f,x:slot.x,z:slot.z,y:slot.y||0,zone:slot.zone,mk:m[0],sc:m[1]})); };
   const best=items.filter(p=>p.old).sort((a,b)=>b.disc-a.disc)[0];
   if(best){ add(best,take('deal')); items.splice(items.indexOf(best),1); }
   const rest=[];
@@ -833,6 +895,101 @@ for(let i=0;i<3;i++){ const r=mkRobot(); r.scale.setScalar(1.1); scene.add(r); r
   robots.push({m:r,x:rand(robotArena.x0,robotArena.x1),z:rand(robotArena.z0,robotArena.z1),a:rand(0,6),turn:0}); }
 setShadowFloor(0);
 
+/* ---------- mall directory + autopilot ("סע") ---------- */
+const DEPTS=[
+  {id:'screens',f:0,name:'עולם המסכים',sub:'טלוויזיות · סאונד',rect:[-24,-8.5,-32,13],to:[-16,-1],color:'#3a57c9',zone:'tv'},
+  {id:'kitchen',f:0,name:'המטבח',sub:'קפה · בישול · אפייה',rect:[8.5,24,-32,13],to:[14,-8],color:'#c9853a',zone:'kitchen'},
+  {id:'deal',f:0,name:'הדיל החם',sub:'ההנחה הכי גדולה באתר',rect:[-8,8,-32,-8],to:[0,-15.5],color:'#f55304',zone:'deal'},
+  {id:'mobile',f:0,name:'מובייל ומחשבים',sub:'סמארטפונים · ניידים',rect:[8.5,24,14,32],to:[15,19],color:'#2aa7a0'},
+  {id:'checkout',f:0,name:'קופות',sub:'תשלום ויציאה',rect:[-24,-8.5,18,32],to:[-13,21.8],color:'#3fbf7f'},
+  {id:'home',f:1,name:'מוצרי חשמל לבית',sub:'מקררים · כביסה · מטבח',rect:[-24,-8.5,-32,13],to:[-15,-12],color:'#6f7fe0',zone:'home'},
+  {id:'clean',f:1,name:'ניקיון חכם',sub:'שואבים · רובוטים',rect:[8.5,24,-32,-1],to:[16,-15],color:'#2fb592',zone:'clean'},
+  {id:'sound',f:1,name:'לאונג׳ סאונד',sub:'רמקולים · קולנוע ביתי',rect:[8.5,24,-1,13],to:[11,9.5],color:'#b3563c'},
+  {id:'gaming',f:1,name:'Gaming Zone',sub:'עמדות גיימינג',rect:[-24,24,13.5,32],to:[0,21],color:'#9b4ad8'},
+];
+const NAV={cell:.5,nx:Math.round(2*BX/.5),nz:Math.round(2*BZ/.5),grid:[null,null]};
+function navGrid(f){
+  if(NAV.grid[f]) return NAV.grid[f];
+  const g=new Uint8Array(NAV.nx*NAV.nz), r=.72;
+  for(let j=0;j<NAV.nz;j++) for(let i=0;i<NAV.nx;i++){
+    const x=-BX+(i+.5)*NAV.cell, z=-BZ+(j+.5)*NAV.cell; let b=0;
+    for(const s of solids[f]){ if(s.tag==='door') continue; if(x>s.minX-r&&x<s.maxX+r&&z>s.minZ-r&&z<s.maxZ+r){ b=1; break; } }
+    if(!b && f===1 && x>VOID.minX-.3&&x<VOID.maxX+.3&&z>VOID.minZ-.3&&z<VOID.maxZ+.3) b=1;
+    if(!b && x>SH.x0-.3&&x<SH.x1+.3&&z>SH.z0-.3&&z<SH.z1+.3) b=1;
+    g[j*NAV.nx+i]=b;
+  }
+  return NAV.grid[f]=g;
+}
+const cellOf=(x,z)=>[clamp(Math.floor((x+BX)/NAV.cell),0,NAV.nx-1),clamp(Math.floor((z+BZ)/NAV.cell),0,NAV.nz-1)];
+const cellPos=(i,j)=>({x:-BX+(i+.5)*NAV.cell,z:-BZ+(j+.5)*NAV.cell});
+function freeCell(g,i,j){ if(!g[j*NAV.nx+i]) return [i,j];
+  for(let r=1;r<30;r++) for(let dj=-r;dj<=r;dj++) for(let di=-r;di<=r;di++){ if(Math.max(Math.abs(di),Math.abs(dj))!==r) continue;
+    const a=i+di,b=j+dj; if(a>=0&&b>=0&&a<NAV.nx&&b<NAV.nz&&!g[b*NAV.nx+a]) return [a,b]; }
+  return [i,j]; }
+function lineFree(g,a,b){ const d=Math.hypot(b.x-a.x,b.z-a.z), n=Math.ceil(d/.2);
+  for(let k=1;k<n;k++){ const [i,j]=cellOf(a.x+(b.x-a.x)*k/n,a.z+(b.z-a.z)*k/n); if(g[j*NAV.nx+i]) return false; } return true; }
+function findPath(f,x0,z0,x1,z1){
+  const g=navGrid(f), N=NAV.nx*NAV.nz;
+  const [si,sj]=freeCell(g,...cellOf(x0,z0)), [gi,gj]=freeCell(g,...cellOf(x1,z1));
+  const start=sj*NAV.nx+si, goal=gj*NAV.nx+gi;
+  const gs=new Float32Array(N).fill(Infinity), came=new Int32Array(N).fill(-1), closed=new Uint8Array(N);
+  const heap=[]; const push=(k,v)=>{ heap.push([k,v]); let c=heap.length-1; while(c>0){ const p=(c-1)>>1; if(heap[p][0]<=heap[c][0]) break; [heap[p],heap[c]]=[heap[c],heap[p]]; c=p; } };
+  const pop=()=>{ const top=heap[0], last=heap.pop(); if(heap.length){ heap[0]=last; let c=0; for(;;){ const l=2*c+1,r=l+1; let m=c; if(l<heap.length&&heap[l][0]<heap[m][0]) m=l; if(r<heap.length&&heap[r][0]<heap[m][0]) m=r; if(m===c) break; [heap[m],heap[c]]=[heap[c],heap[m]]; c=m; } } return top; };
+  const h=(i,j)=>{ const dx=Math.abs(i-gi), dz=Math.abs(j-gj); return (dx+dz)+(1.4142-2)*Math.min(dx,dz); };
+  gs[start]=0; push(h(si,sj),start);
+  while(heap.length){
+    const cur=pop()[1]; if(cur===goal) break; if(closed[cur]) continue; closed[cur]=1;
+    const ci=cur%NAV.nx, cj=(cur/NAV.nx)|0;
+    for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++){ if(!di&&!dj) continue;
+      const ni=ci+di, nj=cj+dj; if(ni<0||nj<0||ni>=NAV.nx||nj>=NAV.nz) continue; const n=nj*NAV.nx+ni; if(g[n]||closed[n]) continue;
+      if(di&&dj&&(g[cj*NAV.nx+ni]||g[nj*NAV.nx+ci])) continue;
+      const cost=gs[cur]+(di&&dj?1.4142:1); if(cost<gs[n]){ gs[n]=cost; came[n]=cur; push(cost+h(ni,nj),n); } }
+  }
+  if(came[goal]<0 && goal!==start) return null;
+  const cells=[]; for(let c=goal;c>=0;c=came[c]){ cells.push(cellPos(c%NAV.nx,(c/NAV.nx)|0)); if(c===start) break; }
+  cells.reverse();
+  const out=[]; let a={x:x0,z:z0}, k=0;
+  while(k<cells.length-1){ let far=k+1; for(let m=cells.length-1;m>k+1;m--){ if(lineFree(g,a,cells[m])){ far=m; break; } } out.push(cells[far]); a=cells[far]; k=far; }
+  if(!out.length) out.push(cellPos(gi,gj));
+  return out;
+}
+const auto={on:false,phase:'',path:[],wp:0,goal:null,stuck:0,t:0,last:new THREE.Vector3()};
+function driveTo(goal){ auto.on=true; auto.goal=goal; planAuto(); toast('נוסעים ל'+goal.label); }
+function planAuto(){ const f=player.floor, d=auto.goal;
+  if(d.f===f){ auto.phase='walk'; setPath(f,d.x,d.z); }
+  else { auto.phase='toElev'; setPath(f,0,f===0?SH.z1+1.5:SH.z0-1.6); } }
+function setPath(f,x,z){ auto.path=findPath(f,player.pos.x,player.pos.z,x,z)||[{x,z}]; auto.wp=0; auto.stuck=0; auto.t=0; auto.last.copy(player.pos); }
+function stopAuto(msg){ auto.on=false; auto.path=[]; if(msg) toast(msg); }
+function autoDir(dt){
+  if(!auto.on) return null;
+  const p=player.pos, f=player.floor;
+  if(auto.phase==='walk'||auto.phase==='toElev'||auto.phase==='exit'){
+    while(auto.wp<auto.path.length){ const w=auto.path[auto.wp]; if(Math.hypot(w.x-p.x,w.z-p.z)<(auto.wp===auto.path.length-1?.5:.8)) auto.wp++; else break; }
+    if(auto.wp>=auto.path.length){
+      if(auto.phase==='walk'){ stopAuto(); toast('הגעתם: '+auto.goal.label,'good'); return null; }
+      if(auto.phase==='exit'){ planAuto(); return null; }
+      auto.phase='wait'; return null;
+    }
+    auto.stuck+=dt; if(auto.stuck>1.4){ if(p.distanceTo(auto.last)<.45){ const w=auto.path[auto.path.length-1]; setPath(f,w.x,w.z); } auto.stuck=0; auto.last.copy(p); }
+    const w=auto.path[auto.wp], dx=w.x-p.x, dz=w.z-p.z, d=Math.hypot(dx,dz)||1; return {x:dx/d,z:dz/d};
+  }
+  if(auto.phase==='wait'){
+    if(!elev.moving && elev.floor!==f) startRide(f,false);
+    if(!elev.moving && elev.floor===f && elev.door[f]>.85){ auto.phase='enter'; auto.t=0; }
+    return null;
+  }
+  if(auto.phase==='enter'){
+    auto.t+=dt; const tz=f===0?-3.75:-4.65, dx=-p.x, dz=tz-p.z, d=Math.hypot(dx,dz);
+    if(d<.3 || (auto.t>2.5 && inCabin())){ startRide(auto.goal.f,true); auto.phase='ride'; return null; }
+    if(auto.t>6){ planAuto(); return null; }
+    return {x:dx/(d||1),z:dz/(d||1)};
+  }
+  if(auto.phase==='ride'){ if(!elev.moving && !elev.rider){ auto.phase='exit'; auto.path=[{x:0,z:player.floor===1?SH.z0-2.4:SH.z1+2.4}]; auto.wp=0; auto.stuck=0; } return null; }
+  return null;
+}
+function itemGoal(it){ return {f:it.f,x:it.x,z:it.z,label:it.name}; }
+function deptGoal(d){ return {f:d.f,x:d.to[0],z:d.to[1],label:d.name}; }
+
 /* ---------- collisions ---------- */
 function pushOut(p,r,ox,oz,f){
   let px=p.x+ox, pz=p.z+oz;
@@ -891,6 +1048,7 @@ function renderList(){
 function renderMoney(){ ui.money.textContent=shekel(G.budget); }
 
 function resetGame(){
+  stopAuto(); G.paused=false; dirEl.hidden=true;
   CATALOG.forEach(it=>{ it.taken=false; it.wanted=false; it.model.visible=true; it.tag.visible=true; it.ring.visible=false; });
   while(cart.load.children.length) cart.load.remove(cart.load.children[0]); cart.count=0;
   flyers.forEach(f=>scene.remove(f.m)); flyers.length=0;
@@ -919,13 +1077,16 @@ function endGame(win){
   const left=Math.max(0,GAME_LEN-G.t);
   const score=win? Math.max(0,Math.round(G.budget))+Math.round(left*10) : 0;
   $('#endEyebrow').textContent=win?'קבלה · BuyToday':'BuyToday · סגור';
-  $('#endTitle').textContent=win?'יצאתם בזמן':'הקניון נסגר';
-  $('#endText').textContent= win ? 'כל הרשימה בעגלה. אלה המוצרים שאספתם, והם מחכים באתר:' : 'המאבטח כיבה את האורות ואתם עוד בין המתחמים. נסו מסלול קצר יותר, ואל תשכחו את המעלית.';
+  $('#endTitle').textContent=win?'הקבלה שלכם':'הקניון נסגר';
+  $('#endText').textContent= win ? 'כל הרשימה בעגלה ויצאתם בזמן. רוצים אותם באמת? כל מוצר כאן נמכר ב־BuyToday, בדיוק במחיר הזה:' : 'המאבטח כיבה את האורות ואתם עוד בין המתחמים. נסו מסלול קצר יותר, ואל תשכחו את המעלית.';
   const rc=$('#receipt'); rc.innerHTML='';
-  CATALOG.filter(i=>i.taken).forEach(it=>{ const li=document.createElement('li'); li.innerHTML='<img alt=""><div class="t"><span dir="auto"></span><small></small></div><a target="_blank" rel="noopener">לקנייה ↗</a>';
-    li.querySelector('img').src=it.img||''; li.querySelector('.t span').textContent=it.name; li.querySelector('small').textContent=shekel(it.price)+(it.old?` · במקום ${shekel(it.old)}`:'');
+  CATALOG.filter(i=>i.taken).forEach(it=>{ const li=document.createElement('li'); li.innerHTML='<img alt=""><div class="t"><span dir="auto"></span><small></small></div><a class="buy" target="_blank" rel="noopener">קנה עכשיו ↗</a>';
+    if(it.img) li.querySelector('img').src=it.img; else li.querySelector('img').style.visibility='hidden'; li.querySelector('.t span').textContent=it.name; li.querySelector('small').textContent=shekel(it.price)+(it.old?` · במקום ${shekel(it.old)}`:'');
     li.querySelector('a').href=utm(it.url,'receipt'); rc.appendChild(li); });
   rc.hidden=!rc.children.length;
+  const got=CATALOG.filter(i=>i.taken), pay=$('#payLink');
+  pay.hidden=!(win && CHECKOUT_URL && got.length);
+  if(!pay.hidden){ pay.href=utm(CHECKOUT_URL.replace('{items}',got.map(i=>encodeURIComponent(i.slug)).join(',')),'checkout'); pay.textContent='לתשלום באתר · '+shekel(got.reduce((a,b)=>a+b.price,0)); }
   $('#stMoney').textContent=shekel(G.budget); $('#stTime').textContent=fmtClock(G.t).slice(0,5); $('#stScore').textContent=score.toLocaleString('he-IL');
   if(score>loadBest()) saveBest(score);
   showBest(); ui.end.hidden=false;
@@ -963,6 +1124,7 @@ let near=null;
 const flyers=[];
 function doAction(){
   if(G.state!=='play'||!near) return;
+  if(near.type==='stop'){ stopAuto('עצרתם'); return; }
   if(near.type==='ride'){ startRide(near.to,true); return; }
   if(near.type==='call'){ startRide(player.floor,false); toast('המעלית בדרך'); return; }
   if(near.type==='item'){
@@ -988,6 +1150,50 @@ function addToCart(it){
   m.position.set((slot%2?.2:-.2),layer*.3,(slot<2?.24:-.24)); m.rotation.y=rand(-.4,.4);
   m.traverse(o=>{ o.castShadow=false; }); cart.load.add(m);
 }
+
+/* ---------- directory overlay ---------- */
+const dirEl=$('#dir'), big=$('#bigmap'), bctx=big.getContext('2d'); let dirFloor=0;
+const BW=big.width, BH=big.height, bx=x=>(x+BX)/(2*BX)*BW, bz=z=>(z+BZ)/(2*BZ)*BH;
+function drawBig(){
+  const f=dirFloor, g=bctx; g.clearRect(0,0,BW,BH); g.fillStyle='#141b3d'; g.fillRect(0,0,BW,BH);
+  DEPTS.filter(d=>d.f===f).forEach(d=>{ const [x0,x1,z0,z1]=d.rect; g.fillStyle=d.color+'55'; g.fillRect(bx(x0),bz(z0),bx(x1)-bx(x0),bz(z1)-bz(z0)); g.strokeStyle=d.color; g.lineWidth=3; g.strokeRect(bx(x0)+1.5,bz(z0)+1.5,bx(x1)-bx(x0)-3,bz(z1)-bz(z0)-3); });
+  if(f===1){ g.fillStyle='rgba(0,0,0,.5)'; g.fillRect(bx(VOID.minX),bz(VOID.minZ),bx(VOID.maxX)-bx(VOID.minX),bz(VOID.maxZ)-bz(VOID.minZ)); }
+  solids[f].forEach(s=>{ if(s.tag==='door'||s.minX<-BX||s.maxX>BX||s.minZ<-BZ||s.maxZ>BZ) return; g.fillStyle=s.tag==='rail'?'#ff7a1a':'rgba(255,255,255,.22)'; g.fillRect(bx(s.minX),bz(s.minZ),Math.max(2,bx(s.maxX)-bx(s.minX)),Math.max(2,bz(s.maxZ)-bz(s.minZ))); });
+  g.fillStyle='#ff7a1a'; g.fillRect(bx(SH.x0),bz(SH.z0),bx(SH.x1)-bx(SH.x0),bz(SH.z1)-bz(SH.z0));
+  g.fillStyle='#fff'; g.font='bold 22px Rubik, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('מעלית',bx(0),bz(SH.z0)-16);
+  CATALOG.forEach(it=>{ if(it.f!==f||it.taken) return; g.fillStyle=it.wanted?'#ff7a1a':'#fff'; g.beginPath(); g.arc(bx(it.x),bz(it.z),it.wanted?10:6,0,7); g.fill(); if(it.wanted){ g.strokeStyle='#fff'; g.lineWidth=3; g.stroke(); } });
+  g.direction='rtl';
+  DEPTS.filter(d=>d.f===f).forEach(d=>{ const [x0,x1,z0,z1]=d.rect, cx=bx((x0+x1)/2), cz=bz((z0+z1)/2)+(d.id==='gaming'?10:0);
+    g.font='bold 26px Rubik, sans-serif'; const w=g.measureText(d.name).width+24; const lx=clamp(cx,w/2+6,BW-w/2-6); g.fillStyle='rgba(10,14,34,.82)'; rrect(g,lx-w/2,cz-20,w,40,12); g.fill(); g.fillStyle='#fff'; g.fillText(d.name,lx,cz+1); });
+  if(player.floor===f){ const px=bx(player.pos.x), pz=bz(player.pos.z); g.fillStyle='#ff6bb5'; g.beginPath(); g.arc(px,pz,13,0,7); g.fill(); g.strokeStyle='#fff'; g.lineWidth=4; g.stroke();
+    g.font='bold 22px Rubik, sans-serif'; g.fillStyle='#fff'; g.fillText('אתם כאן',px,pz-28); }
+  if(f===0){ g.fillStyle='#f55304'; g.fillRect(bx(-3),BH-8,bx(3)-bx(-3),8); g.fillStyle='#fff'; g.font='bold 20px Rubik, sans-serif'; g.fillText('כניסה',bx(0),BH-22); }
+}
+function renderDepts(){
+  const box=$('#depts'); box.innerHTML='';
+  DEPTS.filter(d=>d.f===dirFloor).forEach(d=>{
+    const el=document.createElement('div'); el.className='dept';
+    el.innerHTML='<div class="top"><span class="chip"></span><div class="tt"><b></b><small></small></div><button class="drive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>סע</button></div>';
+    el.querySelector('.chip').style.background=d.color; el.querySelector('b').textContent=d.name; el.querySelector('small').textContent=d.sub;
+    el.querySelector('.drive').addEventListener('click',()=>{ closeDir(); driveTo(deptGoal(d)); });
+    const its=CATALOG.filter(it=>d.zone && it.zone===d.zone);
+    if(its.length){ const row=document.createElement('div'); row.className='prods';
+      its.forEach(it=>{ const b=document.createElement('button'); b.className='prod'+(it.wanted&&!it.taken?' want':'')+(it.taken?' got':'');
+        b.innerHTML='<img alt=""><span dir="auto"></span><em></em>'; if(it.img) b.querySelector('img').src=it.img; else b.querySelector('img').replaceWith(Object.assign(document.createElement('i'),{className:'noimg',textContent:it.brand||'BuyToday'})); b.querySelector('span').textContent=it.name; b.querySelector('em').textContent=shekel(it.price)+(it.taken?' · בעגלה':'');
+        b.addEventListener('click',()=>{ if(it.taken) return; closeDir(); driveTo(itemGoal(it)); }); row.appendChild(b); });
+      el.appendChild(row); }
+    box.appendChild(el);
+  });
+}
+function setDirFloor(f){ dirFloor=f; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.f===f)); drawBig(); renderDepts(); }
+function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirEl.scrollTop=0; setDirFloor(player.floor); }
+function closeDir(){ G.paused=false; dirEl.hidden=true; last=performance.now(); }
+$('#mapBtn').addEventListener('click',openDir); ui.map.addEventListener('click',openDir);
+$('#dirClose').addEventListener('click',closeDir);
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setDirFloor(+b.dataset.f)));
+big.addEventListener('click',e=>{ const r=big.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*2*BX-BX, z=(e.clientY-r.top)/r.height*2*BZ-BZ;
+  const it=CATALOG.find(i=>i.f===dirFloor&&!i.taken&&Math.hypot(i.x-x,i.z-z)<1.8); if(it){ closeDir(); driveTo(itemGoal(it)); return; }
+  const d=DEPTS.find(d=>d.f===dirFloor&&x>=d.rect[0]&&x<=d.rect[1]&&z>=d.rect[2]&&z<=d.rect[3]); if(d){ closeDir(); driveTo(deptGoal(d)); } });
 
 /* ---------- minimap ---------- */
 const mapCtx=ui.map.getContext('2d'); const MW=ui.map.width, MH=ui.map.height;
@@ -1022,11 +1228,13 @@ function updatePlayer(dt){
   let ix=joy.x, iy=joy.y;
   if(keys.KeyA||keys.ArrowLeft) ix-=1; if(keys.KeyD||keys.ArrowRight) ix+=1; if(keys.KeyW||keys.ArrowUp) iy-=1; if(keys.KeyS||keys.ArrowDown) iy+=1;
   let mag=Math.hypot(ix,iy); if(mag>1){ ix/=mag; iy/=mag; mag=1; }
+  if(auto.on && mag>.25) stopAuto('הנסיעה בוטלה');
   if(elev.rider) mag=0;
-  const fwd=-iy, rt=ix, sn=Math.sin(camYaw), cs=Math.cos(camYaw);
-  const dx=(-sn*fwd+cs*rt)*(mag?1:0), dz=(-cs*fwd-sn*rt)*(mag?1:0);
+  let fwd=-iy; const rt=ix, sn=Math.sin(camYaw), cs=Math.cos(camYaw);
+  let dx=(-sn*fwd+cs*rt)*(mag?1:0), dz=(-cs*fwd-sn*rt)*(mag?1:0), top=5.6;
+  const ad=autoDir(dt); if(ad){ dx=ad.x; dz=ad.z; mag=1; fwd=1; top=6.6; }
   const k=1-Math.exp(-dt*9);
-  player.vel.x+=(dx*5.6-player.vel.x)*k; player.vel.z+=(dz*5.6-player.vel.z)*k;
+  player.vel.x+=(dx*top-player.vel.x)*k; player.vel.z+=(dz*top-player.vel.z)*k;
   if(mag<.05) player.vel.multiplyScalar(Math.exp(-dt*10));
   player.pos.x+=player.vel.x*dt; player.pos.z+=player.vel.z*dt;
   const speed=Math.hypot(player.vel.x,player.vel.z);
@@ -1084,15 +1292,16 @@ function fillCard(it){
 function setHint(name,sub,warn,label){ ui.hint.hidden=false; ui.hintName.textContent=name; ui.hintPrice.textContent=sub; ui.hint.classList.toggle('warn',!!warn); ui.actLabel.textContent=label; ui.act.classList.remove('off'); }
 function updateNear(){
   near=null; const f=player.floor, p=player.pos;
-  if(elev.rider){ ui.hint.hidden=false; ui.hintName.textContent='מעלית'; ui.hintPrice.textContent=elev.to?'עולים לקומה 1…':'יורדים לקרקע…'; ui.hint.classList.remove('warn'); ui.act.classList.add('off'); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
+  if(elev.rider && !auto.on){ ui.hint.hidden=false; ui.hintName.textContent='מעלית'; ui.hintPrice.textContent=elev.to?'עולים לקומה 1…':'יורדים לקרקע…'; ui.hint.classList.remove('warn'); ui.act.classList.add('off'); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
+  if(auto.on){ near={type:'stop'}; setHint('נוסעים ל'+auto.goal.label,auto.phase==='wait'?'מחכים למעלית':'',false,'עצור'); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
   if(inCabin()) near={type:'ride',to:1-elev.floor};
   else if(!elev.moving && elev.floor!==f && atCall(f)) near={type:'call'};
   if(!near){ let best=2.3; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
     CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz)); if(d<best){ best=d; near={type:'item',it}; } });
-    if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<2.7 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
+    if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
   if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=!cardIt; if(cardIt) fillCard(cardIt); }
-  if(!near){ ui.hint.hidden=true; ui.act.classList.add('off'); return; }
+  if(!near){ ui.hint.hidden=true; ui.act.classList.add('off'); ui.actLabel.textContent='קח'; return; }
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית',near.to?'לקומה 1: בית, ניקיון, גיימינג':'לקרקע: מסכים, מטבח, קופות',false,near.to?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
@@ -1110,9 +1319,15 @@ function updateArrow(t){
   const r=2.3+Math.sin(t*5)*.15; arrow.position.set(p.x+dx/d*r,p.y+.04,p.z+dz/d*r); arrow.rotation.y=Math.atan2(dx,dz);
 }
 
-let last=performance.now();
+const Q={max:Math.min(window.devicePixelRatio||1,2),pr:0,acc:0,n:0};
+Q.pr=Q.max;
 function loop(now){
-  const dt=Math.min(.05,(now-last)/1000); last=now; const t=now/1000; frame++;
+  const raw=(now-last)/1000, dt=Math.min(.05,raw); last=now; const t=now/1000; frame++;
+  if(raw<.5){ Q.acc+=raw; Q.n++; }
+  if(Q.acc>2.5){ const fps=Q.n/Q.acc; Q.acc=0; Q.n=0;   // keep it smooth: trade resolution for frame rate
+    const np = fps<40 ? Math.max(.75,Q.pr-.25) : fps>57 ? Math.min(Q.max,Q.pr+.25) : Q.pr;
+    if(np!==Q.pr){ Q.pr=np; renderer.setPixelRatio(np); onResize(); } }
+  if(G.paused){ renderer.render(scene,camera); requestAnimationFrame(loop); return; }
   if(frame%3===0) drawScreen(screens[(frame/3)%3|0],t);
   CATALOG.forEach(it=>{ if(it.taken) return; it.model.rotation.y=Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
   if(jumbo) jumbo.rotation.y=t*.25;
