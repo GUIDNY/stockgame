@@ -1,21 +1,65 @@
 {
-  "note": "רשימת המוצרים שמופיעים במשחק. slug = הכתובת באתר אחרי /product/. kind = הדגם התלת־ממדי. short = השם הקצר על תג המחיר. הסדר קובע את המיקום בחנות.",
+  "note": "כל קטגוריה ראשית באתר היא מחלקה בקניון. build.py מושך מכל קטגוריה את המוצרים הראשונים שיש להם תמונה ומלאי. zone קובע איפה בקניון, count כמה מוצרים.",
   "checkout_url": "",
-  "checkout_note": "כשיהיה באתר עמוד שממלא את העגלה מרשימת slugs, שימו כאן את הכתובת עם {items}, למשל https://buytoday.co.il/game-checkout?items={items}",
-  "products": [
-    {"slug": "lg-tvs-55nano80a6a",                          "kind": "tv",          "short": "LG NanoCell 55\""},
-    {"slug": "samsung-tvs-qe55qn85d",                       "kind": "tv",          "short": "Samsung Neo QLED 55\""},
-    {"slug": "pure-acoustics-receivers-amplifiers-av-2050", "kind": "receiver",    "short": "רסיבר Pure Acoustics"},
-    {"slug": "morphy-richards-kettles-100131",              "kind": "kettle",      "short": "קומקום Morphy Richards"},
-    {"slug": "ninja-coffee-machines-es603",                 "kind": "coffee",      "short": "Ninja Luxe Café"},
-    {"slug": "ninja-food-processors-sl403",                 "kind": "airfryer",    "short": "אייר פרייר Ninja"},
-    {"slug": "ninja-food-processors-dg553",                 "kind": "grill",       "short": "גריל Ninja Foodi"},
-    {"slug": "iq500-0e888e-built-in-oven-bf525lmb1",        "kind": "microwave",   "short": "מיקרוגל Siemens"},
-    {"slug": "homix-5ef350-refrigeration-hrf80w",           "kind": "fridge",      "short": "מקרר Homex 90 ל׳"},
-    {"slug": "ninja-food-processors-tb403",                 "kind": "blender",     "short": "בלנדר Ninja Detect"},
-    {"slug": "ninja-food-processors-bn675",                 "kind": "processor",   "short": "מעבד מזון Ninja"},
-    {"slug": "ninja-food-processors-dt203",                 "kind": "toasteroven", "short": "טוסטר אובן Ninja"},
-    {"slug": "v15-7d8f02-vacuum-cleaners-v15-detect-abs-new-sv47", "kind": "stickvac", "short": "Dyson V15"},
-    {"slug": "ww80fg3m05aw-3e858fe7",                       "kind": "washer",      "short": "כביסה Samsung 8 ק״ג"}
+  "checkout_note": "כשיהיה באתר עמוד שממלא את העגלה מרשימת slugs (ראו site-integration/), שימו כאן את הכתובת עם {items}, למשל https://buytoday.co.il/game-checkout?items={items}",
+  "per_category": 7,
+  "categories": [
+    {
+      "slug": "deals",
+      "zone": "deal",
+      "name": "הדיל החם",
+      "path": "/deals",
+      "count": 5
+    },
+    {
+      "slug": "tv-multimedia",
+      "zone": "tv",
+      "name": "טלוויזיות ומולטימדיה"
+    },
+    {
+      "slug": "audio-home-theater",
+      "zone": "audio",
+      "name": "סטריאו וקולנוע ביתי"
+    },
+    {
+      "slug": "small-kitchen-appliances",
+      "zone": "kitchen",
+      "name": "מוצרי חשמל למטבח"
+    },
+    {
+      "slug": "ovens-cooktops",
+      "zone": "ovens",
+      "name": "תנורים וכיריים"
+    },
+    {
+      "slug": "personal-care",
+      "zone": "care",
+      "name": "טיפוח אישי"
+    },
+    {
+      "slug": "refrigeration",
+      "zone": "fridge",
+      "name": "מקררים וקירור"
+    },
+    {
+      "slug": "laundry",
+      "zone": "laundry",
+      "name": "כביסה, ייבוש ומדיחים"
+    },
+    {
+      "slug": "home-appliances",
+      "zone": "home",
+      "name": "מוצרי חשמל לבית"
+    },
+    {
+      "slug": "air-conditioning",
+      "zone": "ac",
+      "name": "מיזוג אוויר"
+    },
+    {
+      "slug": "heating-ventilation",
+      "zone": "heat",
+      "name": "חימום ואוורור"
+    }
   ]
 }
