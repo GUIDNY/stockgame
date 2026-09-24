@@ -14,6 +14,7 @@
     --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px);
     --g:12px; --r:16px;
   }
+  *,*::before,*::after{box-sizing:border-box;}
   [hidden]{display:none!important;}
   html,body{height:100%;}
   body{margin:0;background:#101530;color:var(--ink);font-family:var(--body);overflow:hidden;overscroll-behavior:none;
@@ -35,8 +36,8 @@
   .chip small{font-size:11px;color:var(--ink-dim);}
   .chip b{font-size:16.5px;font-weight:700;}
   .chip svg{width:18px;height:18px;flex:none;}
-  #clockPill{direction:ltr;}
-  #clockPill b{color:var(--brand-text);}
+  #clockPill{direction:ltr;text-decoration:none;padding:0 6px;}
+  .logo.sm{height:28px;font-size:12.5px;border-radius:9px;}
   #clockPill.late b{color:var(--bad);animation:blink 1s steps(2) infinite;}
   @keyframes blink{50%{opacity:.4}}
   #floorChip{justify-self:center;max-width:100%;font-size:13px;font-weight:700;padding:0 12px;height:34px;border-radius:12px;}
@@ -46,7 +47,8 @@
   .quest{position:fixed;top:calc(var(--st) + 62px);left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 2*var(--g)));border-radius:var(--r);overflow:hidden;z-index:4;}
   .quest.open{background:rgba(15,20,44,.94);}
   .quest-h{width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;text-align:right;}
-  .ring{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--brand) var(--p,0%),rgba(255,255,255,.12) 0);}
+  .ring{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--c,#8a90a3) 30%,transparent);color:#fff;}
+  .ring svg{width:22px;height:22px;}
   .ring b{width:32px;height:32px;border-radius:50%;background:var(--surface-solid);display:grid;place-items:center;font-size:12px;font-weight:700;}
   .qt{flex:1;min-width:0;display:grid;}
   .qt small{font-size:11px;color:var(--ink-dim);}
@@ -73,6 +75,8 @@
   #cartBtn b:empty{display:none;}
   #cartBtn.bump{animation:bump .4s;}
   @keyframes bump{40%{transform:scale(1.18)}}
+  #meBtn{position:fixed;left:calc(var(--g) + 20px);top:calc(var(--st) + 292px);width:48px;height:48px;border-radius:14px;display:grid;place-items:center;}
+  #meBtn svg{width:22px;height:22px;}
   #mute{position:fixed;right:var(--g);top:calc(var(--st) + 130px);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;}
   #mute svg{width:20px;height:20px;}
 
@@ -145,6 +149,25 @@
   .receipt a{height:36px;padding:0 12px;border-radius:10px;background:var(--brand);color:#fff;font-weight:700;font-size:13px;text-decoration:none;display:flex;align-items:center;white-space:nowrap;}
   .paybtn{display:flex;align-items:center;justify-content:center;height:52px;margin:0 0 10px;border-radius:16px;background:var(--good);color:#06301b;font-weight:800;font-size:17px;text-decoration:none;box-shadow:0 5px 0 #23905a;}
   .ghost{display:flex;align-items:center;justify-content:center;gap:6px;height:46px;margin-top:10px;border-radius:14px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;}
+
+  /* ---------- character creator ---------- */
+  .creator{flex-direction:column;align-items:stretch;justify-content:space-between;padding:calc(var(--st) + 14px) 0 0;
+    background:linear-gradient(to bottom,rgba(8,11,28,.82),rgba(8,11,28,.25) 26%,transparent 38%,transparent 44%,rgba(8,11,28,.35));}
+  .ctop{padding:0 18px;max-width:520px;width:100%;margin:0 auto;}
+  .ctop h1{font-size:clamp(30px,9vw,44px);margin:10px 0 6px;}
+  .ctop p{margin:0;font-size:14px;line-height:1.5;color:var(--ink-dim);max-width:34ch;}
+  .csheet{width:100%;max-width:520px;margin:0 auto;padding:14px 16px calc(var(--sb) + 16px);border-radius:24px 24px 0 0;background:rgba(17,23,52,.95);border:1px solid var(--line);border-bottom:0;
+    display:grid;grid-template-columns:minmax(0,1fr);gap:10px;box-shadow:0 -10px 30px rgba(0,0,0,.35);}
+  .crow{display:grid;grid-template-columns:62px minmax(0,1fr);align-items:center;gap:10px;}
+  .crow > div{min-width:0;}
+  .crow > span{font-size:12.5px;font-weight:700;color:var(--ink-dim);}
+  .seg{display:flex;gap:6px;flex-wrap:wrap;}
+  .seg button{height:36px;padding:0 14px;border-radius:11px;background:var(--raise);font-weight:700;font-size:14px;color:var(--ink-dim);border:1px solid transparent;}
+  .seg button.on{background:rgba(245,83,4,.18);border-color:var(--brand);color:#fff;}
+  .sw{display:flex;gap:7px;flex-wrap:wrap;}
+  .sw button{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);box-shadow:inset 0 0 0 2px rgba(0,0,0,.15);}
+  .sw button.on{border-color:#fff;box-shadow:0 0 0 3px var(--brand);}
+  .csheet .go{margin-top:4px;}
 
   /* ---------- mall directory ---------- */
   .dir{align-items:stretch;padding:calc(var(--st) + 10px) 0 0;background:rgba(8,11,28,.6);}
@@ -221,21 +244,22 @@
 
 <div class="hud" id="hud" hidden>
   <div class="topbar">
-    <div class="chip glass" id="clockPill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b class="num" id="clock">20:52:00</b></div>
+    <a class="chip glass" id="clockPill" target="_blank" rel="noopener" aria-label="לאתר BuyToday"><span class="logo sm">BuyToday</span></a>
     <div class="chip glass" id="floorChip"><i></i><span id="floorName">קרקע</span></div>
-    <div class="chip glass" id="moneyPill"><small>בכרטיס</small><b class="num" id="money">₪0</b></div>
+    <div class="chip glass" id="moneyPill"><small>בעגלה</small><b class="num" id="money">₪0</b></div>
   </div>
   <div class="quest glass" id="list">
     <button class="quest-h" id="listH" aria-expanded="false" aria-controls="items">
-      <span class="ring" id="ring"><b class="num" id="count">0/4</b></span>
+      <span class="ring" id="ring"></span>
       <span class="qt"><small id="nextLabel">הבא ברשימה</small><b id="nextName" dir="auto"></b></span>
       <span class="qm num" id="nextMeta"></span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>
     </button>
-    <ul id="items"></ul>
+    <ul id="items" hidden></ul>
   </div>
   <button id="map" class="glass" aria-label="פתיחת מפת הקניון"><canvas id="mapc" width="176" height="176"></canvas><span>מפה</span></button>
   <button id="cartBtn" class="glass" aria-label="העגלה שלי"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/></svg><b class="num" id="cartCount"></b></button>
+  <button id="meBtn" class="glass" aria-label="עריכת הדמות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4.5 4.5-6.5 8-6.5s6.5 2 8 6.5"/></svg></button>
   <button id="mute" class="glass" aria-label="השתקת צליל">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="xmark" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg>
   </button>
@@ -261,18 +285,21 @@
   <div id="bubbles"></div>
 </div>
 
-<div class="screen" id="menu" hidden>
-  <div class="panel">
-    <div class="brandrow"><span class="logo">BuyToday</span><span>קניון · 2 קומות · נסגרים ב־21:00</span></div>
-    <h1>שעת <em>סגירה</em></h1>
-    <p class="lede">נשארו 8 דקות עד שהקניון נסגר. בקניון 10 מחלקות, בדיוק כמו הקטגוריות של BuyToday. אספו את <b>4 המוצרים שברשימה</b> והגיעו לקופות. כל מוצר על המדפים <b>אמיתי</b>, במחיר של היום באתר.</p>
-    <ul class="rules">
-      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg></span><span><b>ג׳ויסטיק משמאל</b> להליכה. גרירה על המסך מסובבת את המצלמה.</span></li>
-      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg></span><span><b>מפה</b> עם כל המחלקות. בוחרים מחלקה או מוצר ולוחצים <b>סע</b>.</span></li>
-      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/></svg></span><span><b>העגלה שלי</b> שומרת את מה שאספתם, עם קישור לכל מוצר באתר ולכל הקטגוריות.</span></li>
-    </ul>
+<div class="screen creator" id="menu" hidden>
+  <div class="ctop">
+    <div class="brandrow"><span class="logo">BuyToday</span><span>קניון · 2 קומות · 10 מחלקות</span></div>
+    <h1>הקניון של <em>BuyToday</em></h1>
+    <p>בחרו איך תיראו, ותטיילו בין המחלקות. כל מוצר על המדפים אמיתי, במחיר של היום באתר.</p>
+  </div>
+  <div class="csheet">
+    <div class="crow"><span>דמות</span><div class="seg" id="optGender"></div></div>
+    <div class="crow"><span>צבע עור</span><div class="sw" id="optSkin"></div></div>
+    <div class="crow"><span>שיער</span><div class="sw" id="optHair"></div></div>
+    <div class="crow"><span>חולצה</span><div class="sw" id="optShirt"></div></div>
+    <div class="crow"><span>תחתון</span><div class="seg" id="optBottom"></div></div>
+    <div class="crow"><span id="bottomLabel">מכנסיים</span><div class="sw" id="optPants"></div></div>
+    <div class="crow"><span>תוספת</span><div class="seg" id="optExtra"></div></div>
     <button class="go" id="startBtn">נכנסים לקניון</button>
-    <p class="best num" id="bestLine"></p>
   </div>
 </div>
 
@@ -287,7 +314,7 @@
     </div>
     <div class="dscroll" id="dscroll">
       <div class="mapcard"><canvas id="bigmap" width="720" height="960" aria-label="מפת הקומה"></canvas>
-        <div class="legend"><span><i style="background:#2f7de1"></i>אתם כאן</span><span><i style="background:#f55304"></i>ברשימה שלכם</span><span><i style="background:#161a2b"></i>מעלית</span></div></div>
+        <div class="legend"><span><i style="background:#2f7de1"></i>אתם כאן</span><span><i style="background:#fff;border:2px solid #8a90a3"></i>מוצר</span><span><i style="background:#161a2b"></i>מעלית</span></div></div>
       <div id="depts"></div>
     </div>
   </div>
@@ -309,15 +336,14 @@
     <h1 id="endTitle">הקבלה שלכם</h1>
     <p class="lede" id="endText"></p>
     <div class="stats">
-      <div class="stat"><small>נשאר בכרטיס</small><b class="num" id="stMoney">₪0</b></div>
-      <div class="stat"><small>יציאה</small><b class="num" id="stTime">20:58</b></div>
-      <div class="stat hi"><small>ניקוד</small><b class="num" id="stScore">0</b></div>
+      <div class="stat"><small>מוצרים</small><b class="num" id="stMoney">0</b></div>
+      <div class="stat"><small>סה״כ</small><b class="num" id="stTime">₪0</b></div>
+      <div class="stat hi"><small>חוסכים</small><b class="num" id="stScore">₪0</b></div>
     </div>
     <ul class="receipt" id="receipt"></ul>
     <a class="paybtn" id="payLink" target="_blank" rel="noopener" hidden>לתשלום באתר</a>
-    <button class="go" id="againBtn">עוד סיבוב</button>
+    <button class="go" id="againBtn">המשך לקנות</button>
     <a class="ghost" id="dealsLink" target="_blank" rel="noopener">כל המבצעים ב־BuyToday ↗</a>
-    <p class="best num" id="bestLine2"></p>
   </div>
 </div>
 
@@ -907,17 +933,27 @@ function buildItems(){
 
 function mkGuy(o){
   const g=new THREE.Group(), body=new THREE.Group(); g.add(body);
-  const skin=mat(o.skin,{roughness:.6}), shirt=mat(o.shirt), pants=mat(o.pants), hair=mat(o.hair,{roughness:.9});
-  const legs=[-1,1].map(s=>{ const l=new THREE.Group(); l.position.set(.17*s,.8,0); body.add(l); box(.28,.7,.3,pants,0,-.35,0,l); box(.3,.12,.4,mat(0x1b1b1f),0,-.74,.05,l); return l; });
-  box(.72,.8,.42,shirt,0,1.2,0,body);
+  const skin=mat(o.skin,{roughness:.6}), shirt=mat(o.shirt), pants=mat(o.pants), hair=mat(o.hair,{roughness:.9}), shoe=mat(o.girl?0x7a2a3a:0x1b1b1f);
+  const skirt=o.bottom==='skirt';
+  const legs=[-1,1].map(s=>{ const l=new THREE.Group(); l.position.set(.17*s,.8,0); body.add(l);
+    if(skirt){ box(.24,.7,.26,skin,0,-.35,0,l); } else box(.28,.7,.3,pants,0,-.35,0,l);
+    box(.3,.12,.4,shoe,0,-.74,.05,l); return l; });
+  box(o.girl?.66:.72,.8,.42,shirt,0,1.2,0,body);
+  if(skirt){ box(.8,.38,.5,pants,0,.84,0,body); box(.84,.06,.54,pants,0,.67,0,body); }
   if(o.vest){ box(.76,.62,.46,mat(o.vest),0,1.26,0,body); box(.14,.1,.02,M.white,-.18,1.4,.24,body,false); }
+  if(o.logo){ box(.3,.12,.02,M.white,0,1.36,.215,body,false); }
   const head=new THREE.Group(); head.position.y=1.6; body.add(head);
   box(.56,.56,.52,skin,0,.3,0,head);
   box(.6,.16,.56,hair,0,.62,-.01,head); box(.6,.42,.12,hair,0,.42,-.23,head);
-  if(o.tuft) box(.2,.14,.3,hair,.12,.74,.06,head);
+  if(o.girl){ box(.62,.78,.14,hair,0,.2,-.25,head); [-1,1].forEach(s=>box(.1,.62,.34,hair,s*.31,.3,-.06,head)); box(.5,.1,.08,hair,0,.54,.24,head);
+    if(o.pony){ box(.18,.46,.16,hair,0,.28,-.38,head); box(.14,.08,.08,mat(BRAND),0,.52,-.34,head,false); } }
+  else if(o.tuft!==false) box(.2,.14,.3,hair,.12,.74,.06,head);
   box(.08,.1,.02,M.black,-.12,.33,.265,head,false); box(.08,.1,.02,M.black,.12,.33,.265,head,false);
-  box(.14,.03,.02,mat(0x7a3b2e),0,.16,.265,head,false);
-  const arms=[-1,1].map(s=>{ const a=new THREE.Group(); a.position.set(.47*s,1.52,0); body.add(a); box(.2,.62,.22,shirt,0,-.28,0,a); box(.18,.16,.2,skin,0,-.66,0,a); return a; });
+  if(o.girl){ box(.1,.02,.02,M.black,-.12,.4,.266,head,false); box(.1,.02,.02,M.black,.12,.4,.266,head,false); }
+  box(.14,.03,.02,mat(o.girl?0xc0506a:0x7a3b2e),0,.16,.265,head,false);
+  if(o.extra==='glasses'){ const fr=mat(0x16181d); [-.12,.12].forEach(x=>{ box(.18,.13,.015,fr,x,.33,.275,head,false); box(.13,.08,.012,mat(0x9fc4e8,{roughness:.1}),x,.33,.283,head,false); }); box(.08,.025,.015,fr,0,.35,.275,head,false); }
+  if(o.extra==='cap'){ const cm=mat(o.capColor||BRAND); box(.62,.14,.58,cm,0,.67,0,head); box(.5,.04,.28,cm,0,.62,.38,head); box(.12,.06,.02,M.white,0,.68,.291,head,false); }
+  const arms=[-1,1].map(s=>{ const a=new THREE.Group(); a.position.set((o.girl?.44:.47)*s,1.52,0); body.add(a); box(o.girl?.18:.2,.62,.22,shirt,0,-.28,0,a); box(.18,.16,.2,skin,0,-.66,0,a); return a; });
   return {g,body,legs,arms,head,phase:Math.random()*6};
 }
 function animGuy(G,speed,dt,pushing){
@@ -989,9 +1025,16 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 
 // player
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
-const hero=mkGuy({skin:0xf1c7a0,shirt:0x2f7de1,pants:0x2b2f3a,hair:0x3a2618,tuft:true});
+const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none'};
+function loadAvatar(){ try{ const v=JSON.parse(localStorage.getItem('bt-avatar')||'null'); if(v&&typeof v==='object') return Object.assign({},AV_DEFAULT,v); }catch(e){} return Object.assign({},AV_DEFAULT); }
+function saveAvatar(){ try{ localStorage.setItem('bt-avatar',JSON.stringify(avatar)); }catch(e){} }
+let avatar=loadAvatar();
+const avOpts=a=>Object.assign({},a,{pony:a.girl,tuft:!a.girl,logo:a.shirt===BRAND,capColor:a.shirt===BRAND?0x22305f:BRAND});
+let hero=mkGuy(avOpts(avatar));
 const cart=mkCart(); cart.c.position.set(0,0,1.32); hero.g.add(cart.c); scene.add(hero.g);
-function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=f?'קומה 1':'קרקע'; lastNext=undefined; }
+function setAvatar(a){ avatar=a; const p=hero.g.position.clone(), r=hero.g.rotation.y; hero.g.remove(cart.c); scene.remove(hero.g);
+  hero=mkGuy(avOpts(a)); hero.g.add(cart.c); hero.g.position.copy(p); hero.g.rotation.y=r; scene.add(hero.g); }
+function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=f?'קומה 1':'קרקע'; lastDept=undefined; }
 
 // shoppers on both floors
 const SHIRTS=[0x8fc93a,0xff924c,0x9b5de5,0xf15bb5,0x00bbf9,0xfee440,0xe0e0e0];
@@ -1000,7 +1043,7 @@ function walkable(x,z,r,f){ for(const s of solids[f]){ if(x>s.minX-r&&x<s.maxX+r
 function randPoint(f){ for(let i=0;i<80;i++){ const x=rand(-22.5,22.5), z=rand(-30.5,f?30.5:19); if(walkable(x,z,.9,f)) return new THREE.Vector3(x,f*FH,z); } return new THREE.Vector3(0,f*FH,f?20:12); }
 const shoppers=[];
 [[0,6],[1,5]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
-  const G=mkGuy({skin:pick([0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a]),tuft:Math.random()<.4});
+  const girl=Math.random()<.5; const G=mkGuy({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
   const p=randPoint(f); G.g.position.copy(p); scene.add(G.g);
   if(f===1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; floorCasters.push(o); } });
   shoppers.push({G,f,pos:p,target:randPoint(f),speed:rand(1.2,1.9),wait:rand(0,2),stuck:0,yaw:0,last:p.clone()});
@@ -1142,85 +1185,94 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
 Sound.ding=function(){ this.tone(988,.5,'sine',.12); this.tone(784,.7,'sine',.1,.18); };
 
 /* ---------- UI ---------- */
-const ui={hud:$('#hud'),clock:$('#clock'),clockPill:$('#clockPill'),money:$('#money'),moneyPill:$('#moneyPill'),items:$('#items'),count:$('#count'),list:$('#list'),mapBtn:$('#map'),
+const ui={hud:$('#hud'),clock:null,clockPill:$('#clockPill'),money:$('#money'),moneyPill:$('#moneyPill'),items:$('#items'),count:$('#count'),list:$('#list'),mapBtn:$('#map'),
   toast:$('#toast'),hint:$('#hint'),hintName:$('#hintName'),hintPrice:$('#hintPrice'),act:$('#act'),actLabel:$('#actLabel'),card:$('#card'),menu:$('#menu'),end:$('#end'),map:$('#mapc')};
 function bubble(cls){ const d=document.createElement('div'); d.className='bubble '+(cls||''); d.hidden=true; $('#bubbles').appendChild(d); return d; }
 const shopperBubble=bubble();
-$('#dealsLink').href=utm(SITE+'/deals','end-screen');
+$('#dealsLink').href=utm(SITE+'/deals','end-screen'); $('#clockPill').href=utm(SITE+'/','hud-logo');
 let toastT=null;
 function toast(msg,kind){ ui.toast.textContent=msg; ui.toast.className='glass show '+(kind||''); clearTimeout(toastT); toastT=setTimeout(()=>ui.toast.className='glass',2200); }
 function loadBest(){ try{ return +localStorage.getItem('closing-time-best')||0; }catch(e){ return 0; } }
 function saveBest(v){ try{ localStorage.setItem('closing-time-best',String(v)); }catch(e){} }
-function showBest(){ const b=loadBest(); const t=b?`השיא שלכם: ${b.toLocaleString('he-IL')} נקודות`:''; $('#bestLine').textContent=t; $('#bestLine2').textContent=t; }
+function showBest(){ return; const b=loadBest(); const t=b?`השיא שלכם: ${b.toLocaleString('he-IL')} נקודות`:''; $('#bestLine').textContent=t; $('#bestLine2').textContent=t; }
 
 /* ---------- game state ---------- */
-const GAME_LEN=240, START_SEC=20*3600+52*60, SPEEDUP=480/GAME_LEN;
-const G={state:'menu',t:0,budget:0,wanted:[]};
-function fmtClock(t){ const s=Math.min(START_SEC+8*60, START_SEC+Math.floor(t*SPEEDUP)); const h=(s/3600)|0, m=((s%3600)/60)|0, ss=s%60; return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
-function nextWanted(){ const open=G.wanted.filter(i=>!i.taken); if(!open.length) return null;
-  const same=open.filter(i=>i.f===player.floor); const pool=same.length?same:open;
-  return pool.reduce((a,b)=>Math.hypot(a.x-player.pos.x,a.z-player.pos.z)<=Math.hypot(b.x-player.pos.x,b.z-player.pos.z)?a:b); }
-let lastNext=null;
-function renderQuest(){
-  const nx=nextWanted(); if(nx===lastNext && G.wanted.length) return; lastNext=nx;
-  if(nx){ $('#nextLabel').textContent='הבא ברשימה · #'+(G.wanted.indexOf(nx)+1); $('#nextName').textContent=nx.name; $('#nextMeta').textContent=(nx.f!==player.floor?FLOOR_NAME[nx.f]+' · ':'')+shekel(nx.price); }
-  else { $('#nextLabel').textContent='הרשימה הושלמה'; $('#nextName').textContent='לקופות בקומת הקרקע'; $('#nextMeta').textContent=''; }
+const G={state:'menu',t:0,wanted:[]};
+function nextWanted(){ return null; }
+function cartTotal(){ return CATALOG.filter(i=>i.taken).reduce((a,b)=>a+b.price,0); }
+function cartSaved(){ return CATALOG.filter(i=>i.taken&&i.old).reduce((a,b)=>a+(b.old-b.price),0); }
+function deptAt(){ const p=player.pos, f=player.floor; return DEPTS.find(d=>d.f===f&&p.x>=d.rect[0]&&p.x<=d.rect[1]&&p.z>=d.rect[2]&&p.z<=d.rect[3])||null; }
+let lastDept;
+function renderQuest(force){
+  const d=deptAt(); if(d===lastDept&&!force) return; lastDept=d;
+  const ico=$('#ring');
+  if(d){ ico.innerHTML=svgI(ICONS[d.icon]); ico.style.setProperty('--c',d.color); $('#nextLabel').textContent='אתם ב'+(player.floor?'קומה 1':'קומת הקרקע'); $('#nextName').textContent=d.name;
+    const n=deptItems(d).length; $('#nextMeta').textContent=n?n+' מוצרים':d.sub; }
+  else { ico.innerHTML=svgI(ICONS.map); ico.style.setProperty('--c','#8a90a3'); $('#nextLabel').textContent=player.floor?'קומה 1 · לובי':'אטריום · קומת הקרקע';
+    $('#nextName').textContent='לאן הולכים?'; $('#nextMeta').textContent='למפה'; }
 }
-function renderList(){
-  ui.items.innerHTML='';
-  G.wanted.forEach((it,n)=>{ const li=document.createElement('li'); if(it.taken) li.className='done';
-    li.innerHTML='<i></i><span dir="auto"></span><em class="num"></em>'; li.querySelector('i').textContent=it.taken?'✓':n+1; li.querySelector('span').textContent=it.name;
-    li.querySelector('em').textContent=(it.f?'קומה 1 · ':'')+shekel(it.price); ui.items.appendChild(li); });
-  const done=G.wanted.filter(i=>i.taken).length;
-  ui.count.textContent=`${done}/${G.wanted.length}`; $('#ring').style.setProperty('--p',(G.wanted.length?done/G.wanted.length*100:0)+'%');
-  lastNext=undefined; renderQuest();
-}
-function renderMoney(){ ui.money.textContent=shekel(G.budget); }
+function renderList(){ renderQuest(true); }
+function renderMoney(){ ui.money.textContent=shekel(cartTotal()); }
 
 function resetGame(){
   stopAuto(); G.paused=false; dirEl.hidden=true; cartEl.hidden=true;
   CATALOG.forEach(it=>{ it.taken=false; it.wanted=false; it.model.visible=true; it.tag.visible=true; it.ring.visible=false; });
   while(cart.load.children.length) cart.load.remove(cart.load.children[0]); cart.count=0;
   flyers.forEach(f=>scene.remove(f.m)); flyers.length=0;
-  const pricey=CATALOG.filter(i=>i.price>=1500), cheap=CATALOG.filter(i=>i.price<1500);
-  const chosen=[pick(pricey.length?pricey:CATALOG)];
-  while(chosen.length<4){ const c=pick(cheap.length>=3?cheap:CATALOG); if(!chosen.includes(c)) chosen.push(c); }
-  if(chosen.every(i=>i.f===chosen[0].f)){ const other=CATALOG.filter(i=>i.f!==chosen[0].f&&!chosen.includes(i)); if(other.length) chosen[3]=pick(other); }
-  chosen.sort((a,b)=>a.f-b.f||a.z-b.z);
-  G.wanted=chosen; chosen.forEach(i=>{ i.wanted=true; i.ring.visible=true; });
-  CATALOG.forEach(tagTexture);
-  G.budget=Math.ceil((chosen.reduce((a,b)=>a+b.price,0)+300)/50)*50; G.t=0;
+  G.wanted=[]; G.t=0;
   elev.y=0; elev.floor=0; elev.moving=false; elev.rider=false;
   player.pos.set(0,0,28.5); player.vel.set(0,0,0); player.yaw=Math.PI; setFloor(0); camYaw=0;
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
-  renderList(); renderMoney(); updateCartBadge(); ui.clockPill.classList.remove('late'); shownCard=null; ui.card.hidden=true;
-  ui.list.classList.remove('open'); $('#listH').setAttribute('aria-expanded','false');
+  renderList(); renderMoney(); updateCartBadge(); shownCard=null; ui.card.hidden=true;
 }
-function startGame(){
+function enterMall(){
   Sound.init(); if(Sound.ctx&&Sound.ctx.state==='suspended') Sound.ctx.resume(); Sound.startMusic();
   try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){}
+  saveAvatar(); cart.c.visible=true;
+  if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
-  toast('החץ הכתום מוביל למוצר הבא ברשימה');
+  toast('ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
 }
-function endGame(win){
-  G.state='end'; ui.hud.hidden=true; ui.card.hidden=true; shownCard=null; shopperBubble.hidden=true;
-  const left=Math.max(0,GAME_LEN-G.t);
-  const score=win? Math.max(0,Math.round(G.budget))+Math.round(left*10) : 0;
-  $('#endEyebrow').textContent=win?'קבלה · BuyToday':'BuyToday · סגור';
-  $('#endTitle').textContent=win?'הקבלה שלכם':'הקניון נסגר';
-  $('#endText').textContent= win ? 'כל הרשימה בעגלה ויצאתם בזמן. רוצים אותם באמת? כל מוצר כאן נמכר ב־BuyToday, בדיוק במחיר הזה:' : 'המאבטח כיבה את האורות ואתם עוד בין המתחמים. נסו מסלול קצר יותר, ואל תשכחו את המעלית.';
+function openCreator(edit){
+  G.state=edit?'edit':'menu'; G.paused=!!edit; stopAuto(); ui.hud.hidden=true; ui.card.hidden=true; shownCard=null; dirEl.hidden=true; cartEl.hidden=true;
+  cart.c.visible=false; ui.menu.hidden=false; $('#startBtn').textContent=edit?'שמירה וחזרה לקניון':'נכנסים לקניון'; renderCreator();
+}
+function openReceipt(){
+  const its=CATALOG.filter(i=>i.taken);
+  if(!its.length){ toast('העגלה ריקה. בחרו מוצרים במחלקות','bad'); return; }
+  G.paused=true; ui.hud.hidden=true; ui.card.hidden=true; shownCard=null; shopperBubble.hidden=true;
+  $('#endEyebrow').textContent='קבלה · '+new Date().toLocaleDateString('he-IL');
+  $('#endTitle').textContent='הקבלה שלכם';
+  $('#endText').textContent='כל מה שבעגלה נמכר ב־BuyToday בדיוק במחיר הזה. לחצו על מוצר כדי להשלים את הקנייה באתר.';
   const rc=$('#receipt'); rc.innerHTML='';
-  CATALOG.filter(i=>i.taken).forEach(it=>{ const li=document.createElement('li'); li.innerHTML='<img alt=""><div class="t"><span dir="auto"></span><small></small></div><a class="buy" target="_blank" rel="noopener">קנה עכשיו ↗</a>';
+  its.forEach(it=>{ const li=document.createElement('li'); li.innerHTML='<img alt=""><div class="t"><span dir="auto"></span><small></small></div><a class="buy" target="_blank" rel="noopener">קנה עכשיו ↗</a>';
     if(it.img) li.querySelector('img').src=it.img; else li.querySelector('img').style.visibility='hidden'; li.querySelector('.t span').textContent=it.name; li.querySelector('small').textContent=shekel(it.price)+(it.old?` · במקום ${shekel(it.old)}`:'');
     li.querySelector('a').href=utm(it.url,'receipt'); rc.appendChild(li); });
-  rc.hidden=!rc.children.length;
-  const got=CATALOG.filter(i=>i.taken), pay=$('#payLink');
-  pay.hidden=!(win && CHECKOUT_URL && got.length);
-  if(!pay.hidden){ pay.href=utm(CHECKOUT_URL.replace('{items}',got.map(i=>encodeURIComponent(i.slug)).join(',')),'checkout'); pay.textContent='לתשלום באתר · '+shekel(got.reduce((a,b)=>a+b.price,0)); }
-  $('#stMoney').textContent=shekel(G.budget); $('#stTime').textContent=fmtClock(G.t).slice(0,5); $('#stScore').textContent=score.toLocaleString('he-IL');
-  if(score>loadBest()) saveBest(score);
-  showBest(); ui.end.hidden=false;
-  if(win) Sound.cash(); else Sound.bad();
+  const pay=$('#payLink'); pay.hidden=!CHECKOUT_URL;
+  if(!pay.hidden){ pay.href=utm(CHECKOUT_URL.replace('{items}',its.map(i=>encodeURIComponent(i.slug)).join(',')),'checkout'); pay.textContent='לתשלום באתר · '+shekel(cartTotal()); }
+  $('#stMoney').textContent=String(its.length); $('#stTime').textContent=shekel(cartTotal()); $('#stScore').textContent=shekel(cartSaved());
+  ui.end.hidden=false; Sound.cash();
+}
+function closeReceipt(){ ui.end.hidden=true; ui.hud.hidden=false; G.paused=false; last=performance.now(); }
+
+/* ---------- character creator ---------- */
+const AV_CHOICES={
+  skin:[0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b],
+  hair:[0x16110d,0x3a2618,0x6b4423,0xd9b36a,0xb5542a,0x9a9a9a],
+  shirt:[0x2f7de1,BRAND,0xe63946,0x2fb592,0x9b5de5,0xfee440,0xf3f4f6,0x22305f],
+  pants:[0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a,0xe8e2d6],
+};
+const hex=c=>'#'+c.toString(16).padStart(6,'0');
+function renderCreator(){
+  const seg=(id,key,vals)=>{ const el=$('#'+id); el.innerHTML=''; vals.forEach(([v,label])=>{ const b=document.createElement('button'); b.textContent=label; b.setAttribute('aria-pressed',String(avatar[key]===v)); if(avatar[key]===v) b.className='on';
+    b.addEventListener('click',()=>{ const a=Object.assign({},avatar,{[key]:v}); if(key==='girl') a.bottom=v?'skirt':'pants'; setAvatar(a); renderCreator(); }); el.appendChild(b); }); };
+  seg('optGender','girl',[[false,'בן'],[true,'בת']]);
+  seg('optBottom','bottom',[['pants','מכנסיים'],['skirt','חצאית']]);
+  seg('optExtra','extra',[['none','בלי'],['cap','כובע'],['glasses','משקפיים']]);
+  ['skin','hair','shirt','pants'].forEach(key=>{ const el=$('#opt'+key[0].toUpperCase()+key.slice(1)); el.innerHTML='';
+    AV_CHOICES[key].forEach(c=>{ const b=document.createElement('button'); b.style.background=hex(c); b.setAttribute('aria-label',key+' '+hex(c)); b.setAttribute('aria-pressed',String(avatar[key]===c)); if(avatar[key]===c) b.className='on';
+      b.addEventListener('click',()=>{ setAvatar(Object.assign({},avatar,{[key]:c})); renderCreator(); }); el.appendChild(b); }); });
+  $('#bottomLabel').textContent=avatar.bottom==='skirt'?'חצאית':'מכנסיים';
 }
 
 /* ---------- input ---------- */
@@ -1245,10 +1297,11 @@ addEventListener('keyup',e=>{ keys[e.code]=false; });
 ['gesturestart','dblclick'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
 ui.act.addEventListener('pointerdown',e=>{ e.preventDefault(); doAction(); });
 $('#cardAdd').addEventListener('click',()=>{ if(near&&near.type==='item') doAction(); });
-$('#listH').addEventListener('click',()=>{ const o=ui.list.classList.toggle('open'); $('#listH').setAttribute('aria-expanded',String(o)); });
+$('#listH').addEventListener('click',()=>openDir());
 $('#mute').addEventListener('click',()=>{ Sound.setOn(!Sound.on); $('#waves').style.display=Sound.on?'':'none'; $('#xmark').style.display=Sound.on?'none':''; });
-$('#startBtn').addEventListener('click',startGame);
-$('#againBtn').addEventListener('click',startGame);
+$('#startBtn').addEventListener('click',enterMall);
+$('#againBtn').addEventListener('click',closeReceipt);
+$('#meBtn').addEventListener('click',()=>{ if(G.state==='play') openCreator(true); });
 
 /* ---------- actions ---------- */
 let near=null;
@@ -1260,17 +1313,13 @@ function doAction(){
   if(near.type==='call'){ startRide(player.floor,false); toast('המעלית בדרך'); return; }
   if(near.type==='item'){
     const it=near.it;
-    if(it.price>G.budget){ toast('אין מספיק כסף בכרטיס','bad'); Sound.bad(); return; }
-    G.budget-=it.price; it.taken=true; it.ring.visible=false; it.tag.visible=false;
+    it.taken=true; it.ring.visible=false; it.tag.visible=false;
     const fm=it.model.clone(); const wp=new THREE.Vector3(); it.model.getWorldPosition(wp); fm.position.copy(wp); fm.scale.copy(it.model.scale); scene.add(fm);
     it.model.visible=false; flyers.push({m:fm,from:wp.clone(),t:0,it});
     Sound.pickup(); renderMoney(); renderList();
-    if(it.wanted){ const left=G.wanted.filter(i=>!i.taken).length; toast(left?`${it.name} בעגלה. נשארו ${left}`:'הכל בעגלה! לקופות בקומת הקרקע','good'); }
-    else toast('לא ברשימה, אבל נכנס לעגלה');
+    toast(it.name+' נוסף לעגלה','good');
   } else if(near.type==='checkout'){
-    const left=G.wanted.filter(i=>!i.taken).length;
-    if(left){ toast(`חסרים עוד ${left} פריטים מהרשימה`,'bad'); Sound.bad(); return; }
-    endGame(true);
+    openReceipt();
   }
 }
 function addToCart(it){
@@ -1284,6 +1333,7 @@ function addToCart(it){
 
 /* ---------- directory overlay ---------- */
 const ICONS={
+  map:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
   screens:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
   kitchen:'<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 11h2a2 2 0 0 1 0 4h-2M8 3v3M12 3v3"/>',
   deal:'<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
@@ -1373,7 +1423,7 @@ function renderDepts(){
 }
 function setDirFloor(f){ dirFloor=f; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.f===f)); drawBig(); renderDepts(); }
 function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirQuery=''; $('#dirSearch').value='';
-  [0,1].forEach(f=>{ const n=G.wanted.filter(i=>!i.taken&&i.f===f).length; $('#tab'+f).textContent=n?String(n):''; });
+  [0,1].forEach(f=>{ $('#tab'+f).textContent=''; });
   setDirFloor(player.floor); $('#dscroll').scrollTop=0; }
 function closeDir(){ G.paused=false; dirEl.hidden=true; last=performance.now(); try{ document.activeElement.blur(); }catch(e){} }
 ui.mapBtn.addEventListener('click',openDir);
@@ -1392,15 +1442,16 @@ const cartEl=$('#cartp');
 function cartItems(){ return CATALOG.filter(i=>i.taken); }
 function updateCartBadge(bump){ const n=cartItems().length; $('#cartCount').textContent=n?String(n):''; if(bump){ const b=$('#cartBtn'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
 function rebuildCart(){ while(cart.load.children.length) cart.load.remove(cart.load.children[0]); cart.count=0; cartItems().forEach(it=>{ if(!flyers.some(f=>f.it===it)) addToCart(it); }); }
-function returnItem(it){ if(!it.taken) return; it.taken=false; G.budget+=it.price; it.model.visible=true; it.ring.visible=it.wanted; rebuildCart(); renderMoney(); renderList(); updateCartBadge(); renderCart(); toast(it.name+' חזר למדף'); }
+function returnItem(it){ if(!it.taken) return; it.taken=false; it.model.visible=true; it.ring.visible=it.wanted; rebuildCart(); renderMoney(); renderList(); updateCartBadge(); renderCart(); toast(it.name+' חזר למדף'); }
 function renderCart(){
   const body=$('#cartBody'); body.innerHTML=''; const its=cartItems(), total=its.reduce((a,b)=>a+b.price,0);
-  const left=G.wanted.filter(i=>!i.taken).length;
+  const saved=cartSaved();
   const sum=document.createElement('div'); sum.className='sum';
-  sum.innerHTML='<div class="r"><span>'+(its.length?its.length+' מוצרים בעגלה':'העגלה ריקה')+'</span><b class="num"></b></div><div class="r"><span>נשאר בכרטיס</span><span class="num" id="cbLeft"></span></div><div class="r"><span>הרשימה שלכם</span><span class="num"></span></div>';
-  sum.querySelector('b').textContent=shekel(total); sum.querySelector('#cbLeft').textContent=shekel(G.budget); sum.querySelectorAll('.r')[2].lastChild.textContent=(G.wanted.length-left)+'/'+G.wanted.length+(left?'':' · הושלמה');
+  sum.innerHTML='<div class="r"><span>'+(its.length?its.length+' מוצרים בעגלה':'העגלה ריקה')+'</span><b class="num"></b></div>'+(saved?'<div class="r"><span>חוסכים במבצעים</span><span class="num" style="color:#43d18b;font-weight:700"></span></div>':'');
+  sum.querySelector('b').textContent=shekel(total); if(saved) sum.querySelectorAll('.r')[1].lastChild.textContent=shekel(saved);
   if(CHECKOUT_URL && its.length){ const a=document.createElement('a'); a.className='btn1'; a.target='_blank'; a.rel='noopener'; a.href=utm(CHECKOUT_URL.replace('{items}',its.map(i=>encodeURIComponent(i.slug)).join(',')),'cart-panel'); a.textContent='לתשלום באתר · '+shekel(total); sum.appendChild(a); }
-  const go=document.createElement('button'); go.className=left?'btn2':'btn1'; go.textContent=left?'המשך לקנות':'סע לקופות'; go.addEventListener('click',()=>{ closeCart(); if(!left) driveTo(deptGoal(DEPTS.find(d=>d.id==='checkout'))); }); sum.appendChild(go);
+  const go=document.createElement('button'); go.className=its.length?'btn1':'btn2'; go.textContent=its.length?'סע לקופות':'המשך לקנות'; go.addEventListener('click',()=>{ closeCart(); if(its.length) driveTo(deptGoal(DEPTS.find(d=>d.id==='checkout'))); }); sum.appendChild(go);
+  const me=document.createElement('button'); me.className='btn2'; me.textContent='עריכת הדמות שלי'; me.addEventListener('click',()=>{ closeCart(); openCreator(true); }); sum.appendChild(me);
   body.appendChild(sum);
   if(its.length){ const h=document.createElement('div'); h.className='sect'; h.textContent='מה שבעגלה'; body.appendChild(h);
     its.forEach(it=>{ const el=document.createElement('div'); el.className='citem';
@@ -1475,7 +1526,7 @@ function updatePlayer(dt){
   if(dragT<=0 && fwd>.2 && speed>.5) camYaw=lerpAngle(camYaw,player.yaw+Math.PI,1-Math.exp(-dt*1.5*fwd));
 }
 function updateCamera(dt,menu){
-  if(menu){ const t=performance.now()/1000*.12; tmp.set(Math.sin(t)*6.6,8.4,2.2+Math.cos(t)*4.2); look.set(0,4.5,-3); }
+  if(menu){ const p=hero.g.position, fx=Math.sin(player.yaw), fz=Math.cos(player.yaw); tmp.set(p.x+fx*6.8,p.y+1.35,p.z+fz*6.8); look.set(p.x,p.y-.05,p.z); }
   else {
     let dist=7.6; const h=4.9, base=player.pos.y;
     // pull the camera in rather than letting it sit inside the atrium screen
@@ -1513,7 +1564,7 @@ let shownCard=null;
 function fillCard(it){
   if(it.img) $('#cardImg').src=it.img; $('#cardImg').hidden=!it.img; $('#cardPh').hidden=!!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
   $('#cardPrice').textContent=shekel(it.price); $('#cardOld').textContent=it.old?shekel(it.old):''; $('#cardDisc').textContent=it.old?`-${it.disc}%`:''; $('#cardDisc').hidden=!it.old;
-  $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardAdd').textContent=it.price>G.budget?'אין מספיק בכרטיס':'הוספה לעגלה';
+  $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardAdd').textContent='הוספה לעגלה';
 }
 function setHint(name,sub,warn,label){ ui.hint.hidden=false; ui.hintName.textContent=name; ui.hintPrice.textContent=sub; ui.hint.classList.toggle('warn',!!warn); ui.actLabel.textContent=label; ui.act.classList.remove('off'); }
 function updateNear(){
@@ -1531,9 +1582,9 @@ function updateNear(){
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית',near.to?'לקומה 1: בית, ניקיון, גיימינג':'לקרקע: מסכים, מטבח, קופות',false,near.to?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
-  else { const left=G.wanted.filter(i=>!i.taken).length; setHint('קופה',left?`חסרים ${left}`:'לתשלום',!!left,'שלם'); }
+  else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
-function updateArrow(t){
+function updateArrow(t){ arrow.visible=false; return;
   const f=player.floor, p=player.pos;
   let target=null, bd=1e9;
   G.wanted.forEach(it=>{ if(it.taken||it.f!==f) return; const d=Math.hypot(it.x-p.x,it.z-p.z); if(d<bd){ bd=d; target=it; } });
@@ -1553,7 +1604,7 @@ function loop(now){
   if(Q.acc>2.5){ const fps=Q.n/Q.acc; Q.acc=0; Q.n=0;   // keep it smooth: trade resolution for frame rate
     const np = fps<40 ? Math.max(.75,Q.pr-.25) : fps>57 ? Math.min(Q.max,Q.pr+.25) : Q.pr;
     if(np!==Q.pr){ Q.pr=np; renderer.setPixelRatio(np); onResize(); } }
-  if(G.paused){ renderer.render(scene,camera); requestAnimationFrame(loop); return; }
+  if(G.paused && G.state!=='edit'){ renderer.render(scene,camera); requestAnimationFrame(loop); return; }
   if(frame%3===0) drawScreen(screens[(frame/3)%3|0],t);
   if(frame%10===0){ const menu=G.state!=='play'; CATALOG.forEach(it=>{ const near=menu||(it.f===player.floor&&Math.hypot(it.x-player.pos.x,it.z-player.pos.z)<24); it.tag.visible=!it.taken&&near; it.near=near; }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
@@ -1564,19 +1615,16 @@ function loop(now){
     if(k>=1){ scene.remove(f.m); flyers.splice(i,1); addToCart(f.it); updateCartBadge(true); } }
   updateElevator(dt);
   if(G.state==='play'){
-    G.t+=dt;
+    G.t+=dt; if(frame%20===0) renderQuest();
     updatePlayer(dt); updateNear(); updateArrow(t);
-    ui.clock.textContent=fmtClock(G.t);
-    if(G.t>GAME_LEN-40) ui.clockPill.classList.add('late');
-    if(G.t>=GAME_LEN) endGame(false);
     updateCamera(dt,false);
     bubbleT-=dt;
     if(bubbleT<=0){ bubbleT=rand(6,11); const cands=shoppers.filter(s=>s.f===player.floor); if(cands.length){ shopperLine={s:pick(cands),until:t+2.6}; shopperBubble.textContent=pick(SHOPPER_LINES); } }
     if(shopperLine&&t<shopperLine.until&&shopperLine.s.pos.distanceTo(player.pos)<14) place2d(shopperBubble,shopperLine.s.pos,shopperLine.s.pos.y+2.75); else shopperBubble.hidden=true;
-    if(frame%2===0) drawMap(); if(frame%15===0) renderQuest();
+    if(frame%2===0) drawMap();
   } else {
-    updateCamera(dt,G.state==='menu'); arrow.visible=false;
-    hero.g.position.copy(player.pos); animGuy(hero,0,dt,true);
+    updateCamera(dt,G.state==='menu'||G.state==='edit'); arrow.visible=false;
+    hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false);
   }
   updateNPCs(dt,t);
   renderer.render(scene,camera);
@@ -1585,7 +1633,8 @@ function loop(now){
 function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.fov=w<h?66:52; camera.updateProjectionMatrix(); joyHome(); }
 addEventListener('resize',onResize); onResize();
 CATALOG.forEach(tagTexture);
-$('#loading').remove(); ui.menu.hidden=false; showBest();
+player.pos.set(0,0,24); player.yaw=Math.PI; hero.g.position.copy(player.pos); cart.c.visible=false; renderCreator();
+$('#loading').remove(); ui.menu.hidden=false;
 requestAnimationFrame(loop);
 });
 </script>
