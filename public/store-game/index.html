@@ -1,212 +1,228 @@
 <!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#141a30"></head><body><title>שעת סגירה · BuyToday</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Secular+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Secular+One&display=swap" rel="stylesheet">
 <style>
   :root{
     color-scheme:dark;
-    --ink:#f6f2e7;
-    --ink-dim:#b9bfd6;
-    --navy:#18214a;
-    --glass:rgba(20,28,64,.8);
-    --line:rgba(255,255,255,.14);
-    --yellow:#f55304;
-    --yellow-deep:#a33500;
-    --yellow-ink:#ffffff;
-    --orange-text:#ff8a4c;
-    --red:#ff5a4e;
-    --mint:#5fe3a1;
+    --ink:#f5f6fa; --ink-dim:#aab1c8; --ink-faint:#7e86a1;
+    --surface:rgba(15,20,44,.74); --surface-solid:#131a3a; --raise:rgba(255,255,255,.07); --line:rgba(255,255,255,.12);
+    --brand:#f55304; --brand-deep:#a33500; --brand-text:#ff8a4c;
+    --good:#43d18b; --bad:#ff5a4e; --you:#2f7de1;
     --display:'Secular One','Rubik',system-ui,sans-serif;
     --body:'Rubik',system-ui,-apple-system,'Segoe UI',sans-serif;
-    --st:env(safe-area-inset-top,0px);
-    --sb:env(safe-area-inset-bottom,0px);
+    --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px);
+    --g:12px; --r:16px;
   }
   [hidden]{display:none!important;}
   html,body{height:100%;}
-  body{margin:0;background:#141a30;color:var(--ink);font-family:var(--body);overflow:hidden;overscroll-behavior:none;
+  body{margin:0;background:#101530;color:var(--ink);font-family:var(--body);overflow:hidden;overscroll-behavior:none;
     -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;-webkit-tap-highlight-color:transparent;}
+  input{-webkit-user-select:text;user-select:text;font:inherit;}
   #game{position:fixed;inset:0;}
   #c{display:block;width:100%;height:100%;touch-action:none;}
-  #c,#joyzone,#act,.hud{touch-action:none;}
-  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;}
-  button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px;}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0;}
+  button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--brand-text);outline-offset:2px;}
+  .glass{background:var(--surface);border:1px solid var(--line);-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2);box-shadow:0 8px 24px rgba(4,6,20,.28);}
+  .num{font-variant-numeric:tabular-nums;}
 
+  /* ---------- HUD ---------- */
   .hud{position:fixed;inset:0;pointer-events:none;direction:rtl;}
   .hud > *{pointer-events:auto;}
-  .pill{background:var(--glass);border:1px solid var(--line);border-radius:18px;
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(5,8,25,.35);}
+  .topbar{position:fixed;top:calc(var(--st) + 10px);left:var(--g);right:var(--g);display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center;pointer-events:none;}
+  .topbar > *{pointer-events:auto;}
+  .chip{height:42px;border-radius:14px;display:flex;align-items:center;gap:6px;padding:0 11px;white-space:nowrap;min-width:0;}
+  .chip small{font-size:11px;color:var(--ink-dim);}
+  .chip b{font-size:16.5px;font-weight:700;}
+  .chip svg{width:18px;height:18px;flex:none;}
+  #clockPill{direction:ltr;}
+  #clockPill b{color:var(--brand-text);}
+  #clockPill.late b{color:var(--bad);animation:blink 1s steps(2) infinite;}
+  @keyframes blink{50%{opacity:.4}}
+  #floorChip{justify-self:center;max-width:100%;font-size:13px;font-weight:700;padding:0 12px;height:34px;border-radius:12px;}
+  #floorChip span{overflow:hidden;text-overflow:ellipsis;}
+  #floorChip i{width:8px;height:8px;border-radius:50%;background:var(--brand);}
 
-  .tl{position:fixed;left:12px;top:calc(var(--st) + 12px);display:flex;gap:8px;direction:ltr;}
-  .clock{display:flex;flex-direction:column;align-items:flex-start;padding:7px 14px 6px;}
-  .clock span{font-family:var(--display);font-size:24px;line-height:1;color:var(--orange-text);font-variant-numeric:tabular-nums;letter-spacing:.5px;}
-  .clock small{font-size:10.5px;color:var(--ink-dim);margin-top:3px;direction:rtl;}
-  .clock.late span{color:var(--red);animation:blink 1s steps(2) infinite;}
-  @keyframes blink{50%{opacity:.45}}
-  #mute{position:fixed;left:12px;top:calc(var(--st) + 220px);width:46px;height:46px;display:grid;place-items:center;}
-  #mute svg{width:22px;height:22px;}
+  .quest{position:fixed;top:calc(var(--st) + 62px);left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 2*var(--g)));border-radius:var(--r);overflow:hidden;z-index:4;}
+  .quest.open{background:rgba(15,20,44,.94);}
+  .quest-h{width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;text-align:right;}
+  .ring{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--brand) var(--p,0%),rgba(255,255,255,.12) 0);}
+  .ring b{width:32px;height:32px;border-radius:50%;background:var(--surface-solid);display:grid;place-items:center;font-size:12px;font-weight:700;}
+  .qt{flex:1;min-width:0;display:grid;}
+  .qt small{font-size:11px;color:var(--ink-dim);}
+  .qt b{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .qm{flex:none;font-size:12px;color:var(--ink-dim);text-align:left;}
+  .quest-h svg{flex:none;width:18px;height:18px;color:var(--ink-dim);transition:transform .2s;}
+  .quest.open .quest-h svg{transform:rotate(180deg);}
+  #items{list-style:none;margin:0;padding:2px 10px 10px;display:none;gap:6px;}
+  .quest.open #items{display:grid;}
+  #items li{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:var(--raise);font-size:13.5px;}
+  #items li i{width:22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;font-style:normal;font-size:12px;font-weight:700;display:grid;place-items:center;}
+  #items li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #items li em{font-style:normal;font-size:12px;color:var(--ink-dim);white-space:nowrap;}
+  #items li.done{opacity:.55;}
+  #items li.done i{background:var(--good);}
+  #items li.done span{text-decoration:line-through;}
 
-  #map{position:fixed;left:12px;top:calc(var(--st) + 72px);width:92px;height:123px;border-radius:14px;
-    border:1px solid var(--line);box-shadow:0 6px 18px rgba(5,8,25,.35);pointer-events:none;}
+  #map{position:fixed;left:var(--g);top:calc(var(--st) + 130px);width:88px;height:88px;border-radius:50%;padding:0;overflow:visible;}
+  #map canvas{display:block;width:88px;height:88px;border-radius:50%;}
+  #map span{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:var(--brand);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+  #mute{position:fixed;right:var(--g);top:calc(var(--st) + 130px);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;}
+  #mute svg{width:20px;height:20px;}
 
-  .tr{position:fixed;right:12px;top:calc(var(--st) + 12px);display:flex;flex-direction:column;align-items:flex-end;gap:8px;width:min(212px,calc(100vw - 180px));}
-  .money{display:flex;align-items:center;gap:10px;padding:8px 14px;}
-  .money small{font-size:11px;color:var(--ink-dim);}
-  .money span{font-family:var(--display);font-size:22px;line-height:1;font-variant-numeric:tabular-nums;}
-  .money.hit{animation:shake .45s;}
-  .money.hit span{color:var(--red);}
-  @keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
-  .list{width:100%;padding:0;overflow:hidden;border-right:4px solid var(--yellow);}
-  .list-h{width:100%;display:flex;justify-content:space-between;align-items:center;padding:9px 12px 7px;font-size:12px;color:var(--ink-dim);letter-spacing:.3px;}
-  .list-h b{font-family:var(--display);font-weight:400;color:var(--orange-text);font-size:14px;font-variant-numeric:tabular-nums;}
-  #items{list-style:none;margin:0;padding:0 12px 10px;display:grid;gap:5px;}
-  #items li{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:500;line-height:1.25;}
-  #items li .n span{text-align:right;}
-  #items li .p{font-size:12px;color:var(--ink-dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
-  #items li .n{display:flex;align-items:center;gap:7px;min-width:0;}
-  #items li .n i{flex:none;width:14px;height:14px;border-radius:4px;border:2px solid var(--orange-text);display:grid;place-items:center;}
-  #items li.done{color:var(--ink-dim);}
-  #items li.done .n span{text-decoration:line-through;}
-  #items li.done .n i{background:var(--mint);border-color:var(--mint);}
-  #items li.done .n i::after{content:"";width:6px;height:3px;border:2px solid #10321f;border-top:0;border-right:0;transform:rotate(-45deg) translate(0,-1px);}
-  .list.closed #items{display:none;}
+  #toast{position:fixed;left:50%;top:36%;transform:translate(-50%,6px);max-width:calc(100vw - 2*var(--g));padding:10px 16px;border-radius:14px;font-weight:700;font-size:14.5px;text-align:center;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:6;}
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+  #toast.good{background:rgba(20,110,70,.9);} #toast.bad{background:rgba(140,24,34,.9);}
 
-  #toast{position:fixed;left:50%;top:34%;transform:translate(-50%,0);padding:10px 18px;border-radius:16px;background:var(--glass);
-    border:1px solid var(--line);font-weight:700;font-size:15px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;}
-  #toast.show{opacity:1;transform:translate(-50%,-8px);}
-  #toast.bad{background:rgba(120,20,30,.85);}
-  #toast.good{background:rgba(18,90,60,.88);}
-
-  #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 150px);display:flex;align-items:center;gap:10px;
-    padding:11px 20px;border-radius:30px;background:var(--yellow);color:var(--yellow-ink);box-shadow:0 5px 0 var(--yellow-deep),0 12px 26px rgba(0,0,0,.3);
-    white-space:nowrap;pointer-events:none;}
-  #hint b{font-family:var(--display);font-weight:400;font-size:19px;}
-  #hint span{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;}
-  #hint.warn{background:#ffe1dc;color:#3a1206;box-shadow:0 5px 0 #d39a90,0 12px 26px rgba(0,0,0,.3);}
-
-  #joyzone{position:fixed;left:0;bottom:0;width:52vw;height:46vh;touch-action:none;}
-  #joy{position:absolute;width:128px;height:128px;margin:-64px 0 0 -64px;border-radius:50%;
-    background:radial-gradient(circle,rgba(255,255,255,.05),rgba(255,255,255,.14));border:2px solid rgba(255,255,255,.35);pointer-events:none;transition:opacity .2s;}
-  #knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(245,245,245,.9);
-    box-shadow:0 4px 12px rgba(0,0,0,.3);}
-  #joyzone.idle #joy{opacity:.6;}
-
-  #act{position:fixed;right:20px;bottom:calc(var(--sb) + 40px);width:94px;height:94px;border-radius:50%;background:var(--yellow);color:var(--yellow-ink);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 6px 0 var(--yellow-deep),0 14px 28px rgba(0,0,0,.35);
-    font-family:var(--display);font-size:17px;transition:transform .08s, opacity .2s;}
-  #act svg{width:32px;height:32px;}
-  #act:active{transform:translateY(4px);box-shadow:0 2px 0 var(--yellow-deep),0 8px 18px rgba(0,0,0,.35);}
-  #act.off{opacity:.42;filter:grayscale(.6);}
-
-  .bubble{position:fixed;left:0;top:0;transform:translate(-50%,-100%);padding:7px 12px;border-radius:14px;background:#fff;color:#1b1d26;
-    font-weight:700;font-size:13px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.28);}
-  .bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff;}
-  .bubble.red{background:var(--red);color:#fff;}
-  .bubble.red::after{border-top-color:var(--red);}
-
-  .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;direction:rtl;
-    background:radial-gradient(120% 90% at 50% 30%,rgba(20,28,64,.35),rgba(10,14,34,.88));}
-  .panel{width:100%;max-width:390px;padding:26px 22px 22px;border-radius:26px;background:rgba(19,26,60,.9);border:1px solid var(--line);
-    box-shadow:0 30px 60px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
-  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.8px;color:var(--ink-dim);}
-  .eyebrow::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--yellow);transform:rotate(45deg);}
-  h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,14vw,62px);line-height:.95;margin:10px 0 6px;color:var(--orange-text);text-wrap:balance;
-    text-shadow:0 4px 0 #7a2500;}
-  .lede{margin:0 0 16px;color:var(--ink);font-size:15.5px;line-height:1.55;}
-  .rules{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:9px;}
-  .rules li{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;font-size:14px;line-height:1.4;color:var(--ink-dim);}
-  .rules li b{color:var(--ink);font-weight:700;}
-  .rules .k{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid var(--line);}
-  .rules .k svg{width:20px;height:20px;}
-  .go{width:100%;padding:15px 18px;border-radius:18px;background:var(--yellow);color:var(--yellow-ink);font-family:var(--display);font-size:21px;
-    box-shadow:0 6px 0 var(--yellow-deep);}
-  .go:active{transform:translateY(4px);box-shadow:0 2px 0 var(--yellow-deep);}
-  .best{margin:12px 0 0;text-align:center;font-size:12.5px;color:var(--ink-dim);font-variant-numeric:tabular-nums;}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 20px;}
-  .stat{padding:12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--line);}
-  .stat small{display:block;font-size:11.5px;color:var(--ink-dim);}
-  .stat b{font-family:var(--display);font-weight:400;font-size:24px;font-variant-numeric:tabular-nums;}
-  .stat.wide{grid-column:1/-1;background:rgba(245,83,4,.14);border-color:rgba(245,83,4,.45);}
-  .stat.wide b{color:var(--orange-text);font-size:30px;}
-  #card{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 146px);width:min(340px,calc(100vw - 32px));display:grid;grid-template-columns:72px 1fr;gap:12px;
-    padding:10px 12px 10px 10px;border-radius:20px;background:#fff;color:#171a26;box-shadow:0 14px 34px rgba(0,0,0,.4);pointer-events:none;}
-  #card img{width:72px;height:72px;border-radius:12px;object-fit:contain;background:#fff;border:1px solid #eceef3;}
-  #card .b{font-size:11px;font-weight:700;letter-spacing:.6px;color:#8a90a3;}
+  .sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 136px);width:min(380px,calc(100vw - 2*var(--g)));z-index:5;}
+  #hint{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px;border-radius:14px;width:auto;max-width:calc(100vw - 2*var(--g));white-space:nowrap;pointer-events:none;}
+  #hint b{font-size:15px;} #hint span{font-size:13px;color:var(--ink-dim);}
+  #hint.warn span{color:#ffb4aa;}
+  #card{background:#fff;color:#161a2b;border-radius:18px;padding:10px;display:grid;grid-template-columns:76px 1fr;gap:6px 12px;box-shadow:0 18px 40px rgba(0,0,0,.4);}
+  #card img,#card .ph{width:76px;height:76px;border-radius:12px;object-fit:contain;background:#f5f6f8;}
+  #card .ph{display:grid;place-items:center;color:#9aa0b4;font-size:11px;font-weight:700;}
+  #card .ci{min-width:0;display:grid;align-content:center;gap:2px;}
+  #card .b{font-size:11px;font-weight:700;letter-spacing:.6px;color:#8a90a3;display:flex;gap:6px;align-items:center;}
+  #card .tagw{font-size:10.5px;letter-spacing:0;color:#a33500;background:#ffe6d8;border-radius:6px;padding:1px 6px;}
   #card .nm{font-size:13px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-  #card .row{display:flex;align-items:baseline;gap:7px;margin-top:3px;flex-wrap:wrap;}
-  #card .pr{font-family:var(--display);font-size:19px;font-variant-numeric:tabular-nums;}
-  #card s{font-size:12px;color:#8a90a3;font-variant-numeric:tabular-nums;}
+  #card .row{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;}
+  #card .pr{font-size:19px;font-weight:800;}
+  #card s{font-size:12px;color:#8a90a3;}
   #card .dc{font-size:11px;font-weight:700;color:#fff;background:#e0342a;border-radius:6px;padding:1px 6px;}
-  #card .tagw{font-size:11px;font-weight:700;color:#a33500;background:#ffe6d8;border-radius:6px;padding:1px 6px;}
-  #card a{pointer-events:auto;margin-inline-start:auto;font-size:12.5px;font-weight:700;color:#f55304;text-decoration:none;white-space:nowrap;padding:4px 0;}
-  #card a:focus-visible{outline:2px solid #f55304;border-radius:4px;}
-  .receipt{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px;max-height:34vh;overflow-y:auto;}
-  .receipt li{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:6px;border-radius:14px;background:rgba(255,255,255,.06);}
-  .receipt img{width:44px;height:44px;border-radius:10px;background:#fff;object-fit:contain;}
-  .receipt .t{font-size:13.5px;font-weight:500;line-height:1.25;}
-  .receipt .t small{display:block;color:var(--ink-dim);font-size:12px;font-variant-numeric:tabular-nums;}
-  .receipt a{font-size:12.5px;font-weight:700;color:var(--orange-text);text-decoration:none;padding:6px 8px;border-radius:10px;border:1px solid rgba(255,138,76,.45);white-space:nowrap;}
-  .ghost{display:block;text-align:center;margin-top:10px;padding:12px;border-radius:16px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:700;font-size:14.5px;}
-  .ghost span{color:var(--orange-text);}
-  .real{margin:-4px 0 16px;font-size:13px;color:var(--ink-dim);line-height:1.5;}
-  .real b{color:var(--orange-text);font-weight:700;}
-  #mapBtn{position:fixed;left:12px;top:calc(var(--st) + 274px);height:46px;padding:0 14px;display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;}
-  #mapBtn svg{width:20px;height:20px;}
-  #map{pointer-events:auto!important;cursor:pointer;}
-  #card a.buy{pointer-events:auto;margin-inline-start:auto;font-size:13px;font-weight:700;color:#fff;background:#f55304;text-decoration:none;white-space:nowrap;padding:7px 12px;border-radius:12px;box-shadow:0 3px 0 #a33500;}
-  .dir{align-items:flex-start;overflow-y:auto;padding-block:calc(var(--st) + 14px) calc(var(--sb) + 20px);touch-action:pan-y;}
-  .dpanel{width:100%;max-width:480px;margin-inline:auto;padding:18px 16px 20px;border-radius:26px;background:rgba(19,26,60,.96);border:1px solid var(--line);box-shadow:0 30px 60px rgba(0,0,0,.45);}
-  .dhead{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  .dhead h2{margin:0;font-family:var(--display);font-weight:400;font-size:28px;color:var(--orange-text);}
-  .dhead button{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);font-size:18px;}
-  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0 12px;padding:4px;border-radius:14px;background:rgba(255,255,255,.06);}
-  .tabs button{padding:9px;border-radius:10px;font-weight:700;font-size:14px;color:var(--ink-dim);}
-  .tabs button.on{background:#f55304;color:#fff;}
-  #bigmap{display:block;width:100%;max-width:340px;margin:0 auto;aspect-ratio:3/4;border-radius:16px;touch-action:manipulation;cursor:pointer;}
-  .dhint{margin:10px 0 14px;text-align:center;font-size:13px;color:var(--ink-dim);}
-  #depts{display:grid;gap:10px;}
-  .dept{padding:12px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid var(--line);}
-  .dept .top{display:flex;align-items:center;gap:10px;}
-  .dept .chip{flex:none;width:12px;height:36px;border-radius:6px;}
-  .dept .tt{flex:1;min-width:0;}
-  .dept b{display:block;font-size:16px;}
-  .dept small{display:block;font-size:12.5px;color:var(--ink-dim);}
-  .drive{flex:none;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:12px;background:#f55304;color:#fff;font-weight:700;font-size:14px;box-shadow:0 3px 0 #a33500;}
-  .drive svg{width:16px;height:16px;}
-  .prods{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:2px;touch-action:pan-x;}
-  .prod{flex:none;width:112px;padding:7px;border-radius:14px;background:rgba(255,255,255,.07);text-align:right;display:grid;gap:3px;}
-  .prod img{width:100%;height:70px;object-fit:contain;background:#fff;border-radius:10px;}
-  .prod span{font-size:12px;font-weight:500;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-  .prod em{font-style:normal;font-size:12px;color:var(--orange-text);font-variant-numeric:tabular-nums;}
-  .prod .noimg{height:70px;border-radius:10px;background:#fff;color:#8a90a3;font-style:normal;font-weight:700;font-size:12px;display:grid;place-items:center;}
-  .prod.want{outline:2px solid #f55304;}
+  #card .cb{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+  .btn1,.btn2{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:12px;font-weight:700;font-size:14.5px;text-decoration:none;}
+  .btn1{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-deep);}
+  .btn2{background:#eef0f5;color:#161a2b;}
+  .btn1:active,.btn2:active{transform:translateY(2px);box-shadow:none;}
+
+  #joyzone{position:fixed;left:0;bottom:0;width:50vw;height:40vh;touch-action:none;z-index:1;}
+  #joy{position:absolute;width:124px;height:124px;margin:-62px 0 0 -62px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04),rgba(255,255,255,.12));border:2px solid rgba(255,255,255,.3);pointer-events:none;transition:opacity .2s;}
+  #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(250,250,252,.92);box-shadow:0 4px 12px rgba(0,0,0,.3);}
+  #joyzone.idle #joy{opacity:.55;}
+  #act{position:fixed;right:22px;bottom:calc(var(--sb) + 34px);width:84px;height:84px;border-radius:50%;background:var(--brand);color:#fff;z-index:3;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 5px 0 var(--brand-deep),0 12px 26px rgba(0,0,0,.35);font-weight:700;font-size:14px;transition:opacity .2s;}
+  #act svg{width:28px;height:28px;}
+  #act:active{transform:translateY(3px);box-shadow:0 2px 0 var(--brand-deep);}
+  #act.off{opacity:.4;filter:grayscale(.5);}
+
+  .bubble{position:fixed;left:0;top:0;padding:6px 11px;border-radius:12px;background:#fff;color:#1b1d26;font-weight:700;font-size:12.5px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.25);}
+  .bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff;}
+
+  /* ---------- full screens ---------- */
+  .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;direction:rtl;background:radial-gradient(120% 90% at 50% 30%,rgba(16,21,48,.3),rgba(8,11,28,.9));z-index:10;}
+  .panel{width:100%;max-width:400px;padding:24px 20px 20px;border-radius:24px;background:rgba(17,23,52,.94);border:1px solid var(--line);box-shadow:0 30px 60px rgba(0,0,0,.45);}
+  .brandrow{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-dim);}
+  .logo{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:8px;background:var(--brand);color:#fff;font-weight:800;font-size:13px;letter-spacing:.2px;}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(44px,13vw,58px);line-height:1;margin:14px 0 8px;color:#fff;text-wrap:balance;}
+  h1 em{font-style:normal;color:var(--brand-text);}
+  .lede{margin:0 0 16px;font-size:15px;line-height:1.55;color:var(--ink-dim);}
+  .lede b{color:var(--ink);font-weight:500;}
+  .rules{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:8px;}
+  .rules li{display:grid;grid-template-columns:36px 1fr;gap:10px;align-items:center;font-size:13.5px;line-height:1.4;color:var(--ink-dim);padding:8px;border-radius:14px;background:var(--raise);}
+  .rules li b{color:var(--ink);font-weight:700;}
+  .rules .k{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(245,83,4,.14);color:var(--brand-text);}
+  .rules .k svg{width:20px;height:20px;}
+  .go{width:100%;height:54px;border-radius:16px;background:var(--brand);color:#fff;font-weight:800;font-size:18px;box-shadow:0 5px 0 var(--brand-deep);}
+  .go:active{transform:translateY(3px);box-shadow:0 2px 0 var(--brand-deep);}
+  .best{margin:12px 0 0;text-align:center;font-size:12.5px;color:var(--ink-dim);}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0 16px;}
+  .stat{padding:10px;border-radius:14px;background:var(--raise);}
+  .stat small{display:block;font-size:11px;color:var(--ink-dim);}
+  .stat b{font-size:19px;font-weight:800;}
+  .stat.hi b{color:var(--brand-text);}
+  .receipt{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:8px;max-height:34vh;overflow-y:auto;touch-action:pan-y;}
+  .receipt li{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:6px;border-radius:14px;background:var(--raise);}
+  .receipt img{width:48px;height:48px;border-radius:10px;background:#fff;object-fit:contain;}
+  .receipt .t{font-size:13.5px;font-weight:500;line-height:1.3;min-width:0;}
+  .receipt .t small{display:block;color:var(--ink-dim);font-size:12px;}
+  .receipt a{height:36px;padding:0 12px;border-radius:10px;background:var(--brand);color:#fff;font-weight:700;font-size:13px;text-decoration:none;display:flex;align-items:center;white-space:nowrap;}
+  .paybtn{display:flex;align-items:center;justify-content:center;height:52px;margin:0 0 10px;border-radius:16px;background:var(--good);color:#06301b;font-weight:800;font-size:17px;text-decoration:none;box-shadow:0 5px 0 #23905a;}
+  .ghost{display:flex;align-items:center;justify-content:center;gap:6px;height:46px;margin-top:10px;border-radius:14px;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;}
+
+  /* ---------- mall directory ---------- */
+  .dir{align-items:stretch;padding:calc(var(--st) + 10px) 0 0;background:rgba(8,11,28,.6);}
+  .dpanel{width:100%;max-width:520px;margin-inline:auto;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:#f4f5f9;color:#161a2b;box-shadow:0 -10px 40px rgba(0,0,0,.35);overflow:hidden;}
+  .dtop{padding:14px 16px 10px;display:grid;gap:10px;background:#fff;border-bottom:1px solid #e6e8ef;}
+  .dhead{display:flex;align-items:center;justify-content:space-between;}
+  .dhead small{display:block;font-size:11.5px;font-weight:700;color:var(--brand);letter-spacing:.4px;}
+  .dhead h2{margin:0;font-size:22px;font-weight:800;}
+  .dhead button{width:40px;height:40px;border-radius:12px;background:#eef0f5;display:grid;place-items:center;}
+  .dhead button svg{width:18px;height:18px;}
+  .search{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:12px;background:#eef0f5;}
+  .search svg{width:18px;height:18px;color:#8a90a3;flex:none;}
+  .search input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:15px;color:#161a2b;}
+  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#eef0f5;}
+  .tabs button{height:36px;border-radius:9px;font-weight:700;font-size:14px;color:#5a6178;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .tabs button small{font-size:11px;font-weight:700;color:#fff;background:var(--brand);border-radius:8px;padding:0 6px;line-height:18px;}
+  .tabs button small:empty{display:none;}
+  .tabs button.on{background:#fff;color:#161a2b;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+  .dscroll{flex:1;overflow-y:auto;touch-action:pan-y;padding:12px 16px calc(var(--sb) + 20px);display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start;}
+  #depts{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;}
+  .mapcard,.dept{min-width:0;}
+  .mapcard{border-radius:18px;background:#fff;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  #bigmap{display:block;width:100%;max-width:360px;margin:0 auto;aspect-ratio:3/4;touch-action:manipulation;cursor:pointer;}
+  .legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:8px;font-size:12px;color:#5a6178;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .sect{font-size:12px;font-weight:700;color:#8a90a3;letter-spacing:.4px;margin:4px 2px -4px;}
+  .dept{border-radius:18px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;}
+  .drow{width:100%;display:flex;align-items:center;gap:12px;padding:12px;text-align:right;}
+  .ico{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 16%,#fff);color:var(--c);}
+  .ico svg{width:22px;height:22px;}
+  .drow .tt{flex:1;min-width:0;}
+  .drow b{display:block;font-size:15.5px;font-weight:700;}
+  .drow small{display:block;font-size:12.5px;color:#6b7289;}
+  .drive{flex:none;display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 14px;border-radius:11px;background:var(--brand);color:#fff;font-weight:700;font-size:14px;}
+  .drive svg{width:15px;height:15px;transform:scaleX(-1);}
+  .prods{display:flex;gap:8px;overflow-x:auto;padding:0 12px 12px;touch-action:pan-x;scrollbar-width:none;}
+  .prod{flex:none;width:124px;padding:6px;border-radius:14px;background:#f4f5f9;text-align:right;display:grid;gap:4px;position:relative;}
+  .prod img,.prod .ph{width:100%;height:78px;object-fit:contain;background:#fff;border-radius:10px;}
+  .prod .ph{display:grid;place-items:center;color:#9aa0b4;font-size:11px;font-weight:700;}
+  .prod span{font-size:12.5px;font-weight:500;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:31px;}
+  .prod em{font-style:normal;font-size:13px;font-weight:800;}
+  .prod .pin{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.2);}
   .prod.got{opacity:.45;}
-  .paybtn{display:block;text-align:center;margin:0 0 12px;padding:15px;border-radius:18px;background:var(--mint);color:#0d2a1c;font-family:var(--display);font-size:20px;text-decoration:none;box-shadow:0 6px 0 #2e9e68;}
-  .receipt a.buy{color:#fff;background:#f55304;border-color:#f55304;}
-  #loading{position:fixed;inset:0;display:grid;place-items:center;background:#141a30;font-family:var(--display);color:var(--orange-text);font-size:22px;direction:rtl;}
-  @media (prefers-reduced-motion: reduce){ #toast{transition:none;} .clock.late span{animation:none;} }
+  .empty{padding:24px;text-align:center;color:#6b7289;font-size:14px;}
+  #loading{position:fixed;inset:0;display:grid;place-items:center;background:#101530;color:var(--ink-dim);font-size:15px;direction:rtl;}
+  @media (prefers-reduced-motion: reduce){ #toast,.quest-h svg{transition:none;} #clockPill.late b{animation:none;} }
 </style>
 
 <div id="game"><canvas id="c"></canvas></div>
 
 <div class="hud" id="hud" hidden>
-  <div class="tl">
-    <div class="pill clock" id="clockPill"><span id="clock">20:52:00</span><small>נסגרים ב־21:00</small></div>
-    <button id="mute" class="pill" aria-label="השתקת צליל">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="xmark" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg>
-    </button>
+  <div class="topbar">
+    <div class="chip glass" id="clockPill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b class="num" id="clock">20:52:00</b></div>
+    <div class="chip glass" id="floorChip"><i></i><span id="floorName">קרקע</span></div>
+    <div class="chip glass" id="moneyPill"><small>בכרטיס</small><b class="num" id="money">₪0</b></div>
   </div>
-  <canvas id="map" width="184" height="246" aria-label="מפת הקניון"></canvas>
-  <button id="mapBtn" class="pill" aria-label="מפת הקניון"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>מפה</button>
-  <div class="tr">
-    <div class="pill money" id="moneyPill"><small>בכרטיס</small><span id="money">₪0</span></div>
-    <div class="pill list" id="list">
-      <button class="list-h" id="listH"><span>רשימת קניות</span><b id="count">0/4</b></button>
-      <ul id="items"></ul>
+  <div class="quest glass" id="list">
+    <button class="quest-h" id="listH" aria-expanded="false" aria-controls="items">
+      <span class="ring" id="ring"><b class="num" id="count">0/4</b></span>
+      <span class="qt"><small id="nextLabel">הבא ברשימה</small><b id="nextName" dir="auto"></b></span>
+      <span class="qm num" id="nextMeta"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <ul id="items"></ul>
+  </div>
+  <button id="map" class="glass" aria-label="פתיחת מפת הקניון"><canvas id="mapc" width="176" height="176"></canvas><span>מפה</span></button>
+  <button id="mute" class="glass" aria-label="השתקת צליל">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="xmark" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg>
+  </button>
+  <div id="toast" class="glass" role="status" aria-live="polite"></div>
+  <div id="hint" class="sheet glass" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
+  <div id="card" class="sheet" hidden>
+    <img id="cardImg" alt=""><div class="ph" id="cardPh" hidden>BuyToday</div>
+    <div class="ci">
+      <div class="b"><span id="cardBrand"></span><span class="tagw" id="cardWant">ברשימה שלך</span></div>
+      <div class="nm" id="cardName"></div>
+      <div class="row"><span class="pr num" id="cardPrice"></span><s class="num" id="cardOld"></s><span class="dc" id="cardDisc" dir="ltr"></span></div>
+    </div>
+    <div class="cb">
+      <button class="btn2" id="cardAdd">הוספה לעגלה</button>
+      <a class="btn1" id="cardLink" target="_blank" rel="noopener">לעמוד המוצר ↗</a>
     </div>
   </div>
-  <div id="toast"></div>
-  <div id="hint" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
-  <div id="card" hidden><img id="cardImg" alt=""><div><div class="b" id="cardBrand"></div><div class="nm" id="cardName"></div><div class="row"><span class="pr" id="cardPrice"></span><s id="cardOld"></s><span class="dc" id="cardDisc" dir="ltr"></span><span class="tagw" id="cardWant">ברשימה</span><a id="cardLink" class="buy" target="_blank" rel="noopener">קנה עכשיו ↗</a></div></div></div>
   <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div></div></div>
   <button id="act" class="off" aria-label="פעולה">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/></svg>
@@ -217,45 +233,51 @@
 
 <div class="screen" id="menu" hidden>
   <div class="panel">
-    <span class="eyebrow">קניון BuyToday · 2 קומות · נסגרים ב־21:00</span>
-    <h1>שעת סגירה</h1>
-    <p class="lede">הקניון של BuyToday נסגר בעוד 8 דקות. דחפו את העגלה בין המתחמים בשתי הקומות, אספו את הרשימה והגיעו לקופות בקומת הקרקע.</p>
-    <p class="real">כל המוצרים על המדפים <b>אמיתיים</b>, במחירים ובמבצעים של BuyToday. מוצר מצא חן בעיניכם? אפשר לקנות אותו באתר.</p>
+    <div class="brandrow"><span class="logo">BuyToday</span><span>קניון · 2 קומות · נסגרים ב־21:00</span></div>
+    <h1>שעת <em>סגירה</em></h1>
+    <p class="lede">נשארו 8 דקות עד שהקניון נסגר. אספו את <b>4 המוצרים שברשימה</b> בשתי הקומות והגיעו לקופות. כל מוצר על המדפים <b>אמיתי</b>, במחיר של היום ב־BuyToday.</p>
     <ul class="rules">
-      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="#ff8a4c" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="#ff8a4c"/></svg></span><span><b>ג׳ויסטיק משמאל</b> להליכה. גררו על המסך כדי לסובב מצלמה.</span></li>
-      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="#ff8a4c" stroke-width="2.2" stroke-linecap="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/></svg></span><span><b>הכפתור הכתום</b> מכניס מוצר לעגלה ומשלם בקופה.</span></li>
-      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="#ff8a4c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9.5 9.5 12 7l2.5 2.5M9.5 14.5 12 17l2.5-2.5"/></svg></span><span><b>המעלית השקופה</b> במרכז הקניון עולה לקומה 1: מוצרי חשמל לבית, ניקיון חכם וגיימינג.</span></li>
+      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg></span><span><b>ג׳ויסטיק משמאל</b> להליכה. גרירה על המסך מסובבת את המצלמה.</span></li>
+      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg></span><span><b>מפה</b> עם כל המחלקות. בוחרים מחלקה או מוצר ולוחצים <b>סע</b>.</span></li>
+      <li><span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></span><span><b>לעמוד המוצר</b> פותח את המוצר האמיתי באתר, לקנייה.</span></li>
     </ul>
     <button class="go" id="startBtn">נכנסים לקניון</button>
-    <p class="best" id="bestLine"></p>
+    <p class="best num" id="bestLine"></p>
   </div>
 </div>
 
 <div class="screen dir" id="dir" hidden>
-  <div class="dpanel">
-    <div class="dhead"><h2>מפת הקניון</h2><button id="dirClose" aria-label="סגירת המפה">✕</button></div>
-    <div class="tabs" id="tabs"><button data-f="0" class="on">קומת קרקע</button><button data-f="1">קומה 1</button></div>
-    <canvas id="bigmap" width="600" height="800"></canvas>
-    <p class="dhint">הקישו על מחלקה או על מוצר, והדמות תיסע לשם לבד. גם במעלית.</p>
-    <div id="depts"></div>
+  <div class="dpanel" role="dialog" aria-modal="true" aria-labelledby="dirTitle">
+    <div class="dtop">
+      <div class="dhead"><div><small>BuyToday</small><h2 id="dirTitle">מפת הקניון</h2></div>
+        <button id="dirClose" aria-label="סגירת המפה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="dirSearch" type="search" placeholder="חיפוש מוצר או מחלקה" autocomplete="off" enterkeyhint="search"></label>
+      <div class="tabs" id="tabs"><button data-f="0">קומת קרקע <small id="tab0"></small></button><button data-f="1">קומה 1 <small id="tab1"></small></button></div>
+    </div>
+    <div class="dscroll" id="dscroll">
+      <div class="mapcard"><canvas id="bigmap" width="720" height="960" aria-label="מפת הקומה"></canvas>
+        <div class="legend"><span><i style="background:#2f7de1"></i>אתם כאן</span><span><i style="background:#f55304"></i>ברשימה שלכם</span><span><i style="background:#161a2b"></i>מעלית</span></div></div>
+      <div id="depts"></div>
+    </div>
   </div>
 </div>
 
 <div class="screen" id="end" hidden>
   <div class="panel">
-    <span class="eyebrow" id="endEyebrow">קבלה</span>
-    <h1 id="endTitle">יצאתם בזמן</h1>
+    <div class="brandrow"><span class="logo">BuyToday</span><span id="endEyebrow">קבלה</span></div>
+    <h1 id="endTitle">הקבלה שלכם</h1>
     <p class="lede" id="endText"></p>
     <div class="stats">
-      <div class="stat"><small>נשאר בכרטיס</small><b id="stMoney">₪0</b></div>
-      <div class="stat"><small>שעה ביציאה</small><b id="stTime">20:58</b></div>
-      <div class="stat wide"><small>ניקוד</small><b id="stScore">0</b></div>
+      <div class="stat"><small>נשאר בכרטיס</small><b class="num" id="stMoney">₪0</b></div>
+      <div class="stat"><small>יציאה</small><b class="num" id="stTime">20:58</b></div>
+      <div class="stat hi"><small>ניקוד</small><b class="num" id="stScore">0</b></div>
     </div>
     <ul class="receipt" id="receipt"></ul>
     <a class="paybtn" id="payLink" target="_blank" rel="noopener" hidden>לתשלום באתר</a>
     <button class="go" id="againBtn">עוד סיבוב</button>
-    <a class="ghost" id="dealsLink" target="_blank" rel="noopener">כל המבצעים ב־BuyToday <span>↗</span></a>
-    <p class="best" id="bestLine2"></p>
+    <a class="ghost" id="dealsLink" target="_blank" rel="noopener">כל המבצעים ב־BuyToday ↗</a>
+    <p class="best num" id="bestLine2"></p>
   </div>
 </div>
 
@@ -296,16 +318,15 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = .95;
+renderer.toneMappingExposure = 1.0;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1d2438);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 180);
-scene.fog = new THREE.Fog(0xaeb6c6, 42, 130);
 // soft reflections: a tiny procedural "mall" lit by ceiling panels and orange strips
 (function(){ const pm=new THREE.PMREMGenerator(renderer), es=new THREE.Scene();
-  es.add(new THREE.Mesh(new THREE.BoxGeometry(60,16,80),new THREE.MeshBasicMaterial({color:0x4a5270,side:THREE.BackSide})));
-  const floorE=new THREE.Mesh(new THREE.PlaneGeometry(60,80),new THREE.MeshBasicMaterial({color:0x8a90a0})); floorE.rotation.x=-Math.PI/2; floorE.position.y=-7.9; es.add(floorE);
-  const pan=new THREE.MeshBasicMaterial({color:0xffffff}), org=new THREE.MeshBasicMaterial({color:0xff7a2a});
+  es.add(new THREE.Mesh(new THREE.BoxGeometry(60,16,80),new THREE.MeshBasicMaterial({color:0x2c3350,side:THREE.BackSide})));
+  const floorE=new THREE.Mesh(new THREE.PlaneGeometry(60,80),new THREE.MeshBasicMaterial({color:0x5a6070})); floorE.rotation.x=-Math.PI/2; floorE.position.y=-7.9; es.add(floorE);
+  const pan=new THREE.MeshBasicMaterial({color:0xd8dce6}), org=new THREE.MeshBasicMaterial({color:0xff7a2a});
   for(let x=-20;x<=20;x+=8) for(let z=-32;z<=32;z+=8){ const m=new THREE.Mesh(new THREE.PlaneGeometry(4,1),pan); m.rotation.x=Math.PI/2; m.position.set(x,7.9,z); es.add(m); }
   [[0,-39.5,60,0],[0,39.5,60,0]].forEach(([x,z,w])=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,.8,.5),org); b.position.set(x,1,z); es.add(b); });
   scene.environment=pm.fromScene(es,.035).texture; pm.dispose(); })();
@@ -342,7 +363,7 @@ const M = {
 const overlay = o => Object.assign({polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-4},o||{});
 
 /* ---------- lights ---------- */
-scene.add(new THREE.HemisphereLight(0xfff8ee, 0x5d6479, .32));
+scene.add(new THREE.HemisphereLight(0xfff8ee, 0x4d5469, .38));
 const sun = new THREE.DirectionalLight(0xfff2e0, .8);
 sun.position.set(12,40,18); sun.target.position.set(0,0,-2);
 sun.castShadow = true; sun.shadow.mapSize.set(2048,2048);
@@ -450,8 +471,8 @@ const floorCasters=[];
 /* ---------- building shell ---------- */
 function buildShell(){
   SG=STATIC[0];
-  const t0=tileTex('#aeb3bd','#b9bec8','#c6cad2'), t1=tileTex('#b3b7c1','#c0c4cd','#cbced6');
-  const fm0=new THREE.MeshStandardMaterial({map:t0,roughness:.16,metalness:.05}), fm1=new THREE.MeshStandardMaterial({map:t1,roughness:.16,metalness:.05});
+  const t0=tileTex('#9aa0ad','#a4aab6','#b0b5c0'), t1=tileTex('#a0a5b1','#abb0bb','#b6bac4');
+  const fm0=new THREE.MeshStandardMaterial({map:t0,roughness:.24,metalness:.05}), fm1=new THREE.MeshStandardMaterial({map:t1,roughness:.24,metalness:.05});
   t0.anisotropy=t1.anisotropy=renderer.capabilities.getMaxAnisotropy();
   floorPlane(-BX,BX,-BZ,BZ,0,fm0);
   // floor 1 slab around the atrium, plus the bridge to the elevator's back door
@@ -877,7 +898,7 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
 const hero=mkGuy({skin:0xf1c7a0,shirt:0x2f7de1,pants:0x2b2f3a,hair:0x3a2618,tuft:true});
 const cart=mkCart(); cart.c.position.set(0,0,1.32); hero.g.add(cart.c); scene.add(hero.g);
-function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); }
+function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=f?'קומה 1':'קרקע'; lastNext=undefined; }
 
 // shoppers on both floors
 const SHIRTS=[0x8fc93a,0xff924c,0x9b5de5,0xf15bb5,0x00bbf9,0xfee440,0xe0e0e0];
@@ -1023,13 +1044,13 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
 Sound.ding=function(){ this.tone(988,.5,'sine',.12); this.tone(784,.7,'sine',.1,.18); };
 
 /* ---------- UI ---------- */
-const ui={hud:$('#hud'),clock:$('#clock'),clockPill:$('#clockPill'),money:$('#money'),moneyPill:$('#moneyPill'),items:$('#items'),count:$('#count'),list:$('#list'),
-  toast:$('#toast'),hint:$('#hint'),hintName:$('#hintName'),hintPrice:$('#hintPrice'),act:$('#act'),actLabel:$('#actLabel'),card:$('#card'),menu:$('#menu'),end:$('#end'),map:$('#map')};
+const ui={hud:$('#hud'),clock:$('#clock'),clockPill:$('#clockPill'),money:$('#money'),moneyPill:$('#moneyPill'),items:$('#items'),count:$('#count'),list:$('#list'),mapBtn:$('#map'),
+  toast:$('#toast'),hint:$('#hint'),hintName:$('#hintName'),hintPrice:$('#hintPrice'),act:$('#act'),actLabel:$('#actLabel'),card:$('#card'),menu:$('#menu'),end:$('#end'),map:$('#mapc')};
 function bubble(cls){ const d=document.createElement('div'); d.className='bubble '+(cls||''); d.hidden=true; $('#bubbles').appendChild(d); return d; }
 const shopperBubble=bubble();
 $('#dealsLink').href=utm(SITE+'/deals','end-screen');
 let toastT=null;
-function toast(msg,kind){ ui.toast.textContent=msg; ui.toast.className='show '+(kind||''); clearTimeout(toastT); toastT=setTimeout(()=>ui.toast.className='',2200); }
+function toast(msg,kind){ ui.toast.textContent=msg; ui.toast.className='glass show '+(kind||''); clearTimeout(toastT); toastT=setTimeout(()=>ui.toast.className='glass',2200); }
 function loadBest(){ try{ return +localStorage.getItem('closing-time-best')||0; }catch(e){ return 0; } }
 function saveBest(v){ try{ localStorage.setItem('closing-time-best',String(v)); }catch(e){} }
 function showBest(){ const b=loadBest(); const t=b?`השיא שלכם: ${b.toLocaleString('he-IL')} נקודות`:''; $('#bestLine').textContent=t; $('#bestLine2').textContent=t; }
@@ -1038,12 +1059,23 @@ function showBest(){ const b=loadBest(); const t=b?`השיא שלכם: ${b.toLoc
 const GAME_LEN=240, START_SEC=20*3600+52*60, SPEEDUP=480/GAME_LEN;
 const G={state:'menu',t:0,budget:0,wanted:[]};
 function fmtClock(t){ const s=Math.min(START_SEC+8*60, START_SEC+Math.floor(t*SPEEDUP)); const h=(s/3600)|0, m=((s%3600)/60)|0, ss=s%60; return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
+function nextWanted(){ const open=G.wanted.filter(i=>!i.taken); if(!open.length) return null;
+  const same=open.filter(i=>i.f===player.floor); const pool=same.length?same:open;
+  return pool.reduce((a,b)=>Math.hypot(a.x-player.pos.x,a.z-player.pos.z)<=Math.hypot(b.x-player.pos.x,b.z-player.pos.z)?a:b); }
+let lastNext=null;
+function renderQuest(){
+  const nx=nextWanted(); if(nx===lastNext && G.wanted.length) return; lastNext=nx;
+  if(nx){ $('#nextLabel').textContent='הבא ברשימה · #'+(G.wanted.indexOf(nx)+1); $('#nextName').textContent=nx.name; $('#nextMeta').textContent=(nx.f!==player.floor?FLOOR_NAME[nx.f]+' · ':'')+shekel(nx.price); }
+  else { $('#nextLabel').textContent='הרשימה הושלמה'; $('#nextName').textContent='לקופות בקומת הקרקע'; $('#nextMeta').textContent=''; }
+}
 function renderList(){
   ui.items.innerHTML='';
-  G.wanted.forEach(it=>{ const li=document.createElement('li'); if(it.taken) li.className='done';
-    li.innerHTML=`<span class="n"><i></i><span dir="auto"></span></span><span class="p"></span>`; li.querySelector('.n span').textContent=it.name;
-    li.querySelector('.p').textContent=(it.f?'קומה 1 · ':'')+shekel(it.price); ui.items.appendChild(li); });
-  ui.count.textContent=`${G.wanted.filter(i=>i.taken).length}/${G.wanted.length}`;
+  G.wanted.forEach((it,n)=>{ const li=document.createElement('li'); if(it.taken) li.className='done';
+    li.innerHTML='<i></i><span dir="auto"></span><em class="num"></em>'; li.querySelector('i').textContent=it.taken?'✓':n+1; li.querySelector('span').textContent=it.name;
+    li.querySelector('em').textContent=(it.f?'קומה 1 · ':'')+shekel(it.price); ui.items.appendChild(li); });
+  const done=G.wanted.filter(i=>i.taken).length;
+  ui.count.textContent=`${done}/${G.wanted.length}`; $('#ring').style.setProperty('--p',(G.wanted.length?done/G.wanted.length*100:0)+'%');
+  lastNext=undefined; renderQuest();
 }
 function renderMoney(){ ui.money.textContent=shekel(G.budget); }
 
@@ -1064,7 +1096,7 @@ function resetGame(){
   player.pos.set(0,0,28.5); player.vel.set(0,0,0); player.yaw=Math.PI; setFloor(0); camYaw=0;
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
   renderList(); renderMoney(); ui.clockPill.classList.remove('late'); shownCard=null; ui.card.hidden=true;
-  ui.list.classList.toggle('closed', window.innerHeight<560);
+  ui.list.classList.remove('open'); $('#listH').setAttribute('aria-expanded','false');
 }
 function startGame(){
   Sound.init(); if(Sound.ctx&&Sound.ctx.state==='suspended') Sound.ctx.resume(); Sound.startMusic();
@@ -1114,7 +1146,8 @@ addEventListener('keydown',e=>{ keys[e.code]=true; if((e.code==='Space'||e.code=
 addEventListener('keyup',e=>{ keys[e.code]=false; });
 ['gesturestart','dblclick'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
 ui.act.addEventListener('pointerdown',e=>{ e.preventDefault(); doAction(); });
-$('#listH').addEventListener('click',()=>ui.list.classList.toggle('closed'));
+$('#cardAdd').addEventListener('click',()=>{ if(near&&near.type==='item') doAction(); });
+$('#listH').addEventListener('click',()=>{ const o=ui.list.classList.toggle('open'); $('#listH').setAttribute('aria-expanded',String(o)); });
 $('#mute').addEventListener('click',()=>{ Sound.setOn(!Sound.on); $('#waves').style.display=Sound.on?'':'none'; $('#xmark').style.display=Sound.on?'none':''; });
 $('#startBtn').addEventListener('click',startGame);
 $('#againBtn').addEventListener('click',startGame);
@@ -1152,73 +1185,126 @@ function addToCart(it){
 }
 
 /* ---------- directory overlay ---------- */
-const dirEl=$('#dir'), big=$('#bigmap'), bctx=big.getContext('2d'); let dirFloor=0;
-const BW=big.width, BH=big.height, bx=x=>(x+BX)/(2*BX)*BW, bz=z=>(z+BZ)/(2*BZ)*BH;
+const ICONS={
+  screens:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  kitchen:'<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 11h2a2 2 0 0 1 0 4h-2M8 3v3M12 3v3"/>',
+  deal:'<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  mobile:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  checkout:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+  home:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 9h14M8 5v2M8 12v3"/>',
+  clean:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+  sound:'<rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="14" r="4"/><circle cx="12" cy="6.5" r="1.2"/>',
+  gaming:'<path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><path d="M17.3 5H6.7a4 4 0 0 0-4 3.6l-.7 6.2A3 3 0 0 0 5 18c1 0 1.5-.5 2-1l1.4-1.4a2 2 0 0 1 1.4-.6h4.4a2 2 0 0 1 1.4.6L17 17c.5.5 1 1 2 1a3 3 0 0 0 3-3.2l-.7-6.2A4 4 0 0 0 17.3 5z"/>'
+};
+const svgI=(d,w)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w||2}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ARROW='<path d="M5 12h14M13 6l6 6-6 6"/>';
+const dirEl=$('#dir'), big=$('#bigmap'), bctx=big.getContext('2d'); let dirFloor=0, dirQuery='';
+const BW=big.width, BH=big.height, PAD=26, bx=x=>PAD+(x+BX)/(2*BX)*(BW-2*PAD), bz=z=>PAD+(z+BZ)/(2*BZ)*(BH-2*PAD);
+function pinNo(it){ const n=G.wanted.indexOf(it); return n>=0&&!it.taken?n+1:0; }
 function drawBig(){
-  const f=dirFloor, g=bctx; g.clearRect(0,0,BW,BH); g.fillStyle='#141b3d'; g.fillRect(0,0,BW,BH);
-  DEPTS.filter(d=>d.f===f).forEach(d=>{ const [x0,x1,z0,z1]=d.rect; g.fillStyle=d.color+'55'; g.fillRect(bx(x0),bz(z0),bx(x1)-bx(x0),bz(z1)-bz(z0)); g.strokeStyle=d.color; g.lineWidth=3; g.strokeRect(bx(x0)+1.5,bz(z0)+1.5,bx(x1)-bx(x0)-3,bz(z1)-bz(z0)-3); });
-  if(f===1){ g.fillStyle='rgba(0,0,0,.5)'; g.fillRect(bx(VOID.minX),bz(VOID.minZ),bx(VOID.maxX)-bx(VOID.minX),bz(VOID.maxZ)-bz(VOID.minZ)); }
-  solids[f].forEach(s=>{ if(s.tag==='door'||s.minX<-BX||s.maxX>BX||s.minZ<-BZ||s.maxZ>BZ) return; g.fillStyle=s.tag==='rail'?'#ff7a1a':'rgba(255,255,255,.22)'; g.fillRect(bx(s.minX),bz(s.minZ),Math.max(2,bx(s.maxX)-bx(s.minX)),Math.max(2,bz(s.maxZ)-bz(s.minZ))); });
-  g.fillStyle='#ff7a1a'; g.fillRect(bx(SH.x0),bz(SH.z0),bx(SH.x1)-bx(SH.x0),bz(SH.z1)-bz(SH.z0));
-  g.fillStyle='#fff'; g.font='bold 22px Rubik, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('מעלית',bx(0),bz(SH.z0)-16);
-  CATALOG.forEach(it=>{ if(it.f!==f||it.taken) return; g.fillStyle=it.wanted?'#ff7a1a':'#fff'; g.beginPath(); g.arc(bx(it.x),bz(it.z),it.wanted?10:6,0,7); g.fill(); if(it.wanted){ g.strokeStyle='#fff'; g.lineWidth=3; g.stroke(); } });
-  g.direction='rtl';
-  DEPTS.filter(d=>d.f===f).forEach(d=>{ const [x0,x1,z0,z1]=d.rect, cx=bx((x0+x1)/2), cz=bz((z0+z1)/2)+(d.id==='gaming'?10:0);
-    g.font='bold 26px Rubik, sans-serif'; const w=g.measureText(d.name).width+24; const lx=clamp(cx,w/2+6,BW-w/2-6); g.fillStyle='rgba(10,14,34,.82)'; rrect(g,lx-w/2,cz-20,w,40,12); g.fill(); g.fillStyle='#fff'; g.fillText(d.name,lx,cz+1); });
-  if(player.floor===f){ const px=bx(player.pos.x), pz=bz(player.pos.z); g.fillStyle='#ff6bb5'; g.beginPath(); g.arc(px,pz,13,0,7); g.fill(); g.strokeStyle='#fff'; g.lineWidth=4; g.stroke();
-    g.font='bold 22px Rubik, sans-serif'; g.fillStyle='#fff'; g.fillText('אתם כאן',px,pz-28); }
-  if(f===0){ g.fillStyle='#f55304'; g.fillRect(bx(-3),BH-8,bx(3)-bx(-3),8); g.fillStyle='#fff'; g.font='bold 20px Rubik, sans-serif'; g.fillText('כניסה',bx(0),BH-22); }
+  const f=dirFloor, g=bctx; g.clearRect(0,0,BW,BH);
+  g.fillStyle='#e7eaf2'; rrect(g,bx(-BX),bz(-BZ),bx(BX)-bx(-BX),bz(BZ)-bz(-BZ),22); g.fill(); g.strokeStyle='#c3c9d8'; g.lineWidth=4; g.stroke();
+  DEPTS.filter(d=>d.f===f).forEach(d=>{ const [x0,x1,z0,z1]=d.rect, X=bx(x0)+7, Z=bz(z0)+7, W=bx(x1)-bx(x0)-14, H=bz(z1)-bz(z0)-14;
+    g.fillStyle=d.color+'2e'; rrect(g,X,Z,W,H,16); g.fill(); g.strokeStyle=d.color+'aa'; g.lineWidth=3; g.stroke(); });
+  if(f===1){ g.save(); rrect(g,bx(VOID.minX),bz(VOID.minZ),bx(VOID.maxX)-bx(VOID.minX),bz(VOID.maxZ)-bz(VOID.minZ),14); g.clip(); g.fillStyle='#cfd4e0'; g.fillRect(0,0,BW,BH);
+    g.strokeStyle='#bcc2d1'; g.lineWidth=3; for(let k=-BW;k<BW*2;k+=22){ g.beginPath(); g.moveTo(k,0); g.lineTo(k+BH,BH); g.stroke(); } g.restore();
+    g.fillStyle='#8a90a3'; g.font='600 22px Rubik, sans-serif'; g.textAlign='center'; g.fillText('אטריום',bx(0),bz(3.5)); }
+  else { g.fillStyle='#fff'; g.beginPath(); g.arc(bx(0),bz(2.4),26,0,7); g.fill(); }
+  // elevator
+  const ex=bx(0), ez=bz((SH.z0+SH.z1)/2); g.fillStyle='#161a2b'; rrect(g,ex-24,ez-24,48,48,12); g.fill();
+  g.fillStyle='#fff'; g.beginPath(); g.moveTo(ex,ez-15); g.lineTo(ex+9,ez-4); g.lineTo(ex-9,ez-4); g.fill(); g.beginPath(); g.moveTo(ex,ez+15); g.lineTo(ex+9,ez+4); g.lineTo(ex-9,ez+4); g.fill();
+  // labels
+  g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle';
+  DEPTS.filter(d=>d.f===f).forEach(d=>{ const [x0,x1,z0,z1]=d.rect; let cx=bx((x0+x1)/2), cz=d.id==='gaming'?bz((z0+z1)/2)+18:bz(z0)+42;
+    g.font='700 25px Rubik, sans-serif'; const w=g.measureText(d.name).width+30; cx=clamp(cx,bx(x0)+w/2+10,bx(x1)-w/2-10);
+    g.fillStyle='#fff'; rrect(g,cx-w/2,cz-19,w,38,19); g.fill(); g.fillStyle=d.color; g.beginPath(); g.arc(cx+w/2-13,cz,5,0,7); g.fill();
+    g.fillStyle='#161a2b'; g.fillText(d.name,cx-5,cz+1); });
+  if(f===0){ g.fillStyle='#f55304'; rrect(g,bx(-3.5),bz(BZ)-8,bx(3.5)-bx(-3.5),16,8); g.fill(); g.fillStyle='#161a2b'; g.font='700 20px Rubik, sans-serif'; g.fillText('כניסה',bx(0),bz(BZ)-24); }
+  // products
+  CATALOG.forEach(it=>{ if(it.f!==f||it.taken) return; const n=pinNo(it), X=bx(it.x), Z=bz(it.z);
+    if(n){ g.fillStyle='#f55304'; g.beginPath(); g.arc(X,Z-14,17,0,7); g.fill(); g.beginPath(); g.moveTo(X-9,Z-4); g.lineTo(X+9,Z-4); g.lineTo(X,Z+8); g.fill();
+      g.fillStyle='#fff'; g.font='800 19px Rubik, sans-serif'; g.fillText(String(n),X,Z-13); }
+    else { g.fillStyle='#fff'; g.beginPath(); g.arc(X,Z,8,0,7); g.fill(); g.strokeStyle='#8a90a3'; g.lineWidth=3; g.stroke(); } });
+  // you are here
+  if(player.floor===f){ const X=bx(player.pos.x), Z=bz(player.pos.z), a=Math.atan2(Math.sin(player.yaw),Math.cos(player.yaw));
+    g.fillStyle='rgba(47,125,225,.18)'; g.beginPath(); g.arc(X,Z,38,0,7); g.fill();
+    g.save(); g.translate(X,Z); g.rotate(Math.PI-player.yaw); g.fillStyle='rgba(47,125,225,.35)'; g.beginPath(); g.moveTo(0,0); g.arc(0,0,40,-Math.PI/2-.5,-Math.PI/2+.5); g.fill(); g.restore();
+    g.fillStyle='#2f7de1'; g.beginPath(); g.arc(X,Z,13,0,7); g.fill(); g.strokeStyle='#fff'; g.lineWidth=5; g.stroke();
+    g.font='700 20px Rubik, sans-serif'; const w=g.measureText('אתם כאן').width+20; g.fillStyle='#2f7de1'; rrect(g,X-w/2,Z-58,w,32,16); g.fill(); g.fillStyle='#fff'; g.fillText('אתם כאן',X,Z-41); }
+}
+function prodCard(it){
+  const b=document.createElement('button'); b.className='prod'+(it.taken?' got':''); const n=pinNo(it);
+  b.innerHTML=(it.img?'<img alt="">':'<div class="ph"></div>')+'<span dir="auto"></span><em class="num"></em>'+(n?'<i class="pin"></i>':'');
+  if(it.img) b.querySelector('img').src=it.img; else b.querySelector('.ph').textContent=it.brand||'BuyToday';
+  b.querySelector('span').textContent=it.name; b.querySelector('em').textContent=it.taken?'בעגלה':shekel(it.price); if(n) b.querySelector('.pin').textContent=n;
+  b.setAttribute('aria-label',(it.taken?'':'סע אל ')+it.name);
+  b.addEventListener('click',()=>{ if(it.taken) return; closeDir(); driveTo(itemGoal(it)); }); return b;
+}
+function deptCard(d,its){
+  const el=document.createElement('div'); el.className='dept';
+  el.innerHTML='<button class="drow"><span class="ico">'+svgI(ICONS[d.id])+'</span><span class="tt"><b></b><small></small></span><span class="drive">'+svgI(ARROW,2.6)+'סע</span></button>';
+  el.querySelector('.ico').style.setProperty('--c',d.color); el.querySelector('b').textContent=d.name;
+  const wantHere=its.filter(i=>pinNo(i)).length;
+  el.querySelector('small').textContent=d.sub+(its.length?` · ${its.length} מוצרים`:'')+(wantHere?` · ${wantHere} ברשימה`:'');
+  el.querySelector('.drow').addEventListener('click',()=>{ closeDir(); driveTo(deptGoal(d)); });
+  if(its.length){ const row=document.createElement('div'); row.className='prods'; its.forEach(it=>row.appendChild(prodCard(it))); el.appendChild(row); }
+  return el;
 }
 function renderDepts(){
   const box=$('#depts'); box.innerHTML='';
-  DEPTS.filter(d=>d.f===dirFloor).forEach(d=>{
-    const el=document.createElement('div'); el.className='dept';
-    el.innerHTML='<div class="top"><span class="chip"></span><div class="tt"><b></b><small></small></div><button class="drive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>סע</button></div>';
-    el.querySelector('.chip').style.background=d.color; el.querySelector('b').textContent=d.name; el.querySelector('small').textContent=d.sub;
-    el.querySelector('.drive').addEventListener('click',()=>{ closeDir(); driveTo(deptGoal(d)); });
-    const its=CATALOG.filter(it=>d.zone && it.zone===d.zone);
-    if(its.length){ const row=document.createElement('div'); row.className='prods';
-      its.forEach(it=>{ const b=document.createElement('button'); b.className='prod'+(it.wanted&&!it.taken?' want':'')+(it.taken?' got':'');
-        b.innerHTML='<img alt=""><span dir="auto"></span><em></em>'; if(it.img) b.querySelector('img').src=it.img; else b.querySelector('img').replaceWith(Object.assign(document.createElement('i'),{className:'noimg',textContent:it.brand||'BuyToday'})); b.querySelector('span').textContent=it.name; b.querySelector('em').textContent=shekel(it.price)+(it.taken?' · בעגלה':'');
-        b.addEventListener('click',()=>{ if(it.taken) return; closeDir(); driveTo(itemGoal(it)); }); row.appendChild(b); });
-      el.appendChild(row); }
-    box.appendChild(el);
-  });
+  const q=dirQuery.trim().toLowerCase();
+  if(q){
+    const hitD=DEPTS.filter(d=>(d.name+' '+d.sub).toLowerCase().includes(q));
+    const hitP=CATALOG.filter(it=>(it.name+' '+it.full+' '+(it.brand||'')).toLowerCase().includes(q));
+    if(!hitD.length&&!hitP.length){ box.innerHTML='<div class="empty">לא מצאנו את זה בקניון. נסו שם של מוצר, מותג או מחלקה.</div>'; return; }
+    if(hitP.length){ const h=document.createElement('div'); h.className='sect'; h.textContent='מוצרים'; box.appendChild(h);
+      const card=document.createElement('div'); card.className='dept'; const row=document.createElement('div'); row.className='prods'; row.style.paddingTop='12px'; hitP.forEach(it=>row.appendChild(prodCard(it))); card.appendChild(row); box.appendChild(card); }
+    if(hitD.length){ const h=document.createElement('div'); h.className='sect'; h.textContent='מחלקות'; box.appendChild(h); hitD.forEach(d=>box.appendChild(deptCard(d,CATALOG.filter(it=>d.zone&&it.zone===d.zone)))); }
+    return;
+  }
+  const h=document.createElement('div'); h.className='sect'; h.textContent='המחלקות ב'+FLOOR_NAME[dirFloor]; box.appendChild(h);
+  DEPTS.filter(d=>d.f===dirFloor).forEach(d=>box.appendChild(deptCard(d,CATALOG.filter(it=>d.zone&&it.zone===d.zone))));
 }
 function setDirFloor(f){ dirFloor=f; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.f===f)); drawBig(); renderDepts(); }
-function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirEl.scrollTop=0; setDirFloor(player.floor); }
-function closeDir(){ G.paused=false; dirEl.hidden=true; last=performance.now(); }
-$('#mapBtn').addEventListener('click',openDir); ui.map.addEventListener('click',openDir);
+function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirQuery=''; $('#dirSearch').value='';
+  [0,1].forEach(f=>{ const n=G.wanted.filter(i=>!i.taken&&i.f===f).length; $('#tab'+f).textContent=n?String(n):''; });
+  setDirFloor(player.floor); $('#dscroll').scrollTop=0; }
+function closeDir(){ G.paused=false; dirEl.hidden=true; last=performance.now(); try{ document.activeElement.blur(); }catch(e){} }
+ui.mapBtn.addEventListener('click',openDir);
 $('#dirClose').addEventListener('click',closeDir);
+dirEl.addEventListener('click',e=>{ if(e.target===dirEl) closeDir(); });
+$('#dirSearch').addEventListener('input',e=>{ dirQuery=e.target.value; renderDepts(); });
 document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setDirFloor(+b.dataset.f)));
-big.addEventListener('click',e=>{ const r=big.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*2*BX-BX, z=(e.clientY-r.top)/r.height*2*BZ-BZ;
-  const it=CATALOG.find(i=>i.f===dirFloor&&!i.taken&&Math.hypot(i.x-x,i.z-z)<1.8); if(it){ closeDir(); driveTo(itemGoal(it)); return; }
+big.addEventListener('click',e=>{ const r=big.getBoundingClientRect(); const px=(e.clientX-r.left)/r.width*BW, pz=(e.clientY-r.top)/r.height*BH;
+  const x=(px-PAD)/(BW-2*PAD)*2*BX-BX, z=(pz-PAD)/(BH-2*PAD)*2*BZ-BZ;
+  const it=CATALOG.find(i=>i.f===dirFloor&&!i.taken&&Math.hypot(i.x-x,i.z-z)<2); if(it){ closeDir(); driveTo(itemGoal(it)); return; }
+  if(Math.abs(x)<2.5&&z>SH.z0-2&&z<SH.z1+2&&dirFloor!==player.floor){ closeDir(); driveTo({f:dirFloor,x:0,z:dirFloor?SH.z0-2.6:SH.z1+2.6,label:FLOOR_NAME[dirFloor]}); return; }
   const d=DEPTS.find(d=>d.f===dirFloor&&x>=d.rect[0]&&x<=d.rect[1]&&z>=d.rect[2]&&z<=d.rect[3]); if(d){ closeDir(); driveTo(deptGoal(d)); } });
 
 /* ---------- minimap ---------- */
-const mapCtx=ui.map.getContext('2d'); const MW=ui.map.width, MH=ui.map.height;
-const mx=x=>(x+BX)/(2*BX)*MW, mz=z=>(z+BZ)/(2*BZ)*MH;
-const mapStatic=[0,1].map(f=>{ const c=document.createElement('canvas'); c.width=MW; c.height=MH; const g=c.getContext('2d');
-  g.fillStyle='rgba(20,28,64,.9)'; g.fillRect(0,0,MW,MH);
-  if(f===1){ g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(mx(VOID.minX),mz(VOID.minZ),mx(VOID.maxX)-mx(VOID.minX),mz(VOID.maxZ)-mz(VOID.minZ)); }
-  solids[f].forEach(s=>{ if(s.tag==='ped'||s.tag==='door') return; if(s.minX<-BX||s.maxX>BX||s.minZ<-BZ||s.maxZ>BZ) return;
-    g.fillStyle=s.tag==='counter'?'#5fe3a1':s.tag==='rail'?'#ff7a1a':'#4a5790';
-    g.fillRect(mx(s.minX),mz(s.minZ),Math.max(2,mx(s.maxX)-mx(s.minX)),Math.max(2,mz(s.maxZ)-mz(s.minZ))); });
-  g.fillStyle='#ff7a1a'; g.fillRect(mx(SH.x0),mz(SH.z0),mx(SH.x1)-mx(SH.x0),mz(SH.z1)-mz(SH.z0));
-  g.fillStyle='#fff'; g.font='bold 15px Rubik, sans-serif'; g.textAlign='center'; g.fillText('▲▼',mx(0),mz(-4.2)+5);
-  if(f===0){ g.fillStyle='#f55304'; g.fillRect(mx(-3),MH-4,mx(3)-mx(-3),4); }
-  g.fillStyle='rgba(10,14,34,.85)'; g.fillRect(0,0,MW,26); g.fillStyle='#fff'; g.font='bold 16px Rubik, sans-serif'; g.direction='rtl'; g.textAlign='center'; g.fillText(FLOOR_NAME[f],MW/2,19);
+const mapCtx=ui.map.getContext('2d'); const MR=ui.map.width/2, MS=5;   // px per metre in the plan layer
+const plan=[0,1].map(f=>{ const c=document.createElement('canvas'); c.width=2*BX*MS; c.height=2*BZ*MS; const g=c.getContext('2d');
+  const X=x=>(x+BX)*MS, Z=z=>(z+BZ)*MS;
+  g.fillStyle='#2a3258'; g.fillRect(0,0,c.width,c.height);
+  DEPTS.filter(d=>d.f===f).forEach(d=>{ g.fillStyle=d.color+'40'; g.fillRect(X(d.rect[0])+2,Z(d.rect[2])+2,(d.rect[1]-d.rect[0])*MS-4,(d.rect[3]-d.rect[2])*MS-4); });
+  if(f===1){ g.fillStyle='#0c1026'; g.fillRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*MS,(VOID.maxZ-VOID.minZ)*MS); }
+  solids[f].forEach(s=>{ if(s.tag==='door'||s.tag==='ped'||s.minX<-BX||s.maxX>BX||s.minZ<-BZ||s.maxZ>BZ) return; g.fillStyle=s.tag==='rail'?'#ff7a1a':'rgba(210,216,235,.55)'; g.fillRect(X(s.minX),Z(s.minZ),Math.max(2,(s.maxX-s.minX)*MS),Math.max(2,(s.maxZ-s.minZ)*MS)); });
+  g.fillStyle='#f5f6fa'; g.fillRect(X(SH.x0),Z(SH.z0),(SH.x1-SH.x0)*MS,(SH.z1-SH.z0)*MS);
   return c; });
 function drawMap(){
-  const f=player.floor; mapCtx.drawImage(mapStatic[f],0,0);
-  CATALOG.forEach(it=>{ if(it.taken) return;
-    if(it.f===f){ mapCtx.fillStyle=it.wanted?'#ff7a1a':'rgba(255,255,255,.5)'; mapCtx.beginPath(); mapCtx.arc(mx(it.x),mz(it.z),it.wanted?6:3,0,7); mapCtx.fill(); }
-    else if(it.wanted){ mapCtx.strokeStyle='#ff9a5a'; mapCtx.lineWidth=2; mapCtx.beginPath(); mapCtx.arc(mx(it.x),mz(it.z),5,0,7); mapCtx.stroke(); } });
-  shoppers.forEach(s=>{ if(s.f!==f) return; mapCtx.fillStyle='#b9bfd6'; mapCtx.beginPath(); mapCtx.arc(mx(s.pos.x),mz(s.pos.z),3,0,7); mapCtx.fill(); });
-  mapCtx.save(); mapCtx.translate(mx(player.pos.x),mz(player.pos.z)); mapCtx.rotate(-player.yaw+Math.PI);
-  mapCtx.fillStyle='#ff6bb5'; mapCtx.beginPath(); mapCtx.moveTo(0,-9); mapCtx.lineTo(7,7); mapCtx.lineTo(0,3); mapCtx.lineTo(-7,7); mapCtx.closePath(); mapCtx.fill(); mapCtx.restore();
+  const f=player.floor, g=mapCtx, p=player.pos, k=1.35;  // canvas px per plan px
+  g.save(); g.clearRect(0,0,2*MR,2*MR); g.beginPath(); g.arc(MR,MR,MR,0,7); g.clip(); g.fillStyle='#10152e'; g.fillRect(0,0,2*MR,2*MR);
+  g.translate(MR,MR); g.rotate(camYaw); g.scale(k,k); g.translate(-(p.x+BX)*MS,-(p.z+BZ)*MS);
+  g.drawImage(plan[f],0,0);
+  CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const n=pinNo(it); g.fillStyle=n?'#f55304':'rgba(255,255,255,.6)'; g.beginPath(); g.arc((it.x+BX)*MS,(it.z+BZ)*MS,n?9:4,0,7); g.fill(); if(n){ g.strokeStyle='#fff'; g.lineWidth=3; g.stroke(); } });
+  shoppers.forEach(s=>{ if(s.f!==f) return; g.fillStyle='#8a92b0'; g.beginPath(); g.arc((s.pos.x+BX)*MS,(s.pos.z+BZ)*MS,4,0,7); g.fill(); });
+  g.restore();
+  // off-map pointer to the next list item on this floor
+  const nx=nextWanted(); if(nx&&nx.f===f){ const dx=nx.x-p.x, dz=nx.z-p.z, d=Math.hypot(dx,dz)*MS*k; if(d>MR-10){ const a=Math.atan2(dz,dx)+camYaw; g.fillStyle='#f55304'; g.beginPath(); g.arc(MR+Math.cos(a)*(MR-9),MR+Math.sin(a)*(MR-9),7,0,7); g.fill(); } }
+  g.save(); g.translate(MR,MR); g.rotate(camYaw+Math.PI-player.yaw); g.fillStyle='#2f7de1'; g.strokeStyle='#fff'; g.lineWidth=3;
+  g.beginPath(); g.moveTo(0,-13); g.lineTo(10,10); g.lineTo(0,5); g.lineTo(-10,10); g.closePath(); g.fill(); g.stroke(); g.restore();
+  g.strokeStyle='rgba(255,255,255,.25)'; g.lineWidth=3; g.beginPath(); g.arc(MR,MR,MR-1.5,0,7); g.stroke();
 }
-
 /* ---------- update ---------- */
 const tmp=new THREE.Vector3(), camPos=new THREE.Vector3(0,9,40), look=new THREE.Vector3();
 let frame=0, bubbleT=4, shopperLine=null;
@@ -1285,9 +1371,9 @@ function place2d(el,pos,y){ tmp.copy(pos); tmp.y=y; tmp.project(camera); if(tmp.
 
 let shownCard=null;
 function fillCard(it){
-  $('#cardImg').src=it.img||''; $('#cardImg').hidden=!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
+  if(it.img) $('#cardImg').src=it.img; $('#cardImg').hidden=!it.img; $('#cardPh').hidden=!!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
   $('#cardPrice').textContent=shekel(it.price); $('#cardOld').textContent=it.old?shekel(it.old):''; $('#cardDisc').textContent=it.old?`-${it.disc}%`:''; $('#cardDisc').hidden=!it.old;
-  $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card');
+  $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardAdd').textContent=it.price>G.budget?'אין מספיק בכרטיס':'הוספה לעגלה';
 }
 function setHint(name,sub,warn,label){ ui.hint.hidden=false; ui.hintName.textContent=name; ui.hintPrice.textContent=sub; ui.hint.classList.toggle('warn',!!warn); ui.actLabel.textContent=label; ui.act.classList.remove('off'); }
 function updateNear(){
@@ -1345,7 +1431,7 @@ function loop(now){
     bubbleT-=dt;
     if(bubbleT<=0){ bubbleT=rand(6,11); const cands=shoppers.filter(s=>s.f===player.floor); if(cands.length){ shopperLine={s:pick(cands),until:t+2.6}; shopperBubble.textContent=pick(SHOPPER_LINES); } }
     if(shopperLine&&t<shopperLine.until&&shopperLine.s.pos.distanceTo(player.pos)<14) place2d(shopperBubble,shopperLine.s.pos,shopperLine.s.pos.y+2.75); else shopperBubble.hidden=true;
-    if(frame%2===0) drawMap();
+    if(frame%2===0) drawMap(); if(frame%15===0) renderQuest();
   } else {
     updateCamera(dt,G.state==='menu'); arrow.visible=false;
     hero.g.position.copy(player.pos); animGuy(hero,0,dt,true);
