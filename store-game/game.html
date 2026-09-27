@@ -99,6 +99,7 @@
   #card .row{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;}
   #card .pr{font-size:19px;font-weight:800;}
   #card s{font-size:12px;color:#8a90a3;}
+  #card .note{font-size:10.5px;color:#8a90a3;}
   #card .dc{font-size:11px;font-weight:700;color:#fff;background:#e0342a;border-radius:6px;padding:1px 6px;}
   #card .cb{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
   .btn1,.btn2{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:12px;font-weight:700;font-size:14.5px;text-decoration:none;}
@@ -283,6 +284,7 @@
       <div class="b"><span id="cardBrand"></span><span class="tagw" id="cardWant">ברשימה שלך</span></div>
       <div class="nm" id="cardName"></div>
       <div class="row"><span class="pr num" id="cardPrice"></span><s class="num" id="cardOld"></s><span class="dc" id="cardDisc" dir="ltr"></span></div>
+      <div class="note">המחיר הסופי כפי שמופיע באתר</div>
     </div>
     <div class="cb">
       <button class="btn2" id="cardAdd">הוספה לעגלה</button>
@@ -356,6 +358,7 @@
     <a class="paybtn" id="payLink" target="_blank" rel="noopener" hidden>לתשלום באתר</a>
     <button class="go" id="againBtn">המשך לקנות</button>
     <a class="ghost" id="dealsLink" target="_blank" rel="noopener">כל המבצעים ב־BuyToday ↗</a>
+    <button class="ghost" id="shareBtn" style="width:100%">שתפו את הקניון עם חברים</button>
   </div>
 </div>
 
@@ -1365,6 +1368,7 @@ $('#listH').addEventListener('click',()=>openDir());
 $('#mute').addEventListener('click',()=>{ Sound.setOn(!Sound.on); $('#waves').style.display=Sound.on?'':'none'; $('#xmark').style.display=Sound.on?'none':''; });
 $('#startBtn').addEventListener('click',enterMall);
 $('#againBtn').addEventListener('click',closeReceipt);
+$('#shareBtn').addEventListener('click',shareMall);
 $('#meBtn').addEventListener('click',()=>{ if(G.state==='play') openCreator(true); });
 
 /* ---------- actions ---------- */
@@ -1515,6 +1519,7 @@ function renderCart(){
   sum.querySelector('b').textContent=shekel(total); if(saved) sum.querySelectorAll('.r')[1].lastChild.textContent=shekel(saved);
   if(CHECKOUT_URL && its.length){ const a=document.createElement('a'); a.className='btn1'; a.target='_blank'; a.rel='noopener'; a.href=utm(CHECKOUT_URL.replace('{items}',its.map(i=>encodeURIComponent(i.slug)).join(',')),'cart-panel'); a.textContent='לתשלום באתר · '+shekel(total); sum.appendChild(a); }
   const go=document.createElement('button'); go.className=its.length?'btn1':'btn2'; go.textContent=its.length?'סע לקופות':'המשך לקנות'; go.addEventListener('click',()=>{ closeCart(); if(its.length) driveTo(deptGoal(DEPTS.find(d=>d.id==='checkout'))); }); sum.appendChild(go);
+  const sh=document.createElement('button'); sh.className='btn2'; sh.textContent='שתפו את הקניון עם חברים'; sh.addEventListener('click',shareMall); sum.appendChild(sh);
   const me=document.createElement('button'); me.className='btn2'; me.textContent='עריכת הדמות שלי'; me.addEventListener('click',()=>{ closeCart(); openCreator(true); }); sum.appendChild(me);
   body.appendChild(sum);
   if(its.length){ const h=document.createElement('div'); h.className='sect'; h.textContent='מה שבעגלה'; body.appendChild(h);
@@ -1530,6 +1535,12 @@ function renderCart(){
     a.innerHTML='<span class="ico">'+svgI(ICONS[d.icon])+'</span><span></span>'; a.querySelector('.ico').style.setProperty('--c',d.color); a.lastChild.textContent=d.name; grid.appendChild(a); });
   [['כל המבצעים ↗','/deals','deals',true],['האזור האישי ↗','/account','account'],['לאתר BuyToday ↗','/','home']].forEach(([t,p,k,wide])=>{ const a=document.createElement('a'); a.target='_blank'; a.rel='noopener'; a.href=utm(SITE+p,'cart-'+k); a.textContent=t; if(wide) a.className='wide'; else a.style.justifyContent='center'; grid.appendChild(a); });
   body.appendChild(grid);
+}
+const SHARE_URL='https://play.buytoday.co.il/';
+async function shareMall(){
+  const data={title:'הקניון של BuyToday',text:'בואו לטייל איתי בקניון התלת־ממדי של BuyToday 🛒',url:SHARE_URL+'?utm_source=share&utm_medium=game'};
+  try{ if(navigator.share){ await navigator.share(data); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(data.url); toast('הקישור הועתק. שלחו לחברים','good'); }catch(e){ toast(SHARE_URL); }
 }
 function openCart(){ if(G.state!=='play') return; G.paused=true; renderCart(); cartEl.hidden=false; $('#cartScroll').scrollTop=0; }
 function closeCart(){ G.paused=false; cartEl.hidden=true; last=performance.now(); }

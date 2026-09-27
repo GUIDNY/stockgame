@@ -135,7 +135,12 @@ def write(data, cfg):
     (ROOT / 'dist' / 'game.html').write_text(frag, encoding='utf-8')
     head = ('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
-            '<meta name="theme-color" content="#101530"><meta name="description" content="קניון BuyToday בתלת־ממד: משחקים, אוספים מוצרים אמיתיים וקונים באתר.">'
+            '<meta name="theme-color" content="#101530"><meta name="description" content="קניון BuyToday בתלת־ממד: בוחרים דמות, מטיילים בין 10 מחלקות עם מוצרים אמיתיים וקונים באתר.">'
+            '<meta property="og:type" content="website"><meta property="og:site_name" content="BuyToday">'
+            '<meta property="og:title" content="הקניון של BuyToday"><meta property="og:description" content="בוחרים דמות ומטיילים בקניון תלת־ממדי עם המוצרים והמבצעים האמיתיים של BuyToday.">'
+            '<meta property="og:url" content="https://play.buytoday.co.il/"><meta property="og:image" content="https://play.buytoday.co.il/og.jpg">'
+            '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">'
+            '<link rel="icon" href="https://buytoday.co.il/favicon.ico">'
             '</head><body>')
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / 'index.html').write_text(head + frag + '</body></html>', encoding='utf-8')
