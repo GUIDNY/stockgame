@@ -85,6 +85,9 @@
   #emoBtn{position:fixed;right:var(--g);top:calc(var(--st) + 218px);width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:23px;line-height:1;}
   #coins{position:fixed;right:var(--g);top:calc(var(--st) + 270px);height:32px;padding:0 10px;border-radius:11px;display:flex;align-items:center;gap:5px;font-size:15px;}
   #coins b{font-size:14px;font-weight:800;color:#ffd166;}
+  .coin{width:1.15em;height:1.15em;vertical-align:-.2em;display:inline-block;}
+  #coins .coin{width:20px;height:20px;display:block;}
+  .mgover .big .coin{width:.9em;height:.9em;vertical-align:-.1em;}
   #coins.bump{animation:bump .5s;}
   /* rooftop mini-games and the merch shop */
   .screen.mg{padding:0;background:#0b0e26;align-items:stretch;z-index:16;}
@@ -401,7 +404,7 @@
   <button id="online" class="glass" hidden aria-label="שחקנים מחוברים עכשיו"><i></i><span class="num" id="onlineN">1</span><span>מחוברים</span></button>
   <button id="emoBtn" class="glass" hidden aria-label="שליחת אימוג'י" aria-expanded="false">😀</button>
   <div id="emoTray" class="glass" hidden></div>
-  <button id="coins" class="glass" aria-label="המטבעות שלי"><span aria-hidden="true">🪙</span><b class="num" id="coinsN">0</b></button>
+  <button id="coins" class="glass" aria-label="המטבעות שלי"><span aria-hidden="true" id="coinsIc"></span><b class="num" id="coinsN">0</b></button>
   <div id="toast" class="glass" role="status" aria-live="polite"></div>
   <div id="hint" class="sheet glass" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
   <div id="card" class="sheet" hidden>
@@ -501,7 +504,7 @@
   <div class="dpanel" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
     <div class="dtop"><div class="dhead"><div><small>BuyToday · הגג</small><h2 id="shopTitle">חנות BuyToday</h2></div>
       <button id="shopClose" aria-label="סגירת החנות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>
-    <div class="dscroll"><div class="coinbar"><div><small>המטבעות שלכם</small><br><b id="shopCoins">0 🪙</b></div><small>צוברים מטבעות בשתי המכונות<br>בארקייד, כאן על הגג</small></div><div class="sect">חולצות</div><div class="shopgrid" id="shopShirts"></div><div class="sect">לראש</div><div class="shopgrid" id="shopHats"></div></div>
+    <div class="dscroll"><div class="coinbar"><div><small>המטבעות שלכם</small><br><b id="shopCoins">0</b></div><small>צוברים מטבעות בשתי המכונות<br>בארקייד, כאן על הגג</small></div><div class="sect">חולצות</div><div class="shopgrid" id="shopShirts"></div><div class="sect">לראש</div><div class="shopgrid" id="shopHats"></div></div>
   </div>
 </div>
 
@@ -2130,12 +2133,14 @@ document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closes
    Two prize machines in the rooftop arcade pay out coins; the BuyToday stand in the outlet corner
    sells shirts and headwear for them. Coins and what was bought live on this device. No real money
    is involved anywhere. */
+const COIN_URI='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9Itee15jXkdeiIEJ1eVRvZGF5Ij4gPGRlZnM+IDxyYWRpYWxHcmFkaWVudCBpZD0iYnRjLWZhY2UiIGN4PSIzOCUiIGN5PSIzMiUiIHI9Ijc1JSI+IDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZjZjMiIvPiA8c3RvcCBvZmZzZXQ9Ii4zNSIgc3RvcC1jb2xvcj0iI2ZmZDg0ZCIvPiA8c3RvcCBvZmZzZXQ9Ii43NSIgc3RvcC1jb2xvcj0iI2YyYTkwMCIvPiA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNjNzdkMDAiLz4gPC9yYWRpYWxHcmFkaWVudD4gPGxpbmVhckdyYWRpZW50IGlkPSJidGMtcmltIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+IDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZTI3YSIvPiA8c3RvcCBvZmZzZXQ9Ii41IiBzdG9wLWNvbG9yPSIjZDk4ZTAwIi8+IDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzhhNTIwMCIvPiA8L2xpbmVhckdyYWRpZW50PiA8bGluZWFyR3JhZGllbnQgaWQ9ImJ0Yy1pbm5lciIgeDE9IjAiIHkxPSIxIiB4Mj0iMCIgeTI9IjAiPiA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmU5YTAiLz4gPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjYjg2ZjAwIi8+IDwvbGluZWFyR3JhZGllbnQ+IDwvZGVmcz4gPGVsbGlwc2UgY3g9IjMyIiBjeT0iMzQuNSIgcng9IjI5IiByeT0iMjkiIGZpbGw9IiM3YTQ3MDAiLz4gPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMjkiIGZpbGw9InVybCgjYnRjLXJpbSkiLz4gPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMjQuNSIgZmlsbD0idXJsKCNidGMtZmFjZSkiLz4gPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMjEiIGZpbGw9Im5vbmUiIHN0cm9rZT0idXJsKCNidGMtaW5uZXIpIiBzdHJva2Utd2lkdGg9IjEuNiIvPiA8ZyBzdHJva2U9IiNhODY0MDAiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9Ii41NSI+IDxwYXRoIGQ9Ik0zMiAzLjZ2Mi42TTMyIDU3Ljh2Mi42TTMuNiAzMmgyLjZNNTcuOCAzMmgyLjZNMTEuOSAxMS45bDEuOCAxLjhNNTAuMyA1MC4zbDEuOCAxLjhNMTEuOSA1Mi4xbDEuOC0xLjhNNTAuMyAxMy43bDEuOC0xLjgiLz4gPC9nPiA8cGF0aCBkPSJNMjUgMTkuNWg5LjJjNC45IDAgNy44IDIuNCA3LjggNiAwIDIuNS0xLjQgNC4yLTMuNSA1IDIuOC43IDQuNiAyLjcgNC42IDUuNiAwIDQuMS0zLjIgNi40LTguNCA2LjRIMjV6IiBmaWxsPSIjYTM1ZjAwIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwIDEuMikiLz4gPHBhdGggZD0iTTI1IDE5LjVoOS4yYzQuOSAwIDcuOCAyLjQgNy44IDYgMCAyLjUtMS40IDQuMi0zLjUgNSAyLjguNyA0LjYgMi43IDQuNiA1LjYgMCA0LjEtMy4yIDYuNC04LjQgNi40SDI1eiIgZmlsbD0iI2ZmZjJiMyIvPiA8cGF0aCBkPSJNMzAuMiAyNHY1LjNoMy41YzEuOSAwIDMtLjkgMy0yLjcgMC0xLjctMS4xLTIuNi0zLTIuNnptMCA5LjR2NS44aDQuMmMyLjEgMCAzLjMtMSAzLjMtMi45cy0xLjItMi45LTMuMy0yLjl6IiBmaWxsPSIjZTM5YTAwIi8+IDxwYXRoIGQ9Ik0xNCAyNGMyLjUtNi41IDguNS0xMSAxNS41LTExLjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmJlNiIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9Ii43NSIvPiA8Y2lyY2xlIGN4PSI0NS41IiBjeT0iMTcuNSIgcj0iMS44IiBmaWxsPSIjZmZmYmU2IiBvcGFjaXR5PSIuOSIvPiA8L3N2Zz4=';
+const COIN=`<img class="coin" src="${COIN_URI}" alt="">`;
 const Coins={n:0,owned:[]};
 try{ Coins.n=Math.max(0,parseInt(localStorage.getItem('bt-coins')||'0',10)||0); Coins.owned=JSON.parse(localStorage.getItem('bt-owned')||'[]'); if(!Array.isArray(Coins.owned)) Coins.owned=[]; }catch(e){}
 function saveCoins(){ try{ localStorage.setItem('bt-coins',String(Coins.n)); localStorage.setItem('bt-owned',JSON.stringify(Coins.owned)); }catch(e){} }
 function renderCoins(bump){ $('#coinsN').textContent=Coins.n.toLocaleString('he-IL'); if(bump){ const b=$('#coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
 function addCoins(n){ if(n<=0) return; Coins.n+=n; saveCoins(); renderCoins(true); }
-renderCoins();
+$('#coinsIc').innerHTML=COIN; renderCoins();
 $('#coins').addEventListener('click',()=>toast(Coins.n?`יש לכם ${Coins.n} מטבעות. החנות של BuyToday בגג, בפינת האאוטלט`:'צוברים מטבעות בשתי המכונות בארקייד שעל הגג'));
 
 const SHOP=[
@@ -2152,13 +2157,13 @@ const shopEl=$('#shopp');
 function wearing(it){ return avatar[it.slot]===it.id; }
 function wear(it,on){ const a=Object.assign({},avatar,{[it.slot]:on?it.id:'none'}); setAvatar(a); saveAvatar(); acctSave(); netRetrack(); }
 function renderShop(){
-  $('#shopCoins').textContent=Coins.n.toLocaleString('he-IL')+' 🪙';
+  $('#shopCoins').innerHTML=Coins.n.toLocaleString('he-IL')+' '+COIN;
   [['merch','#shopShirts'],['extra','#shopHats']].forEach(([slot,sel])=>{ const box=$(sel); box.innerHTML='';
     SHOP.filter(it=>it.slot===slot).forEach(it=>{ const el=document.createElement('div'); el.className='sitem';
       el.innerHTML='<div class="ic"></div><b></b><small></small><button></button>'; el.querySelector('.ic').textContent=it.icon; el.querySelector('b').textContent=it.name; el.querySelector('small').textContent=it.desc;
       const b=el.querySelector('button'), own=Coins.owned.includes(it.id);
       if(own){ const on=wearing(it); b.textContent=on?'לובשים ✓':'ללבוש'; b.className=on?'on':'own'; b.onclick=()=>{ wear(it,!on); buzz(10); renderShop(); toast(on?it.name+' הוסר':'לובשים '+it.name,'good'); }; }
-      else { b.textContent=it.price+' 🪙'; b.disabled=Coins.n<it.price; if(b.disabled) b.textContent=`${it.price} 🪙 · חסרים ${it.price-Coins.n}`;
+      else { b.innerHTML=it.price+' '+COIN; b.disabled=Coins.n<it.price; if(b.disabled) b.innerHTML=`${it.price} ${COIN} · חסרים ${it.price-Coins.n}`;
         b.onclick=()=>{ if(Coins.n<it.price) return; Coins.n-=it.price; Coins.owned.push(it.id); saveCoins(); renderCoins(true); wear(it,true); Sound.cash(); buzz(30); toast('קניתם '+it.name+'. לובשים!','good'); renderShop(); }; }
       box.appendChild(el); }); });
 }
@@ -2180,7 +2185,7 @@ function mgIntro(){ const gs=MG.game; MG.on=false; cancelAnimationFrame(MG.raf);
 function mgStart(){ mgOver.hidden=true; MG.on=true; MG.t=MG.game.id==='catch'?30:25; MG.score=0; MG.items=[]; MG.cells=[]; MG.spawn=0; MG.cartX=.5; MG.last=performance.now(); buzz(15); MG.raf=requestAnimationFrame(mgLoop); }
 function mgEnd(){ MG.on=false; cancelAnimationFrame(MG.raf); const coins=Math.max(0,MG.game.id==='catch'?Math.floor(MG.score/2):MG.score); addCoins(coins); if(coins) Sound.cash();
   let best=0; try{ best=+localStorage.getItem('bt-best-'+MG.game.id)||0; if(MG.score>best) localStorage.setItem('bt-best-'+MG.game.id,String(MG.score)); }catch(e){}
-  mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':'נגמר הזמן'}</h3><p>צברתם</p><div class="big">+${coins} 🪙</div><p>יש לכם ${Coins.n} מטבעות. החנות של BuyToday מחכה בפינת האאוטלט.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
+  mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':'נגמר הזמן'}</h3><p>צברתם</p><div class="big">+${coins} ${COIN}</div><p>יש לכם ${Coins.n} מטבעות. החנות של BuyToday מחכה בפינת האאוטלט.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
   mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
 function closeGame(){ MG.on=false; cancelAnimationFrame(MG.raf); mgEl.hidden=true; G.paused=false; last=performance.now(); }
 $('#mgClose').addEventListener('click',()=>{ if(MG.on) mgEnd(); else closeGame(); });
@@ -2363,8 +2368,8 @@ function updateNear(){
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית','בחרו קומה, או '+(near.to>elev.floor?'למעלה':'למטה')+' ל'+FLOOR_SHORT[near.to],false,near.to>elev.floor?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
-  else if(near.type==='game') setHint(near.gs.title,'משחקים וצוברים מטבעות · '+Coins.n+' 🪙',false,'שחק');
-  else if(near.type==='shop') setHint('חנות BuyToday','חולצות וכובעים למטבעות · יש לכם '+Coins.n+' 🪙',false,'לחנות');
+  else if(near.type==='game') setHint(near.gs.title,'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
+  else if(near.type==='shop') setHint('חנות BuyToday','חולצות וכובעים למטבעות · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
