@@ -79,6 +79,17 @@
   #meBtn svg{width:22px;height:22px;}
   #mute{position:fixed;right:var(--g);top:calc(var(--st) + 130px);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;}
   #mute svg{width:20px;height:20px;}
+  /* online: who else is in the mall, and the emoji tray */
+  #online{position:fixed;right:var(--g);top:calc(var(--st) + 178px);height:30px;padding:0 10px;border-radius:10px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;}
+  #online i{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px rgba(67,209,139,.25);}
+  #emoBtn{position:fixed;right:var(--g);top:calc(var(--st) + 218px);width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:23px;line-height:1;}
+  #emoTray{position:fixed;right:calc(var(--g) + 52px);top:calc(var(--st) + 212px);display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:6px;border-radius:18px;z-index:6;max-width:calc(100vw - 2*var(--g) - 52px);}
+  #emoTray button{width:44px;height:44px;border-radius:12px;font-size:25px;line-height:1;}
+  #emoTray button:active,#emoBtn:active{transform:scale(.92);}
+  .nametag{position:fixed;left:0;top:0;padding:2px 8px;border-radius:8px;background:rgba(15,20,44,.72);color:#fff;font-weight:700;font-size:12px;white-space:nowrap;pointer-events:none;}
+  .bubble.emo{font-size:28px;padding:4px 8px;line-height:1;}
+  .csheet input{width:100%;height:38px;padding:0 12px;border-radius:11px;border:1px solid var(--line);background:var(--raise);color:#fff;font-size:15px;font-weight:700;}
+  .csheet input::placeholder{color:var(--ink-faint);font-weight:500;}
 
   #toast{position:fixed;left:50%;top:36%;transform:translate(-50%,6px);max-width:calc(100vw - 2*var(--g));padding:10px 16px;border-radius:14px;font-weight:700;font-size:14.5px;text-align:center;
     opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:6;}
@@ -276,6 +287,9 @@
   <button id="mute" class="glass" aria-label="השתקת צליל">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="xmark" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg>
   </button>
+  <button id="online" class="glass" hidden aria-label="שחקנים בקניון עכשיו"><i></i><span class="num" id="onlineN">1</span><span>בקניון</span></button>
+  <button id="emoBtn" class="glass" hidden aria-label="שליחת אימוג'י" aria-expanded="false">😀</button>
+  <div id="emoTray" class="glass" hidden></div>
   <div id="toast" class="glass" role="status" aria-live="polite"></div>
   <div id="hint" class="sheet glass" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
   <div id="card" class="sheet" hidden>
@@ -306,6 +320,7 @@
     <p>בחרו איך תיראו, ותטיילו בין המחלקות. כל מוצר על המדפים אמיתי, במחיר של היום באתר.</p>
   </div>
   <div class="csheet">
+    <div class="crow"><span>שם</span><div><input id="optName" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="איך יקראו לכם בקניון" dir="auto"></div></div>
     <div class="crow"><span>דמות</span><div class="seg" id="optGender"></div></div>
     <div class="crow"><span>צבע עור</span><div class="sw" id="optSkin"></div></div>
     <div class="crow"><span>שיער</span><div class="sw" id="optHair"></div></div>
@@ -375,6 +390,7 @@ const STORE = /*__PRODUCTS__*/{"updated":"","items":[]}/*__END__*/;
 const SITE = 'https://buytoday.co.il';
 // Direct checkout with all cart items. Empty until the site has a page that fills its cart from a list of slugs.
 const CHECKOUT_URL = /*__CHECKOUT__*/''/*__END__*/;
+const ONLINE = /*__ONLINE__*/null/*__END__*/;   // {url,key} of the Supabase Realtime project, or null to stay single-player
 const utm = (url,where) => url + (url.includes('?')?'&':'?') + 'utm_source=closing-time-game&utm_medium=game&utm_campaign=' + where;
 const rand = (a,b) => a + Math.random()*(b-a);
 const pick = a => a[(Math.random()*a.length)|0];
@@ -1091,7 +1107,7 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 
 // player
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
-const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none'};
+const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',name:''};
 function loadAvatar(){ try{ const v=JSON.parse(localStorage.getItem('bt-avatar')||'null'); if(v&&typeof v==='object') return Object.assign({},AV_DEFAULT,v); }catch(e){} return Object.assign({},AV_DEFAULT); }
 function saveAvatar(){ try{ localStorage.setItem('bt-avatar',JSON.stringify(avatar)); }catch(e){} }
 let avatar=loadAvatar();
@@ -1288,17 +1304,18 @@ function resetGame(){
   flyers.forEach(f=>scene.remove(f.m)); flyers.length=0;
   G.wanted=[]; G.t=0;
   elev.y=0; elev.floor=0; elev.moving=false; elev.rider=false;
-  player.pos.set(0,0,28.5); player.vel.set(0,0,0); player.yaw=Math.PI; setFloor(0); camYaw=0;
+  player.pos.set(ONLINE?rand(-3.5,3.5):0,0,ONLINE?rand(27,29):28.5); player.vel.set(0,0,0); player.yaw=Math.PI; setFloor(0); camYaw=0;
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
   renderList(); renderMoney(); updateCartBadge(); shownCard=null; ui.card.hidden=true;
 }
 function enterMall(){
   Sound.init(); if(Sound.ctx&&Sound.ctx.state==='suspended') Sound.ctx.resume(); Sound.startMusic();
   try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){}
-  saveAvatar(); cart.c.visible=true;
-  if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); return; }
+  avatar.name=cleanName(avatar.name); saveAvatar(); cart.c.visible=true;
+  if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
   toast('ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
+  netStart();
 }
 function openCreator(edit){
   G.state=edit?'edit':'menu'; G.paused=!!edit; stopAuto(); ui.hud.hidden=true; ui.card.hidden=true; shownCard=null; dirEl.hidden=true; cartEl.hidden=true;
@@ -1340,7 +1357,12 @@ function renderCreator(){
     AV_CHOICES[key].forEach(c=>{ const b=document.createElement('button'); b.style.background=hex(c); b.setAttribute('aria-label',key+' '+hex(c)); b.setAttribute('aria-pressed',String(avatar[key]===c)); if(avatar[key]===c) b.className='on';
       b.addEventListener('click',()=>{ setAvatar(Object.assign({},avatar,{[key]:c})); renderCreator(); }); el.appendChild(b); }); });
   $('#bottomLabel').textContent=avatar.bottom==='skirt'?'חצאית':'מכנסיים';
+  const nm=$('#optName'); if(document.activeElement!==nm) nm.value=avatar.name||'';
 }
+$('#optName').addEventListener('input',e=>{ avatar.name=e.target.value; });
+$('#optName').addEventListener('change',e=>{ avatar.name=cleanName(e.target.value); e.target.value=avatar.name; });
+$('#optName').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') e.target.blur(); });
+$('#optName').addEventListener('keyup',e=>e.stopPropagation());
 
 /* ---------- input ---------- */
 const joy={x:0,y:0,id:null};
@@ -1564,6 +1586,7 @@ function drawMap(){
   g.drawImage(plan[f],0,0);
   CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const n=pinNo(it); g.fillStyle=n?'#f55304':'rgba(255,255,255,.6)'; g.beginPath(); g.arc((it.x+BX)*MS,(it.z+BZ)*MS,n?9:4,0,7); g.fill(); if(n){ g.strokeStyle='#fff'; g.lineWidth=3; g.stroke(); } });
   shoppers.forEach(s=>{ if(s.f!==f) return; g.fillStyle='#8a92b0'; g.beginPath(); g.arc((s.pos.x+BX)*MS,(s.pos.z+BZ)*MS,4,0,7); g.fill(); });
+  Net.peers.forEach(q=>{ if(!q.seen||Math.round(q.G.g.position.y/FH)!==f) return; g.fillStyle='#43d18b'; g.strokeStyle='#fff'; g.lineWidth=2.5; g.beginPath(); g.arc((q.G.g.position.x+BX)*MS,(q.G.g.position.z+BZ)*MS,6,0,7); g.fill(); g.stroke(); });
   g.restore();
   // off-map pointer to the next list item on this floor
   const nx=nextWanted(); if(nx&&nx.f===f){ const dx=nx.x-p.x, dz=nx.z-p.z, d=Math.hypot(dx,dz)*MS*k; if(d>MR-10){ const a=Math.atan2(dz,dx)+camYaw; g.fillStyle='#f55304'; g.beginPath(); g.arc(MR+Math.cos(a)*(MR-9),MR+Math.sin(a)*(MR-9),7,0,7); g.fill(); } }
@@ -1593,6 +1616,7 @@ function updatePlayer(dt){
   if(speed>.4) player.yaw=lerpAngle(player.yaw,Math.atan2(player.vel.x,player.vel.z),1-Math.exp(-dt*10));
   const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), f=player.floor;
   for(let i=0;i<2;i++){ pushOut(player.pos,.42,0,0,f); pushOut(player.pos,.5,fx*1.32,fz*1.32,f); pushOut(player.pos,.4,fx*.7,fz*.7,f); }
+  Net.peers.forEach(q=>{ const o=q.G.g.position; if(!q.seen||Math.abs(o.y-player.pos.y)>1) return; const dx=player.pos.x-o.x, dz=player.pos.z-o.z, d=Math.hypot(dx,dz); if(d<.9&&d>1e-3){ player.pos.x+=dx/d*(.9-d); player.pos.z+=dz/d*(.9-d); } });
   shoppers.forEach(s=>{ if(s.f!==f) return; pushApart(player.pos,s.pos,.95); tmp.set(player.pos.x+fx*1.3,0,player.pos.z+fz*1.3); if(pushApart(tmp,s.pos,1.0)){ player.pos.x=tmp.x-fx*1.3; player.pos.z=tmp.z-fz*1.3; } });
   if(!elev.rider) player.pos.y=f*FH;
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
@@ -1672,6 +1696,110 @@ function updateArrow(t){ arrow.visible=false; return;
   const r=2.3+Math.sin(t*5)*.15; arrow.position.set(p.x+dx/d*r,p.y+.04,p.z+dz/d*r); arrow.rotation.y=Math.atan2(dx,dz);
 }
 
+/* ---------- online: the other people in the mall right now ----------
+   Supabase Realtime, broadcast + presence only: nothing is stored and no table is touched.
+   Presence says who is in the room and how they look; broadcast carries where they are,
+   about three times a second while they move and every twelve seconds while they stand.
+   Rooms hold ROOM_CAP people each, so a phone never draws more than that. */
+const EMOJI=['👋','👍','🔥','😂','😍','🛒'];
+const ROOM_CAP=12, ROOMS=8, SEND_EVERY=1/3, IDLE_EVERY=12, INTERP=420;
+const BAD_NAME=/(זונה|שרמוט|כוס|זין|מניאק|הומו|נאצי|fuck|shit|bitch|dick|cunt|porn|sex|nazi|hitler)/i;
+function cleanName(v){ v=String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,12); return BAD_NAME.test(v)?'':v; }
+const AV_BOTTOM=['pants','skirt'], AV_EXTRA=['none','cap','glasses'];
+const packAv=a=>[a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra)];
+function unpackAv(v){ if(!Array.isArray(v)) return null;
+  // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
+  const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
+  return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none'}; }
+const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
+  sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
+const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
+function updateOnline(){ const on=Net.ready; onlineEl.hidden=!on; emoBtn.hidden=!on; if(!on) emoTray.hidden=true; $('#onlineN').textContent=String(Math.max(1,Net.count)); }
+function netLoad(){ return new Promise((res,rej)=>{ if(window.supabase) return res(); const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+async function netStart(){
+  if(!ONLINE||Net.ch||Net.joining) return; Net.joining=true;
+  try{ await netLoad();
+    if(!Net.sb) Net.sb=window.supabase.createClient(ONLINE.url,ONLINE.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:8}}});
+    netJoin(1); }
+  catch(e){ Net.joining=false; }
+}
+const netMeta=()=>({n:cleanName(avatar.name),a:packAv(avatar),s:netState()});
+const netState=()=>[+player.pos.x.toFixed(2),+player.pos.y.toFixed(2),+player.pos.z.toFixed(2),+player.yaw.toFixed(2)];
+function netJoin(room){
+  Net.room=room; Net.ready=false;
+  const ch=Net.sb.channel('buytoday-mall-'+room,{config:{broadcast:{self:false},presence:{key:Net.id}}}); Net.ch=ch;
+  let placed=false;
+  ch.on('presence',{event:'sync'},()=>{ if(ch!==Net.ch) return;
+    const st=ch.presenceState(), ids=Object.keys(st);
+    if(!placed){ placed=true;   // full? move on to the next room before showing up in this one
+      if(ids.filter(id=>id!==Net.id).length>=ROOM_CAP && room<ROOMS){ Net.ch=null; Net.sb.removeChannel(ch); netJoin(room+1); return; }
+      ch.track(netMeta()).then(()=>{ if(ch!==Net.ch) return; Net.ready=true; Net.joining=false; Net.force=true; updateOnline(); }); }
+    Net.count=ids.length+(st[Net.id]?0:1);
+    Net.peers.forEach((q,id)=>{ if(!st[id]) netDrop(id); });
+    ids.forEach(id=>{ if(id!==Net.id&&st[id][0]) netPeer(id,st[id][0]); });
+    updateOnline(); });
+  ch.on('presence',{event:'join'},({key})=>{ if(key!==Net.id) Net.force=true; });   // let the newcomer see where we stand
+  ch.on('broadcast',{event:'m'},({payload})=>netMove(payload));
+  ch.on('broadcast',{event:'e'},({payload})=>netEmoIn(payload));
+  ch.subscribe(status=>{ if(ch!==Net.ch) return;
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){ Net.ready=false; Net.joining=false; updateOnline(); } });
+}
+function netLeave(){ const ch=Net.ch; Net.ch=null; Net.ready=false; Net.joining=false; if(ch){ try{ ch.untrack(); }catch(e){} Net.sb.removeChannel(ch); }
+  Net.peers.forEach((q,id)=>netDrop(id)); Net.count=0; updateOnline(); }
+function netRetrack(){ if(Net.ready&&Net.ch) Net.ch.track(netMeta()); }
+function netPeer(id,meta){
+  let q=Net.peers.get(id); const key=JSON.stringify(meta.a), name=cleanName(meta.n)||'אורח/ת';
+  if(q&&q.key!==key){ netDrop(id); q=null; }
+  if(!q){ if(Net.peers.size>=ROOM_CAP+4) return; const av=unpackAv(meta.a); if(!av) return;
+    const G=mkGuy(avOpts(av)), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.visible=false; scene.add(G.g);
+    const tag=document.createElement('div'); tag.className='nametag'; tag.hidden=true; $('#bubbles').appendChild(tag);
+    const emo=bubble('emo');
+    q={id,key,G,tag,emo,snaps:[],seen:false,speed:0,prev:new THREE.Vector3(),emoUntil:0,emoAt:0};
+    Net.peers.set(id,q);
+    const s=netSnap(meta.s); if(s) q.snaps.push(s); }
+  q.tag.textContent=name;
+}
+function netDrop(id){ const q=Net.peers.get(id); if(!q) return; scene.remove(q.G.g); q.tag.remove(); q.emo.remove(); Net.peers.delete(id); }
+function netSnap(s){ if(!Array.isArray(s)||s.length<4||!s.every(Number.isFinite)) return null;
+  return {t:performance.now(),x:clamp(s[0],-BX,BX),y:clamp(s[1],0,FH),z:clamp(s[2],-BZ,BZ),yaw:s[3]}; }
+function netMove(m){ const q=m&&Net.peers.get(m.i); if(!q) return; const s=netSnap(m.s); if(!s) return; q.snaps.push(s); if(q.snaps.length>8) q.snaps.shift(); }
+function netEmoIn(m){ const q=m&&Net.peers.get(m.i), now=performance.now(); if(!q||!Number.isInteger(m.e)||!EMOJI[m.e]||now-q.emoAt<800) return;
+  q.emoAt=now; q.emoUntil=now+2600; q.emo.textContent=EMOJI[m.e]; }
+function netSend(){ const s=netState(); Net.sent=s; Net.sendT=SEND_EVERY; Net.idleT=0; Net.force=false;
+  Net.ch.send({type:'broadcast',event:'m',payload:{i:Net.id,s}}); }
+function netTick(dt){
+  if(!Net.ready) return; Net.sendT-=dt; Net.idleT+=dt;
+  const s=Net.sent, cur=player.pos;
+  const moved=!s||Math.abs(s[0]-cur.x)>.04||Math.abs(s[1]-cur.y)>.04||Math.abs(s[2]-cur.z)>.04||Math.abs(s[3]-player.yaw)>.06;
+  if((moved&&Net.sendT<=0)||Net.force||Net.idleT>=IDLE_EVERY) netSend();
+}
+function netUpdate(dt,now){
+  const rt=now-INTERP;
+  Net.peers.forEach(q=>{ const S=q.snaps; if(!S.length) return;
+    let a=S[0], b=S[0];
+    for(let i=0;i<S.length;i++){ if(S[i].t<=rt) a=b=S[i]; else { b=S[i]; break; } }
+    if(a.t>rt) b=a;                                    // nothing old enough yet: stand at the first known spot
+    const k=b===a?0:clamp((rt-a.t)/(b.t-a.t),0,1), g=q.G.g;
+    q.prev.copy(g.position); g.position.set(a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k,a.z+(b.z-a.z)*k);
+    g.rotation.y=q.seen?lerpAngle(g.rotation.y,lerpAngle(a.yaw,b.yaw,k),1-Math.exp(-dt*12)):b.yaw;
+    const v=q.seen&&dt>0?Math.hypot(g.position.x-q.prev.x,g.position.z-q.prev.z)/dt:0; q.speed+=(Math.min(v,7)-q.speed)*(1-Math.exp(-dt*8));
+    g.visible=q.seen=true; animGuy(q.G,q.speed,dt,true);
+    const d=Math.hypot(g.position.x-player.pos.x,g.position.z-player.pos.z), same=Math.abs(g.position.y-player.pos.y)<2;
+    if(G.state==='play'&&same&&d<20) place2d(q.tag,g.position,g.position.y+2.55); else q.tag.hidden=true;
+    if(now<q.emoUntil&&G.state==='play'&&d<30) place2d(q.emo,g.position,g.position.y+3.25); else q.emo.hidden=true; });
+  if(Net.selfEmo&&now<Net.selfEmo.until&&G.state==='play') place2d(Net.selfEmo.el,hero.g.position,hero.g.position.y+2.9); else if(Net.selfEmo) Net.selfEmo.el.hidden=true;
+}
+function sendEmoji(i){ const now=performance.now(); if(!Net.ready||now-Net.emoAt<1200) return; Net.emoAt=now;
+  Net.ch.send({type:'broadcast',event:'e',payload:{i:Net.id,e:i}});
+  if(!Net.selfEmo) Net.selfEmo={el:bubble('emo'),until:0}; Net.selfEmo.el.textContent=EMOJI[i]; Net.selfEmo.until=now+2600;
+  emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); }
+EMOJI.forEach((e,i)=>{ const b=document.createElement('button'); b.textContent=e; b.setAttribute('aria-label','שליחת '+e); b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
+emoBtn.addEventListener('click',()=>{ emoTray.hidden=!emoTray.hidden; emoBtn.setAttribute('aria-expanded',String(!emoTray.hidden)); });
+onlineEl.addEventListener('click',()=>{ const n=Math.max(1,Net.count); toast(n>1?`${n} אנשים בקניון עכשיו. הם מסומנים בירוק במפה`:'אתם היחידים כאן כרגע. שתפו חבר ותטיילו ביחד'); });
+// a hidden tab keeps nobody company: leave the room, and come back when the tab does
+document.addEventListener('visibilitychange',()=>{ if(!ONLINE) return; if(document.hidden) netLeave(); else if(G.state==='play'||G.state==='edit') netStart(); });
+
 const Q={max:Math.min(window.devicePixelRatio||1,2),pr:0,acc:0,n:0};
 Q.pr=Q.max;
 function loop(now){
@@ -1693,7 +1821,7 @@ function loop(now){
   updateElevator(dt);
   if(G.state==='play'){
     G.t+=dt; if(frame%20===0) renderQuest();
-    updatePlayer(dt); updateNear(); updateArrow(t);
+    updatePlayer(dt); updateNear(); updateArrow(t); netTick(dt);
     updateCamera(dt,false);
     bubbleT-=dt;
     if(bubbleT<=0){ bubbleT=rand(6,11); const cands=shoppers.filter(s=>s.f===player.floor); if(cands.length){ shopperLine={s:pick(cands),until:t+2.6}; shopperBubble.textContent=pick(SHOPPER_LINES); } }
@@ -1703,7 +1831,7 @@ function loop(now){
     updateCamera(dt,G.state==='menu'||G.state==='edit'); arrow.visible=false;
     hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false);
   }
-  updateNPCs(dt,t);
+  updateNPCs(dt,t); netUpdate(dt,now);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }

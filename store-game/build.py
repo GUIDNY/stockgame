@@ -131,8 +131,13 @@ def write(data, cfg):
     src = (ROOT / 'game.html').read_text(encoding='utf-8')
     frag = re.sub(r'/\*__PRODUCTS__\*/.*?/\*__END__\*/', lambda m: '/*__PRODUCTS__*/' + json.dumps(data, ensure_ascii=False) + '/*__END__*/', src, flags=re.S)
     frag = re.sub(r'/\*__CHECKOUT__\*/.*?/\*__END__\*/', lambda m: '/*__CHECKOUT__*/' + json.dumps(cfg.get('checkout_url', '')) + '/*__END__*/', frag, flags=re.S)
+    on = cfg.get('online') or {}
+    online = {'url': on['url'], 'key': on['key']} if on.get('enabled') and on.get('url') and on.get('key') else None
+    def with_online(v): return re.sub(r'/\*__ONLINE__\*/.*?/\*__END__\*/', lambda m: '/*__ONLINE__*/' + json.dumps(v) + '/*__END__*/', frag, flags=re.S)
     (ROOT / 'dist').mkdir(exist_ok=True)
-    (ROOT / 'dist' / 'game.html').write_text(frag, encoding='utf-8')
+    # the artifact copy stays single-player: its sandbox would refuse the socket anyway
+    (ROOT / 'dist' / 'game.html').write_text(with_online(None), encoding='utf-8')
+    frag = with_online(online)
     head = ('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
             '<meta name="theme-color" content="#101530"><meta name="description" content="קניון BuyToday בתלת־ממד: בוחרים דמות, מטיילים בין 10 מחלקות עם מוצרים אמיתיים וקונים באתר.">'

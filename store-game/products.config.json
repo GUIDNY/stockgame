@@ -2,6 +2,12 @@
   "note": "כל קטגוריה ראשית באתר היא מחלקה בקניון. build.py מושך מכל קטגוריה את המוצרים הראשונים שיש להם תמונה ומלאי. zone קובע איפה בקניון, count כמה מוצרים.",
   "checkout_url": "",
   "checkout_note": "כשיהיה באתר עמוד שממלא את העגלה מרשימת slugs (ראו site-integration/), שימו כאן את הכתובת עם {items}, למשל https://buytoday.co.il/game-checkout?items={items}",
+  "online": {
+    "enabled": true,
+    "url": "https://fiyglezjgmltzruombno.supabase.co",
+    "key": "sb_publishable_8ymAM2J3jeoQXEqgm4qlTA_nkhzPs28"
+  },
+  "online_note": "מתג הכיבוי של האונליין: enabled=false, ואז build.py --offline ופריסה. המפתח ציבורי (publishable) ולתפקיד anon אין שום הרשאה לטבלאות האתר; המשחק משתמש רק בערוצי Realtime (broadcast + presence), בלי מסד נתונים.",
   "per_category": 7,
   "categories": [
     {
