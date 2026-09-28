@@ -120,10 +120,20 @@
   #joy{position:absolute;width:124px;height:124px;margin:-62px 0 0 -62px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04),rgba(255,255,255,.12));border:2px solid rgba(255,255,255,.3);pointer-events:none;transition:opacity .2s;}
   #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(250,250,252,.92);box-shadow:0 4px 12px rgba(0,0,0,.3);}
   #joyzone.idle #joy{opacity:.55;}
-  #act{position:fixed;right:22px;bottom:calc(var(--sb) + 34px);width:84px;height:84px;border-radius:50%;background:var(--brand);color:#fff;z-index:3;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 5px 0 var(--brand-deep),0 12px 26px rgba(0,0,0,.35);font-weight:700;font-size:14px;transition:opacity .2s;}
+  #act{--bg:var(--brand);--sh:var(--brand-deep);position:fixed;right:22px;bottom:calc(var(--sb) + 34px);width:84px;height:84px;border-radius:50%;background:var(--bg);color:#fff;z-index:3;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 5px 0 var(--sh),0 12px 26px rgba(0,0,0,.35);font-weight:700;font-size:14px;transition:opacity .2s,background .2s,box-shadow .2s;}
   #act svg{width:28px;height:28px;}
-  #act:active{transform:translateY(3px);box-shadow:0 2px 0 var(--brand-deep);}
+  #act:active{transform:translateY(3px);box-shadow:0 2px 0 var(--sh);}
+  /* the button says what it will do: its colour and icon change with the action, not only the word */
+  #act[data-k="kiosk"]{--bg:#2f7de1;--sh:#1a4f99;}
+  #act[data-k="up"],#act[data-k="down"],#act[data-k="call"]{--bg:#3949ab;--sh:#232e75;}
+  #act[data-k="checkout"]{--bg:#1f9d62;--sh:#136b41;}
+  #act[data-k="stop"]{--bg:#e63946;--sh:#9b1d27;}
+  #liftPad{position:fixed;right:30px;bottom:calc(var(--sb) + 196px);display:grid;gap:6px;padding:6px;border-radius:18px;z-index:3;}
+  #liftPad button{width:64px;height:44px;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-weight:800;font-size:14px;display:grid;place-items:center;line-height:1.05;}
+  #liftPad button small{display:block;font-size:10px;font-weight:600;color:var(--ink-dim);}
+  #liftPad button.here{background:#3949ab;box-shadow:inset 0 0 0 2px #8c9eff;}
+  #liftPad button:active{transform:scale(.94);}
   #act.off{opacity:.4;filter:grayscale(.5);}
 
   .bubble{position:fixed;left:0;top:0;padding:6px 11px;border-radius:12px;background:#fff;color:#1b1d26;font-weight:700;font-size:12.5px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.25);}
@@ -213,7 +223,7 @@
   .search{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:12px;background:#eef0f5;}
   .search svg{width:18px;height:18px;color:#8a90a3;flex:none;}
   .search input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:15px;color:#161a2b;}
-  .tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#eef0f5;}
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#eef0f5;}
   .tabs button{height:36px;border-radius:9px;font-weight:700;font-size:14px;color:#5a6178;display:flex;align-items:center;justify-content:center;gap:6px;}
   .tabs button small{font-size:11px;font-weight:700;color:#fff;background:var(--brand);border-radius:8px;padding:0 6px;line-height:18px;}
   .tabs button small:empty{display:none;}
@@ -361,6 +371,7 @@
     </div>
   </div>
   <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div></div></div>
+  <div id="liftPad" class="glass" hidden role="group" aria-label="בחירת קומה"><button data-f="2">הגג<small>פודקורט</small></button><button data-f="1">1<small>לבית</small></button><button data-f="0">קרקע<small>כניסה</small></button></div>
   <button id="act" class="off" aria-label="פעולה">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/></svg>
     <span id="actLabel">קח</span>
@@ -391,7 +402,7 @@
         <button id="dirClose" aria-label="סגירת המפה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="dirSearch" type="search" placeholder="חיפוש מוצר או מחלקה" autocomplete="off" enterkeyhint="search"></label>
-      <div class="tabs" id="tabs"><button data-f="0">קומת קרקע <small id="tab0"></small></button><button data-f="1">קומה 1 <small id="tab1"></small></button></div>
+      <div class="tabs" id="tabs"><button data-f="0">קרקע <small id="tab0"></small></button><button data-f="1">קומה 1 <small id="tab1"></small></button><button data-f="2">הגג <small id="tab2"></small></button></div>
     </div>
     <div class="dscroll" id="dscroll">
       <div class="mapcard"><canvas id="bigmap" width="720" height="960" aria-label="מפת הקומה"></canvas>
@@ -469,7 +480,7 @@ const FH = 6;                                   // floor height
 const BX = 24, BZ = 32;                         // half size of the building
 const VOID = {minX:-8,maxX:8,minZ:-7,maxZ:7};   // atrium opening in floor 1
 const SH = {x0:-1.6,x1:1.6,z0:-5.8,z1:-2.6};    // elevator shaft
-const FLOOR_NAME = ['קומת קרקע','קומה 1'];
+const FLOOR_NAME = ['קומת קרקע','קומה 1','קומה 2 · הגג'], FLOOR_SHORT = ['קרקע','קומה 1','הגג'], TOP = 2;
 
 /* ---------- renderer ---------- */
 const canvas = $('#c');
@@ -494,8 +505,8 @@ const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 180);
   scene.environment=pm.fromScene(es,.035).texture; pm.dispose(); })();
 
 /* ---------- helpers ---------- */
-const STATIC = [new THREE.Group(), new THREE.Group()];   // baked into few meshes per floor
-scene.add(STATIC[0], STATIC[1]);
+const STATIC = [new THREE.Group(), new THREE.Group(), new THREE.Group()];   // baked into few meshes per floor
+scene.add(STATIC[0], STATIC[1], STATIC[2]);
 let SG = STATIC[0];
 const geoCache = {}, matCache = {};
 function bgeo(w,h,d){ const k=w+'|'+h+'|'+d; return geoCache[k] || (geoCache[k]=new THREE.BoxGeometry(w,h,d)); }
@@ -508,7 +519,7 @@ function rrect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y
 function place(obj,x,y,z,ry,s,parent){ obj.position.set(x,y,z); obj.rotation.y=ry||0; if(s) obj.scale.setScalar(s); (parent||SG).add(obj); return obj; }
 
 // collisions, one list per floor
-const solids = [[],[]], noSpawn = [[],[]];
+const solids = [[],[],[]], noSpawn = [[],[],[]];
 function solid(f,cx,cz,w,d,tag){ const s={minX:cx-w/2,maxX:cx+w/2,minZ:cz-d/2,maxZ:cz+d/2,tag:tag||'',off:false}; solids[f].push(s); return s; }
 function solidR(f,x0,x1,z0,z1,tag){ return solid(f,(x0+x1)/2,(z0+z1)/2,x1-x0,z1-z0,tag); }
 
@@ -700,31 +711,34 @@ function buildShell(){
 }
 
 /* ---------- glass elevator ---------- */
-const elev={y:0,floor:0,moving:false,from:0,to:0,t:0,rider:false,door:[1,0],doorSolid:[],panels:[[],[]],cabin:null};
+const elev={y:0,floor:0,moving:false,from:0,to:0,t:0,rider:false,door:[1,0,0],doorSolid:[],panels:[[],[],[]],cabin:null};
 function buildElevator(){
   SG=STATIC[0];
   const cx=(SH.x0+SH.x1)/2, cz=(SH.z0+SH.z1)/2, W=SH.x1-SH.x0, D=SH.z1-SH.z0;
-  [[SH.x0,SH.z0],[SH.x1,SH.z0],[SH.x0,SH.z1],[SH.x1,SH.z1]].forEach(([x,z])=>box(.18,12,.18,M.yellow,x,6,z));
-  plane(D,12,M.pane,SH.x0,6,cz,Math.PI/2); plane(D,12,M.pane,SH.x1,6,cz,Math.PI/2);
+  const HT=3*FH;   // the shaft runs up through the roof deck to the rooftop
+  [[SH.x0,SH.z0],[SH.x1,SH.z0],[SH.x0,SH.z1],[SH.x1,SH.z1]].forEach(([x,z])=>box(.18,HT,.18,M.yellow,x,HT/2,z));
+  plane(D,HT,M.pane,SH.x0,HT/2,cz,Math.PI/2); plane(D,HT,M.pane,SH.x1,HT/2,cz,Math.PI/2);
   // front (+z): ground floor door opening
-  plane(W,9.6,M.pane,cx,7.2,SH.z1,0); plane(.5,2.4,M.pane,SH.x0+.25,1.2,SH.z1,0); plane(.5,2.4,M.pane,SH.x1-.25,1.2,SH.z1,0);
-  // back (-z): floor 1 door opening
-  plane(W,6,M.pane,cx,3,SH.z0,0); plane(W,3.6,M.pane,cx,10.2,SH.z0,0); plane(.5,2.4,M.pane,SH.x0+.25,7.2,SH.z0,0); plane(.5,2.4,M.pane,SH.x1-.25,7.2,SH.z0,0);
-  [2.45,8.45].forEach(y=>{ box(W,.12,.14,M.yellow,cx,y,SH.z1); box(W,.12,.14,M.yellow,cx,y,SH.z0); });
-  box(W+.3,.5,D+.3,M.dark,cx,11.75,cz,null,false);
-  for(let y=1;y<12;y+=2.2) box(.04,.04,D,M.led,SH.x0-.02,y,cz,null,false), box(.04,.04,D,M.led,SH.x1+.02,y,cz,null,false);
+  plane(W,HT-2.4,M.pane,cx,(HT+2.4)/2,SH.z1,0); plane(.5,2.4,M.pane,SH.x0+.25,1.2,SH.z1,0); plane(.5,2.4,M.pane,SH.x1-.25,1.2,SH.z1,0);
+  // back (-z): door openings on floor 1 and on the roof
+  plane(W,6,M.pane,cx,3,SH.z0,0); plane(W,3.6,M.pane,cx,10.2,SH.z0,0); plane(W,3.6,M.pane,cx,16.2,SH.z0,0);
+  [FH,2*FH].forEach(y=>{ plane(.5,2.4,M.pane,SH.x0+.25,y+1.2,SH.z0,0); plane(.5,2.4,M.pane,SH.x1-.25,y+1.2,SH.z0,0); });
+  [2.45,8.45,14.45].forEach(y=>{ box(W,.12,.14,M.yellow,cx,y,SH.z1); box(W,.12,.14,M.yellow,cx,y,SH.z0); });
+  box(W+.3,.5,D+.3,M.dark,cx,HT-.25,cz,null,false);
+  for(let y=1;y<HT;y+=2.2) box(.04,.04,D,M.led,SH.x0-.02,y,cz,null,false), box(.04,.04,D,M.led,SH.x1+.02,y,cz,null,false);
   neon('מעלית',cx,2.95,SH.z1+.12,0,1.9,false,null,true);
   neon('מעלית',cx,FH+2.95,SH.z0-.12,Math.PI,1.9,false,null,true);
+  SG=STATIC[2]; neon('מעלית',cx,2*FH+2.95,SH.z0-.12,Math.PI,1.9,false,null,true); SG=STATIC[0];
   // colliders
-  [0,1].forEach(f=>{ solidR(f,SH.x0-.15,SH.x0+.1,SH.z0,SH.z1); solidR(f,SH.x1-.1,SH.x1+.15,SH.z0,SH.z1); });
-  solidR(0,SH.x0,SH.x1,SH.z0-.15,SH.z0+.1); solidR(1,SH.x0,SH.x1,SH.z1-.1,SH.z1+.15);
-  solidR(0,SH.x0,-1.1,SH.z1-.1,SH.z1+.15); solidR(0,1.1,SH.x1,SH.z1-.1,SH.z1+.15);
-  solidR(1,SH.x0,-1.1,SH.z0-.15,SH.z0+.1); solidR(1,1.1,SH.x1,SH.z0-.15,SH.z0+.1);
-  elev.doorSolid[0]=solidR(0,-1.1,1.1,SH.z1-.1,SH.z1+.15,'door'); elev.doorSolid[1]=solidR(1,-1.1,1.1,SH.z0-.15,SH.z0+.1,'door');
+  [0,1,2].forEach(f=>{ solidR(f,SH.x0-.15,SH.x0+.1,SH.z0,SH.z1); solidR(f,SH.x1-.1,SH.x1+.15,SH.z0,SH.z1); });
+  solidR(0,SH.x0,SH.x1,SH.z0-.15,SH.z0+.1); solidR(0,SH.x0,-1.1,SH.z1-.1,SH.z1+.15); solidR(0,1.1,SH.x1,SH.z1-.1,SH.z1+.15);
+  elev.doorSolid[0]=solidR(0,-1.1,1.1,SH.z1-.1,SH.z1+.15,'door');
+  [1,2].forEach(f=>{ solidR(f,SH.x0,SH.x1,SH.z1-.1,SH.z1+.15); solidR(f,SH.x0,-1.1,SH.z0-.15,SH.z0+.1); solidR(f,1.1,SH.x1,SH.z0-.15,SH.z0+.1);
+    elev.doorSolid[f]=solidR(f,-1.1,1.1,SH.z0-.15,SH.z0+.1,'door'); });
   noSpawn[0].push({minX:SH.x0-.6,maxX:SH.x1+.6,minZ:SH.z0-.6,maxZ:SH.z1+1.4});
   // doors (dynamic)
   const doorGlass=new THREE.MeshStandardMaterial({color:0xffc9a8,transparent:true,opacity:.35,roughness:.05,depthWrite:false,side:THREE.DoubleSide});
-  [[0,SH.z1+.06],[1,SH.z0-.06]].forEach(([f,z])=>[-1,1].forEach(s=>{ const g=new THREE.Group(); plane(1.1,2.4,doorGlass,0,1.2,0,0,g);
+  [[0,SH.z1+.06],[1,SH.z0-.06],[2,SH.z0-.06]].forEach(([f,z])=>[-1,1].forEach(s=>{ const g=new THREE.Group(); plane(1.1,2.4,doorGlass,0,1.2,0,0,g);
     box(.06,2.4,.06,M.yellow,s*.52,1.2,0,g,false); box(1.1,.06,.06,M.yellow,0,2.37,0,g,false); box(.02,.3,.08,M.steel,-s*.5,1.2,0,g,false);
     g.position.set(s*.55,f*FH,z); g.userData.s=s; scene.add(g); elev.panels[f].push(g); }));
   // cabin
@@ -735,12 +749,13 @@ function buildElevator(){
   box(.06,.06,D-.3,M.steel,SH.x0+.12,1,cz,c,false); box(.06,.06,D-.3,M.steel,SH.x1-.12,1,cz,c,false);
   box(.05,.5,.3,M.dark,SH.x1-.1,1.35,SH.z1-.5,c,false); box(.06,.07,.07,M.led,SH.x1-.13,1.45,SH.z1-.5,c,false); box(.06,.07,.07,M.glowGreen,SH.x1-.13,1.25,SH.z1-.5,c,false);
 }
+const FLOOR_ARRIVE=['קומת קרקע · מסכים, מטבח וקופות','קומה 1 · מקררים, כביסה, מיזוג וחימום','הגג · פודקורט, ארקייד וקולנוע תחת הכוכבים'];
 function inCabin(){ const p=player.pos; return player.floor===elev.floor && !elev.moving && p.x>SH.x0+.2 && p.x<SH.x1-.2 && p.z>SH.z0+.2 && p.z<SH.z1-.2; }
 function atCall(f){ const p=player.pos; return Math.abs(p.x)<1.9 && (f===0 ? (p.z>SH.z1 && p.z<SH.z1+3.4) : (p.z<SH.z0 && p.z>SH.z0-3.6)); }
-function startRide(to,rider){ if(elev.moving) return; elev.moving=true; elev.from=elev.y; elev.to=to; elev.t=0; elev.rider=rider; if(rider){ player.vel.set(0,0,0); } Sound.ding(); }
+function startRide(to,rider){ if(elev.moving||(to===elev.floor&&Math.abs(elev.y-to*FH)<.01)) return; elev.moving=true; elev.from=elev.y; elev.to=to; elev.t=0; elev.rider=rider; if(rider){ player.vel.set(0,0,0); } Sound.ding(); }
 function updateElevator(dt){
   const p=player.pos;
-  for(const f of [0,1]){
+  for(const f of [0,1,2]){
     const dz = f===0 ? p.z-SH.z1 : SH.z0-p.z;
     const near = player.floor===f && Math.abs(p.x)<2.2 && dz>-3.4 && dz<3.4;
     const want = (!elev.moving && elev.floor===f && near) ? 1 : 0;
@@ -748,11 +763,11 @@ function updateElevator(dt){
     elev.doorSolid[f].off = elev.door[f]>.8;
     elev.panels[f].forEach(g=>{ g.position.x=g.userData.s*(.55+elev.door[f]*1.02); });
   }
-  if(elev.moving && elev.door[0]<.03 && elev.door[1]<.03){
-    elev.t+=dt/2.8; const k=ease(Math.min(1,elev.t));
+  if(elev.moving && elev.door.every(d=>d<.03)){
+    elev.t+=dt/(1.6+1.2*Math.max(1,Math.abs(elev.to*FH-elev.from)/FH)); const k=ease(Math.min(1,elev.t));
     elev.y=elev.from+(elev.to*FH-elev.from)*k;
     if(elev.t>=1){ elev.y=elev.to*FH; elev.floor=elev.to; elev.moving=false; Sound.ding();
-      if(elev.rider){ elev.rider=false; setFloor(elev.to); toast(elev.to?'קומה 1 · מוצרי חשמל לבית, ניקיון וגיימינג':'קומת קרקע · מסכים, מטבח וקופות'); } }
+      if(elev.rider){ elev.rider=false; setFloor(elev.to); toast(FLOOR_ARRIVE[elev.to],elev.to===TOP?'good':''); } }
   }
   elev.cabin.position.y=elev.y;
   if(elev.rider){ p.y=elev.y; }
@@ -1150,11 +1165,16 @@ const DEPTS=[
   {id:'laundry',f:1,name:'כביסה, ייבוש ומדיחים',sub:'כביסה · מייבשים · מדיחים',rect:[-24,-8.5,-9,13],to:[-16.2,-1],color:'#5b6fe0',cat:'laundry',icon:'laundry'},
   {id:'home',f:1,name:'מוצרי חשמל לבית',sub:'שואבים · מגהצים',rect:[8.5,24,-32,-1],to:[14,-15],color:'#2fb592',cat:'home-appliances',icon:'clean'},
   {id:'ac',f:1,name:'מיזוג אוויר',sub:'מזגנים עיליים',rect:[8.5,24,-1,13],to:[14.5,4.5],color:'#2aa7c9',cat:'air-conditioning',icon:'ac'},
+  {id:'food',f:2,name:'פודקורט',sub:'פיצה · בורגר · סושי · קפה',rect:[-24,24,9,32],to:[0,13],color:'#ff9f1c',icon:'food'},
+  {id:'arcade',f:2,name:'ארקייד',sub:'משחקים · רחבת ריקודים',rect:[-24,-8.5,-32,-9],to:[-15,-14],color:'#9b5de5',icon:'gaming'},
+  {id:'terrace',f:2,name:'טרסת העיר',sub:'ספות · תצפית על העיר',rect:[8.5,24,-32,-9],to:[15,-12],color:'#2ec4b6',icon:'view'},
+  {id:'cinema',f:2,name:'קולנוע גג',sub:'המבצעים על מסך ענק',rect:[-24,-8.5,-9,9],to:[-10.5,0],color:'#e63946',icon:'screens'},
+  {id:'outlet',f:2,name:'אאוטלט מבצעים',sub:'ההנחות הגדולות',rect:[8.5,24,-9,9],to:[13.5,0],color:'#d6336c',icon:'deal',url:'/deals',ck:'deals'},
   {id:'heat',f:1,name:'חימום ואוורור',sub:'מאווררים · תנורי חימום',rect:[-24,24,13.5,32],to:[-6,22.5],color:'#e07a2a',cat:'heating-ventilation',icon:'heat'},
 ];
 
 /* ---------- catalogue kiosks: one per department, listing the whole category ---------- */
-const catKey=d=>d.cat||(d.id==='deal'?'deals':null);
+const catKey=d=>d.ck||d.cat||(d.id==='deal'?'deals':null);
 const catTotal=d=>{ const c=(STORE.cats||[]).find(c=>c.slug===catKey(d)); return c&&c.total||0; };
 function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
   const bg=g.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#1a2150'); bg.addColorStop(1,'#0d1231'); g.fillStyle=bg; g.fillRect(0,0,W,H);
@@ -1164,30 +1184,161 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
   for(let r=0;r<3;r++) for(let c=0;c<3;c++){ g.fillStyle=(r+c)%3===0?d.color:'rgba(255,255,255,.14)'; rrect(g,40+c*62,100+r*52,52,42,8); g.fill(); }
   const n=catTotal(d); g.fillStyle='#fff'; g.font='800 46px Rubik,sans-serif'; g.fillText(n?String(n):'הכל',W/2,300);
   g.font='600 18px Rubik,sans-serif'; g.fillStyle='#aab1c8'; g.fillText(n?'מוצרים · לחצו לפתיחה':'לחצו לפתיחה',W/2,332); }); }
+
+/* ---------- floor 2: the open-air rooftop ----------
+   No shelves up here: it is where people hang out. A food court, an arcade, a terrace over
+   the city, a cinema screen playing the deals, and the outlet corner with the deals kiosk.
+   Everything is baked into STATIC[2], which is only drawn while somebody is on the roof. */
+const roofLive=[];
+const arcadeTexes=[0,1,2,3,4,5].map(i=>canvasTex(128,96,(g,W,H)=>{ const hue=[200,300,40,140,0,260][i];
+  g.fillStyle=`hsl(${hue},70%,12%)`; g.fillRect(0,0,W,H);
+  for(let k=0;k<16;k++){ g.fillStyle=`hsl(${(hue+k*27)%360},95%,60%)`; g.fillRect((k*37)%W,(k*23)%(H-24),6+(k%3)*5,6+(k%4)*3); }
+  g.fillStyle='#fff'; g.font='800 15px Rubik,sans-serif'; g.textAlign='center'; g.fillText(['PAC','RACE','SPACE','KICK','DANCE','BLOCK'][i],W/2,H-9); }));
+function buildRoof(){
+  SG=STATIC[2]; const Y=2*FH, f=2;
+  // deck everywhere outside the skylight, plus the bridge to the elevator
+  const deck=new THREE.MeshStandardMaterial({map:tileTex('#4d5467','#565d71','#50576a'),roughness:.8});
+  [[-BX,VOID.minX,-BZ,BZ],[VOID.maxX,BX,-BZ,BZ],[VOID.minX,VOID.maxX,-BZ,VOID.minZ],[VOID.minX,VOID.maxX,VOID.maxZ,BZ],[SH.x0,SH.x1,VOID.minZ,SH.z0]]
+    .forEach(([x0,x1,z0,z1])=>floorPlane(x0,x1,z0,z1,Y+.002,deck));
+  // the atrium's skylight: glass you can see the mall through, fenced like the floor below
+  const skyGlass=new THREE.MeshStandardMaterial({color:0xa9dcff,transparent:true,opacity:.2,roughness:.05,metalness:.2,depthWrite:false});
+  [[VOID.minX,SH.x0,VOID.minZ,VOID.maxZ],[SH.x1,VOID.maxX,VOID.minZ,VOID.maxZ],[SH.x0,SH.x1,SH.z1,VOID.maxZ]].forEach(([x0,x1,z0,z1])=>floorPlane(x0,x1,z0,z1,Y+.01,skyGlass));
+  for(let x=VOID.minX+2;x<VOID.maxX;x+=2){ if(x>SH.x0-.1&&x<SH.x1+.1) continue; box(.06,.05,VOID.maxZ-VOID.minZ,M.steel,x,Y+.03,0,null,false); }
+  box(SH.x1-SH.x0,.05,.06,M.steel,0,Y+.03,(SH.z1+VOID.maxZ)/2,null,false);
+  const rail=(x0,z0,x1,z1)=>{ const L=Math.hypot(x1-x0,z1-z0), cx=(x0+x1)/2, cz=(z0+z1)/2, r=Math.atan2(x1-x0,z1-z0)+Math.PI/2;
+    plane(L,1.05,M.pane,cx,Y+.55,cz,r); const h=box(L,.08,.1,M.yellow,cx,Y+1.1,cz); h.rotation.y=r;
+    for(let k=0;k<=L;k+=2){ const t=k/L; box(.07,1.1,.07,M.steel,x0+(x1-x0)*t,Y+.55,z0+(z1-z0)*t); }
+    solid(f,cx,cz,Math.abs(x1-x0)+.25,Math.abs(z1-z0)+.25,'rail'); };
+  rail(VOID.minX,VOID.minZ,VOID.minX,VOID.maxZ); rail(VOID.maxX,VOID.minZ,VOID.maxX,VOID.maxZ); rail(VOID.minX,VOID.maxZ,VOID.maxX,VOID.maxZ);
+  rail(VOID.minX,VOID.minZ,SH.x0,VOID.minZ); rail(SH.x1,VOID.minZ,VOID.maxX,VOID.minZ);
+  rail(SH.x0,VOID.minZ,SH.x0,SH.z0); rail(SH.x1,VOID.minZ,SH.x1,SH.z0);
+  noSpawn[f].push({minX:VOID.minX-.5,maxX:VOID.maxX+.5,minZ:VOID.minZ-.5,maxZ:VOID.maxZ+.5});
+  // parapet with a glass guard on top, and its colliders
+  const par=mat(0xe9e5dc,{roughness:.85});
+  [[0,-BZ-.2,48.8,0],[0,BZ+.2,48.8,0],[-BX-.2,0,64.8,1],[BX+.2,0,64.8,1]].forEach(([x,z,L,side])=>{ const r=side?Math.PI/2:0;
+    const w=box(L,1.1,.4,par,x,Y+.55,z,null,false); w.rotation.y=r; const c=box(L,.1,.55,M.yellow,x,Y+1.15,z,null,false); c.rotation.y=r;
+    plane(L,1,M.pane,x,Y+1.7,z,r); });
+  solidR(f,-BX-1,BX+1,-BZ-1,-BZ+.2); solidR(f,-BX-1,-BX+.2,-BZ-1,BZ+1); solidR(f,BX-.2,BX+1,-BZ-1,BZ+1); solidR(f,-BX-1,BX+1,BZ-.2,BZ+1);
+  // night sky and the city all around
+  const skyTex=canvasTex(1024,512,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H*.5); gr.addColorStop(0,'#060920'); gr.addColorStop(.7,'#1a1f4d'); gr.addColorStop(1,'#5a3f82'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+    for(let i=0;i<520;i++){ g.fillStyle=`rgba(255,255,255,${(.2+((i*37)%80)/100).toFixed(2)})`; const sz=i%11===0?2:1; g.fillRect((i*197)%W,((i*89)%(H*.46)),sz,sz); }
+    g.fillStyle='rgba(255,247,218,.25)'; g.beginPath(); g.arc(W*.7,H*.2,26,0,7); g.fill(); g.fillStyle='#fff7da'; g.beginPath(); g.arc(W*.7,H*.2,15,0,7); g.fill(); });
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(130,32,16),new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide,depthWrite:false})); dome.position.set(0,Y,0); SG.add(dome);
+  const cityTex=canvasTex(2048,512,(g,W,H)=>{ for(let i=0;i<64;i++){ const x=i*32+((i*13)%9), w=24+((i*7)%26), h=70+((i*53)%280);
+    g.fillStyle=['#0a0e29','#0f1437','#141a42'][i%3]; g.fillRect(x,H-h,w,h);
+    for(let r=0;r<h/14-1;r++) for(let c=0;c<w/8-1;c++) if(((i*31+r*17+c*7)%10)<4){ g.fillStyle=((r+c+i)%9)?'#ffcf7a':'#7fd0ff'; g.fillRect(x+4+c*8,H-h+6+r*14,4,6); } } });
+  const cityM=new THREE.MeshBasicMaterial({map:cityTex,transparent:true});
+  [[0,-BZ-38,0],[0,BZ+38,Math.PI],[-BX-38,0,Math.PI/2],[BX+38,0,-Math.PI/2]].forEach(([x,z,r])=>plane(170,42,cityM,x,Y-8,z,r));
+
+  // --- food court (front) ---
+  floorPlane(-BX+.3,BX-.3,9.5,BZ-.3,Y+.012,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.7})),null,3);
+  [['פיצה',0xe63946,-15],['בורגר',0xff9f1c,-5],['סושי',0x2ec4b6,5],['קפה',0x9b5de5,15]].forEach(([name,c,x],i)=>{ const cm=mat(c,{roughness:.5});
+    box(6,1.1,1.1,M.white,x,Y+.55,28.4); box(6.1,.08,1.2,cm,x,Y+1.14,28.4);
+    box(6,3.2,.3,mat(0x22263a),x,Y+1.6,31.4); box(.2,3.2,3.2,M.dark,x-3,Y+1.6,29.9); box(.2,3.2,3.2,M.dark,x+3,Y+1.6,29.9);
+    const aw=box(6.5,.14,3.4,cm,x,Y+3.25,29.6); aw.rotation.x=-.14;
+    for(let k=-2;k<=2;k++) box(.9,.02,3.3,M.white,x+k*1.3,Y+3.33,29.6,null,false).rotation.x=-.14;
+    box(3.2,1.2,.05,new THREE.MeshBasicMaterial({color:0x10142c}),x,Y+2.2,31.22,null,false);
+    for(let k=0;k<3;k++) box(2.6,.08,.02,M.glowWhite,x,Y+2.55-k*.3,31.2,null,false);
+    neon(name,x,Y+4.1,28.1,Math.PI,3,false,null,true);
+    solidR(f,x-3.2,x+3.2,27.7,BZ);
+    const cook=mkGuy({girl:i%2===1,skin:[0xf1c7a0,0xc98e62,0xe0ac80,0x8d5a3b][i],hair:0x2b1a10,shirt:0xf3f4f6,pants:0x2b2f3a,vest:c,extra:'cap',capColor:c,tuft:false});
+    cook.g.position.set(x,Y,29.6); cook.g.rotation.y=Math.PI; scene.add(cook.g); roofLive.push(cook.g); cashiers.push(cook); });
+  const umb=[0xe63946,0xff9f1c,0x2ec4b6,0x9b5de5,0xfee440,0x4361ee]; let un=0;
+  for(const x of [-18,-11.5,-5,5,11.5,18]) for(const z of [14,19,24]){
+    cyl(.75,.75,.06,M.white,x,Y+.78,z); cyl(.06,.06,.76,M.steel,x,Y+.38,z,null,8);
+    for(let k=0;k<4;k++){ const a=k*Math.PI/2+.4, sx=x+Math.sin(a)*1.05, sz=z+Math.cos(a)*1.05; cyl(.24,.24,.08,mat(umb[(un+k)%6]),sx,Y+.5,sz); cyl(.04,.04,.48,M.steel,sx,Y+.24,sz,null,6); }
+    cyl(.035,.035,2.4,M.steel,x,Y+2,z,null,6);
+    const u=new THREE.Mesh(new THREE.ConeGeometry(1.5,.55,8),mat(umb[un%6],{roughness:.6})); u.position.set(x,Y+3.2,z); u.castShadow=true; SG.add(u); un++;
+    solid(f,x,z,2.6,2.6); }
+  // string lights over the court
+  const bulbs=[M.glowWhite,new THREE.MeshBasicMaterial({color:0xffd27a}),M.ledPink,M.ledCyan];
+  for(const z of [11.5,16.5,21.5,26.5]){ [-22.7,22.7].forEach(x=>{ box(.12,4.2,.12,M.dark,x,Y+2.1,z); solid(f,x,z,.3,.3); });
+    for(let k=0;k<=46;k++){ const t=k/46, x=-22.7+t*45.4, y=Y+4.1-Math.sin(t*Math.PI)*.9; box(.13,.13,.13,bulbs[k%4],x,y,z,null,false); if(k<46) box(1,.02,.02,M.dark,x+.49,y+.05,z,null,false); } }
+
+  // --- arcade (back left) ---
+  floorPlane(-BX+.3,-8.8,-BZ+.3,-9.2,Y+.012,mat(0x12132a,overlay({roughness:.6})));
+  for(let x=-23;x<=-9.5;x+=2) box(.05,.02,22.4,M.ledPink,x,Y+.03,-20.6,null,false);
+  for(let z=-31;z<=-10;z+=2) box(14.6,.02,.05,M.ledCyan,-16.2,Y+.03,z,null,false);
+  const cabinet=(x,z,ry,i)=>{ const g=new THREE.Group(); const body=mat([0x3a0ca3,0x7209b7,0xf72585,0x4361ee,0x06d6a0,0xff9f1c][i%6],{roughness:.4});
+    box(.95,1.95,.9,body,0,.975,0,g); plane(.78,.58,new THREE.MeshBasicMaterial({map:arcadeTexes[i%6]}),0,1.42,.456,0,g);
+    const cp=box(.95,.1,.42,M.dark,0,1.02,.55,g); cp.rotation.x=-.35; box(.08,.12,.08,M.red,-.18,1.11,.55,g,false); box(.08,.08,.08,M.ledCyan,.18,1.1,.55,g,false);
+    box(.97,.28,.35,new THREE.MeshBasicMaterial({color:[0xff5ec4,0x5ee7ff,0xffd166,0x7bff9b][i%4]}),0,2.05,.3,g,false);
+    place(g,x,Y,z,ry); };
+  let ci=0; for(let z=-29.5;z<=-12;z+=1.45) cabinet(-23,z,Math.PI/2,ci++);
+  for(let x=-21.5;x<=-10.5;x+=1.45) cabinet(x,-31,0,ci++);
+  solidR(f,-BX,-22.4,-30.3,-11.2); solidR(f,-22.3,-9.7,-BZ,-30.4);
+  const dance=[0xff3fb4,0x2fe6ff,0xffd166,0x7bff9b].map(c=>new THREE.MeshBasicMaterial({color:c}));
+  for(let i=0;i<4;i++) for(let j=0;j<4;j++){ const t=new THREE.Mesh(new THREE.PlaneGeometry(1.05,1.05),dance[(i+j*2)%4]); t.rotation.x=-Math.PI/2; t.position.set(-17.2+i*1.15,Y+.02,-22.7+j*1.15); SG.add(t); }
+  box(2.3,.85,1.3,M.white,-13,Y+.43,-14); box(2.1,.04,1.1,mat(0x2d6cdf),-13,Y+.87,-14,null,false); solid(f,-13,-14,2.5,1.5);
+  [-19.3,-12.7].forEach(x=>{ box(.12,3.4,.12,M.dark,x,Y+1.7,-9.5); solid(f,x,-9.5,.3,.3); });
+  neon('ארקייד',-16,Y+3.9,-9.5,0,5.6,true,'משחקים · ריקודים · תחרויות',true);
+
+  // --- city terrace (back right) ---
+  floorPlane(8.8,BX-.3,-BZ+.3,-9.2,Y+.012,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.7})),null,2.5);
+  [[12,-24],[18.5,-24],[12,-17],[18.5,-17]].forEach(([x,z],i)=>{ sofa(x,Y,z,Math.PI,[0x2ec4b6,0x3b4252,0x9b5de5,0x3b4252][i],3.4); solid(f,x,z,3.6,1.3);
+    box(1.4,.4,.7,M.wood,x,Y+.2,z-1.6); solid(f,x,z-1.6,1.5,.8); });
+  const logo=new THREE.MeshBasicMaterial({map:logoTex()}); plane(9,2.25,logo,15.5,Y+2.9,-BZ+.5,0);
+  [11.4,19.6].forEach(x=>{ box(.14,4,.14,M.dark,x,Y+2,-BZ+.45); });
+  plane(12.5,4.3,GLOW,15.5,Y+2.9,-BZ+.44,0);
+  [[10,-29.5],[22,-29.5]].forEach(([x,z])=>{ cyl(.05,.05,1.2,M.dark,x,Y+.6,z,null,6); const t=cyl(.09,.13,.9,M.steel,x,Y+1.35,z,null,10); t.rotation.x=-1.1; solid(f,x,z,.5,.5); });
+  planter(10,Y,-10.8,f); planter(22.4,Y,-10.8,f);
+
+  // --- rooftop cinema (left, middle) ---
+  floorPlane(-BX+.3,-8.8,-8.8,8.8,Y+.012,mat(0x1c1d33,overlay({roughness:.9})));
+  box(.4,6.4,11.2,M.black,-23.35,Y+3.6,0); plane(10.6,5.8,new THREE.MeshBasicMaterial({map:AD.tex}),-23.13,Y+3.7,0,Math.PI/2);
+  box(.3,.9,11.2,M.dark,-23.35,Y+.45,0); solidR(f,-BX,-22.9,-5.9,5.9);
+  const bean=[0xe63946,0xff9f1c,0x2ec4b6,0x9b5de5,0x4361ee,0xfee440];
+  [-19,-15.5,-12].forEach((x,a)=>[-4.5,-1.5,1.5,4.5].forEach((z,b)=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(.62,14,10),mat(bean[(a*4+b)%6],{roughness:.9})); m.scale.set(1,.55,1); m.position.set(x,Y+.34,z); m.castShadow=true; SG.add(m); solid(f,x,z,1.15,1.15); }));
+  [-19.3,-12.7].forEach(x=>{ box(.12,3.4,.12,M.dark,x,Y+1.7,8.6); solid(f,x,8.6,.3,.3); });
+  neon('קולנוע גג',-16,Y+3.9,8.6,0,5.6,true,'המבצעים של היום על מסך ענק',true);
+
+  // --- outlet corner (right, middle) with the deals kiosk ---
+  floorPlane(8.8,BX-.3,-8.8,8.8,Y+.012,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#5a1f2c','#6a2533'),roughness:.95})),null,3);
+  [-5.5,0,5.5].forEach(z=>{ box(1.7,.9,1.3,M.red,21.8,Y+.45,z); box(1.75,.06,1.35,M.white,21.8,Y+.93,z,null,false);
+    plane(1.2,.45,new THREE.MeshBasicMaterial({map:canvasTex(128,48,(g,W,H)=>{ g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.fillStyle='#e63946'; g.font='800 30px Rubik,sans-serif'; g.textAlign='center'; g.fillText('SALE',W/2,35); })}),20.93,Y+.55,z,-Math.PI/2);
+    solid(f,21.8,z,1.9,1.5); });
+  [[10.5,6.5],[11.3,7.2],[10,7.6]].forEach(([x,z],i)=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(.38,14,10),new THREE.MeshStandardMaterial({color:[0xe63946,0xff9f1c,0xfee440][i],roughness:.25,metalness:.1})); b.scale.set(1,1.2,1); b.position.set(x,Y+2.9+i*.25,z); SG.add(b);
+    box(.01,2.4+i*.25,.01,M.white,x,Y+1.4+i*.12,z,null,false); });
+  box(.5,.3,.5,M.dark,10.6,Y+.15,7.1); solid(f,10.6,7.1,.8,.8);
+  [12.7,19.3].forEach(x=>{ box(.12,3.4,.12,M.dark,x,Y+1.7,8.6); solid(f,x,8.6,.3,.3); });
+  neon('אאוטלט',16,Y+3.9,8.6,0,5,true,'ההנחות הגדולות של BuyToday',true);
+
+  // --- helipad behind the elevator ---
+  const pad=new THREE.Mesh(new THREE.CircleGeometry(4.6,48),mat(0x2b2f3d,overlay({roughness:.8}))); pad.rotation.x=-Math.PI/2; pad.position.set(0,Y+.014,-21); SG.add(pad);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(4,4.3,48),new THREE.MeshBasicMaterial({color:0xfee440})); ring.rotation.x=-Math.PI/2; ring.position.set(0,Y+.02,-21); SG.add(ring);
+  [[-1.1,0,.4,3.2],[1.1,0,.4,3.2],[0,0,1.8,.4]].forEach(([x,z,w,d])=>{ const h=new THREE.Mesh(new THREE.PlaneGeometry(w,d),M.glowWhite); h.rotation.x=-Math.PI/2; h.position.set(x,Y+.022,-21+z); SG.add(h); });
+  for(let k=0;k<12;k++){ const a=k*Math.PI/6; box(.16,.08,.16,M.glowGreen,Math.sin(a)*4.9,Y+.04,-21+Math.cos(a)*4.9,null,false); }
+  SG=STATIC[0];
+}
 function buildKiosks(){
   const frame=mat(0x1b2033,{roughness:.35,metalness:.4});
   DEPTS.forEach(d=>{ if(!catKey(d)) return;
     const [x0,x1,z0,z1]=d.rect, f=d.f; let best=null, bs=1e9;
     for(let x=x0+1.4;x<=x1-1.4;x+=.5) for(let z=z0+1.4;z<=z1-1.4;z+=.5){
       if(!walkable(x,z,1.45,f)) continue;
-      if(Math.abs(x)<VOID.maxX+1.8&&z>VOID.minZ-1.8&&z<VOID.maxZ+1.8&&f===1) continue;
+      if(Math.abs(x)<VOID.maxX+1.8&&z>VOID.minZ-1.8&&z<VOID.maxZ+1.8&&f>=1) continue;
       if(x>SH.x0-2&&x<SH.x1+2&&z>SH.z0-2&&z<SH.z1+2) continue;
       if(CATALOG.some(it=>it.f===f&&Math.hypot(it.x-x,it.z-z)<2.3)) continue;
       const sc=Math.abs(Math.hypot(x-d.to[0],z-d.to[1])-2.4); if(sc<bs){ bs=sc; best=[x,z]; } }
     if(!best) return;
-    const [x,z]=best, ry=Math.atan2(d.to[0]-x,d.to[1]-z), y=f*FH, P=STATIC[f], g=new THREE.Group();
+    const [x,z]=best, y=f*FH, P=STATIC[f], g=new THREE.Group();
+    // turn the screen to where people walk: the longest clear run from the kiosk, nudged towards the department's centre
+    const toA=Math.atan2(d.to[0]-x,d.to[1]-z); let ry=toA, bs2=-1e9;
+    for(let k=0;k<16;k++){ const a=k*Math.PI/8, sx=Math.sin(a), sz=Math.cos(a); let run=0; while(run<14&&walkable(x+sx*(run+.9),z+sz*(run+.9),.35,f)) run+=.5;
+      const sc=run+2.2*Math.cos(a-toA); if(sc>bs2){ bs2=sc; ry=a; } }
     box(.8,.08,.56,frame,0,.04,0,g); box(.14,.95,.14,frame,0,.5,-.06,g);
     const scr=new THREE.Group(); scr.position.set(0,1.62,0); scr.rotation.x=-.12; g.add(scr);
     box(1.02,1.38,.1,frame,0,0,0,scr); box(1.06,.06,.12,mat(new THREE.Color(d.color).getHex()),0,.72,0,scr);
-    plane(.92,1.27,new THREE.MeshBasicMaterial({map:kioskTex(d)}),0,-.01,.052,0,scr);
+    const km=new THREE.MeshBasicMaterial({map:kioskTex(d)}); plane(.92,1.27,km,0,-.01,.052,0,scr); plane(.92,1.27,km,0,-.01,-.052,Math.PI,scr);   // a screen on both faces: no kiosk ever shows its back
     // a totem taller than the shoppers, so it reads over the player's own head from the follow camera
     const top=new THREE.Group(); top.position.set(0,2.5,0); g.add(top); box(1.02,.3,.3,mat(new THREE.Color(d.color).getHex()),0,0,-.02,top);
-    plane(.96,.24,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=d.color; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.textAlign='center'; c.direction='rtl'; c.font='800 34px Rubik,sans-serif'; c.fillText('כל המוצרים',W/2,45); })}),0,0,.131,0,top);
+    const tm=new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=d.color; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.textAlign='center'; c.direction='rtl'; c.font='800 34px Rubik,sans-serif'; c.fillText('כל המוצרים',W/2,45); })});
+    plane(.96,.24,tm,0,0,.131,0,top); plane(.96,.24,tm,0,0,-.171,Math.PI,top);
     place(g,x,y,z,ry,1.45,P);
     solid(f,x,z,1.5,1.3,'kiosk'); d.kiosk={x,z,f};
   });
 }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -1209,10 +1360,11 @@ function bake(group){
   while(group.children.length) group.remove(group.children[0]);
   buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.mat); m.castShadow=b.cast; m.receiveShadow=true; m.userData.c=b.cast; group.add(m); });
 }
-bake(STATIC[0]); bake(STATIC[1]);
+bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
 STATIC[1].children.forEach(m=>floorCasters.push(m));
+STATIC[2].children.forEach(m=>{ m.userData.f=2; floorCasters.push(m); });
 floorCasters.forEach(m=>{ if(m.userData.c===undefined) m.userData.c=m.castShadow; });
-function setShadowFloor(f){ floorCasters.forEach(m=>{ m.castShadow = f===1 && m.userData.c; }); }
+function setShadowFloor(f){ floorCasters.forEach(m=>{ m.castShadow = (m.userData.f||1)===f && m.userData.c; }); }
 
 // guide arrow
 const arrowShape=new THREE.Shape(); arrowShape.moveTo(0,.55); arrowShape.lineTo(.42,0); arrowShape.lineTo(.18,0); arrowShape.lineTo(.18,-.45); arrowShape.lineTo(-.18,-.45); arrowShape.lineTo(-.18,0); arrowShape.lineTo(-.42,0); arrowShape.closePath();
@@ -1230,7 +1382,7 @@ let hero=mkGuy(avOpts(avatar));
 const cart=mkCart(); cart.c.position.set(0,0,1.32); hero.g.add(cart.c); scene.add(hero.g);
 function setAvatar(a){ avatar=a; const p=hero.g.position.clone(), r=hero.g.rotation.y; hero.g.remove(cart.c); scene.remove(hero.g);
   hero=mkGuy(avOpts(a)); hero.g.add(cart.c); hero.g.position.copy(p); hero.g.rotation.y=r; scene.add(hero.g); }
-function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=f?'קומה 1':'קרקע'; lastDept=undefined; }
+function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=FLOOR_SHORT[f]; lastDept=undefined; }
 
 // shoppers on both floors
 const SHIRTS=[0x8fc93a,0xff924c,0x9b5de5,0xf15bb5,0x00bbf9,0xfee440,0xe0e0e0];
@@ -1238,10 +1390,10 @@ function walkable(x,z,r,f){ for(const s of solids[f]){ if(x>s.minX-r&&x<s.maxX+r
   for(const s of noSpawn[f]){ if(x>s.minX&&x<s.maxX&&z>s.minZ&&z<s.maxZ) return false; } return true; }
 function randPoint(f){ for(let i=0;i<80;i++){ const x=rand(-22.5,22.5), z=rand(-30.5,f?30.5:19); if(walkable(x,z,.9,f)) return new THREE.Vector3(x,f*FH,z); } return new THREE.Vector3(0,f*FH,f?20:12); }
 const shoppers=[];
-[[0,6],[1,5]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
+[[0,6],[1,5],[2,6]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
   const girl=Math.random()<.5; const G=mkGuy({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
   const p=randPoint(f); G.g.position.copy(p); scene.add(G.g);
-  if(f===1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; floorCasters.push(o); } });
+  if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; floorCasters.push(o); } });
   shoppers.push({G,f,pos:p,target:randPoint(f),speed:rand(1.2,1.9),wait:rand(0,2),stuck:0,yaw:0,last:p.clone()});
 }});
 for(let i=0;i<3;i++){ const r=mkRobot(); r.scale.setScalar(1.1); scene.add(r); r.traverse(o=>{ if(o.isMesh){ o.userData.c=true; floorCasters.push(o); } });
@@ -1251,14 +1403,14 @@ setShadowFloor(0);
 /* ---------- mall directory + autopilot ("סע") ---------- */
 const deptItems=d=>CATALOG.filter(it=>it.zone===d.id);
 const deptUrl=d=>d.cat?SITE+'/category/'+d.cat:d.url?SITE+d.url:null;
-const NAV={cell:.5,nx:Math.round(2*BX/.5),nz:Math.round(2*BZ/.5),grid:[null,null]};
+const NAV={cell:.5,nx:Math.round(2*BX/.5),nz:Math.round(2*BZ/.5),grid:[null,null,null]};
 function navGrid(f){
   if(NAV.grid[f]) return NAV.grid[f];
   const g=new Uint8Array(NAV.nx*NAV.nz), r=.72;
   for(let j=0;j<NAV.nz;j++) for(let i=0;i<NAV.nx;i++){
     const x=-BX+(i+.5)*NAV.cell, z=-BZ+(j+.5)*NAV.cell; let b=0;
     for(const s of solids[f]){ if(s.tag==='door') continue; if(x>s.minX-r&&x<s.maxX+r&&z>s.minZ-r&&z<s.maxZ+r){ b=1; break; } }
-    if(!b && f===1 && x>VOID.minX-.3&&x<VOID.maxX+.3&&z>VOID.minZ-.3&&z<VOID.maxZ+.3) b=1;
+    if(!b && f>=1 && x>VOID.minX-.3&&x<VOID.maxX+.3&&z>VOID.minZ-.3&&z<VOID.maxZ+.3) b=1;
     if(!b && x>SH.x0-.3&&x<SH.x1+.3&&z>SH.z0-.3&&z<SH.z1+.3) b=1;
     g[j*NAV.nx+i]=b;
   }
@@ -1328,7 +1480,7 @@ function autoDir(dt){
     if(auto.t>6){ planAuto(); return null; }
     return {x:dx/(d||1),z:dz/(d||1)};
   }
-  if(auto.phase==='ride'){ if(!elev.moving && !elev.rider){ auto.phase='exit'; auto.path=[{x:0,z:player.floor===1?SH.z0-2.4:SH.z1+2.4}]; auto.wp=0; auto.stuck=0; } return null; }
+  if(auto.phase==='ride'){ if(!elev.moving && !elev.rider){ auto.phase='exit'; auto.path=[{x:0,z:player.floor>=1?SH.z0-2.4:SH.z1+2.4}]; auto.wp=0; auto.stuck=0; } return null; }
   return null;
 }
 function itemGoal(it){ return {f:it.f,x:it.x,z:it.z,label:it.name}; }
@@ -1408,9 +1560,9 @@ let lastDept;
 function renderQuest(force){
   const d=deptAt(); if(d===lastDept&&!force) return; lastDept=d;
   const ico=$('#ring');
-  if(d){ ico.innerHTML=svgI(ICONS[d.icon]); ico.style.setProperty('--c',d.color); $('#nextLabel').textContent='אתם ב'+(player.floor?'קומה 1':'קומת הקרקע'); $('#nextName').textContent=d.name;
+  if(d){ ico.innerHTML=svgI(ICONS[d.icon]); ico.style.setProperty('--c',d.color); $('#nextLabel').textContent='אתם ב'+['קומת הקרקע','קומה 1','גג'][player.floor]; $('#nextName').textContent=d.name;
     const n=catTotal(d); $('#nextMeta').textContent=catKey(d)?(n?`כל ה־${n}`:'כל המוצרים'):d.sub; }
-  else { ico.innerHTML=svgI(ICONS.map); ico.style.setProperty('--c','#8a90a3'); $('#nextLabel').textContent=player.floor?'קומה 1 · לובי':'אטריום · קומת הקרקע';
+  else { ico.innerHTML=svgI(ICONS.map); ico.style.setProperty('--c','#8a90a3'); $('#nextLabel').textContent=['אטריום · קומת הקרקע','קומה 1 · לובי','הגג · מנחת המסוקים'][player.floor];
     $('#nextName').textContent='לאן הולכים?'; $('#nextMeta').textContent='למפה'; }
 }
 function renderList(){ renderQuest(true); }
@@ -1605,6 +1757,11 @@ const ICONS={
   ac:'<rect x="2" y="5" width="20" height="8" rx="2"/><path d="M6 17c0 1 .5 2 1.5 2M12 17v3M18 17c0 1-.5 2-1.5 2M6 10h12"/>',
   heat:'<path d="M12 22a6 6 0 0 1-6-6c0-4 3-6 4-10 2 2 3 4 3 6 1-1 2-2 2-4 2 2 3 5 3 8a6 6 0 0 1-6 6z"/>',
   cart:'<path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/>',
+  food:'<path d="M7 3v8a3 3 0 0 0 3 3v7M10 3v6M4 3v6a3 3 0 0 0 3 3M17 21V3c-2 1.5-3 4-3 7v4h3"/>',
+  view:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  up:'<path d="M12 19V5M5 12l7-7 7 7"/>', down:'<path d="M12 5v14M19 12l-7 7-7-7"/>', bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
   ext:'<path d="M7 17 17 7M8 7h9v9"/>',
   home:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 9h14M8 5v2M8 12v3"/>',
   clean:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
@@ -1621,9 +1778,9 @@ function drawBig(){
   g.fillStyle='#e7eaf2'; rrect(g,bx(-BX),bz(-BZ),bx(BX)-bx(-BX),bz(BZ)-bz(-BZ),22); g.fill(); g.strokeStyle='#c3c9d8'; g.lineWidth=4; g.stroke();
   DEPTS.filter(d=>d.f===f).forEach(d=>{ const [x0,x1,z0,z1]=d.rect, X=bx(x0)+7, Z=bz(z0)+7, W=bx(x1)-bx(x0)-14, H=bz(z1)-bz(z0)-14;
     g.fillStyle=d.color+'2e'; rrect(g,X,Z,W,H,16); g.fill(); g.strokeStyle=d.color+'aa'; g.lineWidth=3; g.stroke(); });
-  if(f===1){ g.save(); rrect(g,bx(VOID.minX),bz(VOID.minZ),bx(VOID.maxX)-bx(VOID.minX),bz(VOID.maxZ)-bz(VOID.minZ),14); g.clip(); g.fillStyle='#cfd4e0'; g.fillRect(0,0,BW,BH);
+  if(f>=1){ g.save(); rrect(g,bx(VOID.minX),bz(VOID.minZ),bx(VOID.maxX)-bx(VOID.minX),bz(VOID.maxZ)-bz(VOID.minZ),14); g.clip(); g.fillStyle=f===2?'#cfe6f7':'#cfd4e0'; g.fillRect(0,0,BW,BH);
     g.strokeStyle='#bcc2d1'; g.lineWidth=3; for(let k=-BW;k<BW*2;k+=22){ g.beginPath(); g.moveTo(k,0); g.lineTo(k+BH,BH); g.stroke(); } g.restore();
-    g.fillStyle='#8a90a3'; g.font='600 22px Rubik, sans-serif'; g.textAlign='center'; g.fillText('אטריום',bx(0),bz(3.5)); }
+    g.fillStyle='#8a90a3'; g.font='600 22px Rubik, sans-serif'; g.textAlign='center'; g.fillText(f===2?'חלון הגג':'אטריום',bx(0),bz(3.5)); }
   else { g.fillStyle='#fff'; g.beginPath(); g.arc(bx(0),bz(2.4),26,0,7); g.fill(); }
   // elevator
   const ex=bx(0), ez=bz((SH.z0+SH.z1)/2); g.fillStyle='#161a2b'; rrect(g,ex-24,ez-24,48,48,12); g.fill();
@@ -1683,7 +1840,7 @@ function renderDepts(){
 }
 function setDirFloor(f){ dirFloor=f; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.f===f)); drawBig(); renderDepts(); }
 function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirQuery=''; $('#dirSearch').value='';
-  [0,1].forEach(f=>{ $('#tab'+f).textContent=''; });
+  [0,1,2].forEach(f=>{ $('#tab'+f).textContent=''; });
   setDirFloor(player.floor); $('#dscroll').scrollTop=0; }
 function closeDir(){ G.paused=false; dirEl.hidden=true; last=performance.now(); try{ document.activeElement.blur(); }catch(e){} }
 ui.mapBtn.addEventListener('click',openDir);
@@ -1805,11 +1962,11 @@ cartEl.addEventListener('click',e=>{ if(e.target===cartEl) closeCart(); });
 
 /* ---------- minimap ---------- */
 const mapCtx=ui.map.getContext('2d'); const MR=ui.map.width/2, MS=5;   // px per metre in the plan layer
-const plan=[0,1].map(f=>{ const c=document.createElement('canvas'); c.width=2*BX*MS; c.height=2*BZ*MS; const g=c.getContext('2d');
+const plan=[0,1,2].map(f=>{ const c=document.createElement('canvas'); c.width=2*BX*MS; c.height=2*BZ*MS; const g=c.getContext('2d');
   const X=x=>(x+BX)*MS, Z=z=>(z+BZ)*MS;
   g.fillStyle='#2a3258'; g.fillRect(0,0,c.width,c.height);
   DEPTS.filter(d=>d.f===f).forEach(d=>{ g.fillStyle=d.color+'40'; g.fillRect(X(d.rect[0])+2,Z(d.rect[2])+2,(d.rect[1]-d.rect[0])*MS-4,(d.rect[3]-d.rect[2])*MS-4); });
-  if(f===1){ g.fillStyle='#0c1026'; g.fillRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*MS,(VOID.maxZ-VOID.minZ)*MS); }
+  if(f>=1){ g.fillStyle=f===2?'#1b3a5c':'#0c1026'; g.fillRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*MS,(VOID.maxZ-VOID.minZ)*MS); }
   solids[f].forEach(s=>{ if(s.tag==='door'||s.tag==='ped'||s.minX<-BX||s.maxX>BX||s.minZ<-BZ||s.maxZ>BZ) return; g.fillStyle=s.tag==='rail'?'#ff7a1a':'rgba(210,216,235,.55)'; g.fillRect(X(s.minX),Z(s.minZ),Math.max(2,(s.maxX-s.minX)*MS),Math.max(2,(s.maxZ-s.minZ)*MS)); });
   g.fillStyle='#f5f6fa'; g.fillRect(X(SH.x0),Z(SH.z0),(SH.x1-SH.x0)*MS,(SH.z1-SH.z0)*MS);
   return c; });
@@ -1899,12 +2056,19 @@ function fillCard(it){
   $('#cardPrice').textContent=shekel(it.price); $('#cardOld').textContent=it.old?shekel(it.old):''; $('#cardDisc').textContent=it.old?`-${it.disc}%`:''; $('#cardDisc').hidden=!it.old;
   $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardAdd').textContent='הוספה לעגלה';
 }
+
+const ACT_ICON={item:'cart',kiosk:'grid',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
+let actKind='';
+function setActKind(k){ if(k===actKind) return; actKind=k; ui.act.dataset.k=k; ui.act.querySelector('svg').innerHTML=ICONS[ACT_ICON[k]||'cart']; }
+const liftPad=$('#liftPad');
+liftPad.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ const f=+b.dataset.f; if(!inCabin()||f===elev.floor) return; startRide(f,true); buzz(12); }));
+function showLiftPad(on){ if(liftPad.hidden===!on) return; liftPad.hidden=!on; if(on) liftPad.querySelectorAll('button').forEach(b=>b.classList.toggle('here',+b.dataset.f===elev.floor)); }
 function setHint(name,sub,warn,label){ ui.hint.hidden=false; ui.hintName.textContent=name; ui.hintPrice.textContent=sub; ui.hint.classList.toggle('warn',!!warn); ui.actLabel.textContent=label; ui.act.classList.remove('off'); }
 function updateNear(){
   near=null; const f=player.floor, p=player.pos;
-  if(elev.rider && !auto.on){ ui.hint.hidden=false; ui.hintName.textContent='מעלית'; ui.hintPrice.textContent=elev.to?'עולים לקומה 1…':'יורדים לקרקע…'; ui.hint.classList.remove('warn'); ui.act.classList.add('off'); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
-  if(auto.on){ near={type:'stop'}; setHint('נוסעים ל'+auto.goal.label,auto.phase==='wait'?'מחכים למעלית':'',false,'עצור'); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
-  if(inCabin()) near={type:'ride',to:1-elev.floor};
+  if(elev.rider && !auto.on){ ui.hint.hidden=false; ui.hintName.textContent='מעלית'; ui.hintPrice.textContent=(elev.to*FH>elev.from?'עולים ל':'יורדים ל')+FLOOR_NAME[elev.to]+'…'; ui.hint.classList.remove('warn'); ui.act.classList.add('off'); showLiftPad(false); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
+  if(auto.on){ near={type:'stop'}; setHint('נוסעים ל'+auto.goal.label,auto.phase==='wait'?'מחכים למעלית':'',false,'עצור'); setActKind('stop'); showLiftPad(false); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
+  if(inCabin()) near={type:'ride',to:elev.floor===TOP?0:elev.floor+1};
   else if(!elev.moving && elev.floor!==f && atCall(f)) near={type:'call'};
   if(!near){ let best=1; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
     // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
@@ -1913,9 +2077,11 @@ function updateNear(){
     if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
   if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=!cardIt; if(cardIt) fillCard(cardIt); }
-  if(!near){ ui.hint.hidden=true; ui.act.classList.add('off'); ui.actLabel.textContent='קח'; return; }
+  showLiftPad(!!near&&near.type==='ride');
+  if(!near){ ui.hint.hidden=true; ui.act.classList.add('off'); ui.actLabel.textContent='קח'; setActKind('item'); return; }
+  setActKind(near.type==='ride'?(near.to>elev.floor?'up':'down'):near.type);
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
-  else if(near.type==='ride') setHint('מעלית',near.to?'לקומה 1: בית, ניקיון, גיימינג':'לקרקע: מסכים, מטבח, קופות',false,near.to?'למעלה':'למטה');
+  else if(near.type==='ride') setHint('מעלית','בחרו קומה, או '+(near.to>elev.floor?'למעלה':'למטה')+' ל'+FLOOR_SHORT[near.to],false,near.to>elev.floor?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
@@ -2000,7 +2166,7 @@ function netPeer(id,meta){
 }
 function netDrop(id){ const q=Net.peers.get(id); if(!q) return; scene.remove(q.G.g); q.tag.remove(); q.emo.remove(); Net.peers.delete(id); }
 function netSnap(s){ if(!Array.isArray(s)||s.length<4||!s.every(Number.isFinite)) return null;
-  return {t:performance.now(),x:clamp(s[0],-BX,BX),y:clamp(s[1],0,FH),z:clamp(s[2],-BZ,BZ),yaw:s[3]}; }
+  return {t:performance.now(),x:clamp(s[0],-BX,BX),y:clamp(s[1],0,TOP*FH),z:clamp(s[2],-BZ,BZ),yaw:s[3]}; }
 function netMove(m){ const q=m&&Net.peers.get(m.i); if(!q) return; const s=netSnap(m.s); if(!s) return; q.snaps.push(s); if(q.snaps.length>8) q.snaps.shift(); }
 function netEmoIn(m){ const q=m&&Net.peers.get(m.i), now=performance.now(); if(!q||!Number.isInteger(m.e)||!EMOJI[m.e]||now-q.emoAt<800) return;
   q.emoAt=now; q.emoUntil=now+2600; q.emo.textContent=EMOJI[m.e]; }
@@ -2058,6 +2224,8 @@ function loop(now){
     f.m.position.lerpVectors(f.from,tmp,k); f.m.position.y+=Math.sin(k*Math.PI)*1.4; f.m.scale.multiplyScalar(1-dt*1.5);
     if(k>=1){ scene.remove(f.m); flyers.splice(i,1); addToCart(f.it); updateCartBadge(true); } }
   updateElevator(dt);
+  const roofOn=player.floor===TOP||(elev.rider&&(elev.to===TOP||elev.y>FH+.5));
+  if(STATIC[2].visible!==roofOn){ STATIC[2].visible=roofOn; roofLive.forEach(o=>o.visible=roofOn); shoppers.forEach(s=>{ if(s.f===TOP) s.G.g.visible=roofOn; }); }
   if(G.state==='play'){
     G.t+=dt; if(frame%20===0) renderQuest();
     updatePlayer(dt); updateNear(); updateArrow(t); netTick(dt);
