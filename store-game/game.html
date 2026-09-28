@@ -352,7 +352,7 @@
   <button id="mute" class="glass" aria-label="השתקת צליל">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="xmark" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg>
   </button>
-  <button id="online" class="glass" hidden aria-label="שחקנים בקניון עכשיו"><i></i><span class="num" id="onlineN">1</span><span>בקניון</span></button>
+  <button id="online" class="glass" hidden aria-label="שחקנים מחוברים עכשיו"><i></i><span class="num" id="onlineN">1</span><span>מחוברים</span></button>
   <button id="emoBtn" class="glass" hidden aria-label="שליחת אימוג'י" aria-expanded="false">😀</button>
   <div id="emoTray" class="glass" hidden></div>
   <div id="toast" class="glass" role="status" aria-live="polite"></div>
@@ -1398,7 +1398,7 @@ function walkable(x,z,r,f){ for(const s of solids[f]){ if(x>s.minX-r&&x<s.maxX+r
   for(const s of noSpawn[f]){ if(x>s.minX&&x<s.maxX&&z>s.minZ&&z<s.maxZ) return false; } return true; }
 function randPoint(f){ for(let i=0;i<80;i++){ const x=rand(-22.5,22.5), z=rand(-30.5,f?30.5:19); if(walkable(x,z,.9,f)) return new THREE.Vector3(x,f*FH,z); } return new THREE.Vector3(0,f*FH,f?20:12); }
 const shoppers=[];
-[[0,6],[1,5],[2,6]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
+[[0,4],[1,3],[2,4]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
   const girl=Math.random()<.5; const G=mkGuy({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
   const p=randPoint(f); G.g.position.copy(p); scene.add(G.g);
   if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; floorCasters.push(o); } });
@@ -1593,6 +1593,7 @@ function enterMall(){
   avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
+  if(!Bots.started){ Bots.started=true; const n=Math.max(0,Bots.target-1); for(let i=0;i<n;i++) botSpawn(); }
   toast('ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
   netStart();
 }
@@ -1985,6 +1986,7 @@ function drawMap(){
   g.drawImage(plan[f],0,0);
   CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const n=pinNo(it); g.fillStyle=n?'#f55304':'rgba(255,255,255,.6)'; g.beginPath(); g.arc((it.x+BX)*MS,(it.z+BZ)*MS,n?9:4,0,7); g.fill(); if(n){ g.strokeStyle='#fff'; g.lineWidth=3; g.stroke(); } });
   shoppers.forEach(s=>{ if(s.f!==f) return; g.fillStyle='#8a92b0'; g.beginPath(); g.arc((s.pos.x+BX)*MS,(s.pos.z+BZ)*MS,4,0,7); g.fill(); });
+  Bots.list.forEach(b=>{ if(b.f!==f) return; g.fillStyle='#43d18b'; g.strokeStyle='#fff'; g.lineWidth=2.5; g.beginPath(); g.arc((b.pos.x+BX)*MS,(b.pos.z+BZ)*MS,6,0,7); g.fill(); g.stroke(); });
   Net.peers.forEach(q=>{ if(!q.seen||Math.round(q.G.g.position.y/FH)!==f) return; g.fillStyle='#43d18b'; g.strokeStyle='#fff'; g.lineWidth=2.5; g.beginPath(); g.arc((q.G.g.position.x+BX)*MS,(q.G.g.position.z+BZ)*MS,6,0,7); g.fill(); g.stroke(); });
   g.restore();
   // off-map pointer to the next list item on this floor
@@ -2206,10 +2208,71 @@ function netUpdate(dt,now){
 function sendEmoji(i){ const now=performance.now(); if(!Net.ready||now-Net.emoAt<1200) return; Net.emoAt=now;
   Net.ch.send({type:'broadcast',event:'e',payload:{i:Net.id,e:i}});
   if(!Net.selfEmo) Net.selfEmo={el:bubble('emo'),until:0}; Net.selfEmo.el.textContent=EMOJI[i]; Net.selfEmo.until=now+2600;
-  emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); }
+  emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); botsReact(); }
 EMOJI.forEach((e,i)=>{ const b=document.createElement('button'); b.textContent=e; b.setAttribute('aria-label','שליחת '+e); b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
 emoBtn.addEventListener('click',()=>{ emoTray.hidden=!emoTray.hidden; emoBtn.setAttribute('aria-expanded',String(!emoTray.hidden)); });
-onlineEl.addEventListener('click',()=>{ const n=Math.max(1,Net.count); toast(n>1?`${n} אנשים בקניון עכשיו. הם מסומנים בירוק במפה`:'אתם היחידים כאן כרגע. שתפו חבר ותטיילו ביחד'); });
+
+/* ---------- shoppers with a cart and a name ----------
+   Between 5 and 12 people with a trolley and a name over their head, you included: real players
+   first, and computer shoppers make up the rest, so the mall never feels empty. They go from
+   product to product, stop and look, open the catalogue kiosks, wave when you pass, and answer
+   your emoji. The "מחוברים" counter still counts real people only. */
+const BOT_NAMES=['נועה','איתי','מאיה','יונתן','שירה','אורי','תמר','עומר','דניאל','ליה','רוני','אביב','יעל','עידו','הילה','גיא','נוי','אליה','בן','אגם','עדי','שקד','רז','מיכל','טל','אלון','רותם','Tal88','Shaked','Omer_K','דור','ים','סהר','לירון','אופיר','מעיין'];
+const BOT_FLOORS=[0,0,0,1,1,2,2];
+const Bots={list:[],target:5+((Math.random()*8)|0),driftT:rand(40,80),spawnT:0,names:BOT_NAMES.slice().sort(()=>Math.random()-.5),ni:0,started:false};
+function botAvatar(){ const girl=Math.random()<.5; return {girl,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:pick(['none','none','cap','glasses']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}; }
+function botGoal(b){
+  const r=Math.random(), f=b.f;
+  const its=CATALOG.filter(it=>it.f===f&&!it.taken), ks=DEPTS.filter(d=>d.kiosk&&d.kiosk.f===f);
+  const stand=(x,z)=>{ for(let k=0;k<8;k++){ const a=Math.atan2(b.pos.x-x,b.pos.z-z)+(k?rand(-1.4,1.4):0), px=x+Math.sin(a)*1.9, pz=z+Math.cos(a)*1.9; if(walkable(px,pz,.6,f)) return new THREE.Vector3(px,f*FH,pz); } return null; };
+  if(r<.6&&its.length){ const it=pick(its), q=stand(it.x,it.z); if(q) return {p:q,look:{x:it.x,z:it.z},wait:rand(2.5,6)}; }
+  else if(r<.75&&ks.length){ const k=pick(ks).kiosk, q=stand(k.x,k.z); if(q) return {p:q,look:{x:k.x,z:k.z},wait:rand(3,7)}; }
+  return {p:randPoint(f),look:null,wait:rand(.6,2.2)};
+}
+function botSpawn(){
+  const f=pick(BOT_FLOORS); let p=null;
+  for(let i=0;i<25;i++){ const q=randPoint(f); if(f!==player.floor||q.distanceTo(player.pos)>16){ p=q; break; } } if(!p) p=randPoint(f);
+  const G=mkGuy(avOpts(botAvatar())), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.position.copy(p); scene.add(G.g);
+  const casters=[]; if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; o.castShadow=f===player.floor&&o.userData.c; floorCasters.push(o); casters.push(o); } });
+  G.g.visible=f!==TOP||STATIC[2].visible;
+  const tag=document.createElement('div'); tag.className='nametag'; tag.hidden=true; tag.textContent=Bots.names[Bots.ni++%Bots.names.length]; $('#bubbles').appendChild(tag);
+  const b={G,f,pos:p,yaw:rand(0,6),speed:0,top:rand(1.7,2.6),goal:null,wait:rand(0,1.5),look:null,stuck:0,last:p.clone(),tag,emo:bubble('emo'),emoUntil:0,emoT:rand(10,30),greeted:false,casters,leaving:false,life:0};
+  b.goal=botGoal(b); Bots.list.push(b);
+}
+function botRemove(b){ scene.remove(b.G.g); b.tag.remove(); b.emo.remove(); if(b.casters.length){ const set=new Set(b.casters); for(let i=floorCasters.length-1;i>=0;i--) if(set.has(floorCasters[i])) floorCasters.splice(i,1); }
+  Bots.list.splice(Bots.list.indexOf(b),1); }
+function botEmoji(b,e,delay){ setTimeout(()=>{ if(!Bots.list.includes(b)) return; b.emo.textContent=e; b.emoUntil=performance.now()+2600; },delay||0); }
+function botsReact(){ Bots.list.forEach(b=>{ if(b.f===player.floor&&b.pos.distanceTo(player.pos)<11&&Math.random()<.45) botEmoji(b,pick(['👋','👍','😂','🔥','😍']),rand(600,1800)); }); }
+function botsUpdate(dt,now){
+  if(!Bots.started) return;
+  Bots.driftT-=dt; if(Bots.driftT<=0){ Bots.driftT=rand(40,90); Bots.target=clamp(Bots.target+pick([-1,0,1]),5,12); }
+  const real=Net.ready?Math.max(0,Net.count-1):0, want=Math.max(0,Bots.target-1-real), active=Bots.list.filter(b=>!b.leaving);
+  Bots.spawnT-=dt;
+  if(active.length<want&&Bots.spawnT<=0){ botSpawn(); Bots.spawnT=rand(2,6); }
+  else if(active.length>want){ const b=active.find(b=>b.f!==player.floor||b.pos.distanceTo(player.pos)>18)||active[0]; b.leaving=true; }
+  for(let i=Bots.list.length-1;i>=0;i--){ const b=Bots.list[i], f=b.f;
+    b.life+=dt;
+    // people who leave slip away out of sight
+    if(b.leaving&&(f!==player.floor||b.pos.distanceTo(player.pos)>18||b.life>60)){ botRemove(b); continue; }
+    let sp=0;
+    if(b.wait>0){ b.wait-=dt; if(b.look) b.yaw=lerpAngle(b.yaw,Math.atan2(b.look.x-b.pos.x,b.look.z-b.pos.z),1-Math.exp(-dt*5)); if(b.wait<=0){ b.look=null; b.goal=botGoal(b); } }
+    else { tmp.subVectors(b.goal.p,b.pos); tmp.y=0; const d=tmp.length();
+      if(d<.45){ b.wait=b.goal.wait; b.look=b.goal.look; }
+      else { tmp.multiplyScalar(1/d); b.speed+=(Math.min(b.top,d*1.5+.4)-b.speed)*(1-Math.exp(-dt*4)); sp=b.speed;
+        b.pos.x+=tmp.x*sp*dt; b.pos.z+=tmp.z*sp*dt; b.yaw=lerpAngle(b.yaw,Math.atan2(tmp.x,tmp.z),1-Math.exp(-dt*7));
+        const fx=Math.sin(b.yaw), fz=Math.cos(b.yaw); pushOut(b.pos,.42,0,0,f); pushOut(b.pos,.5,fx*1.32,fz*1.32,f);
+        b.stuck+=dt; if(b.stuck>1.4){ if(b.pos.distanceTo(b.last)<sp*.35){ b.goal={p:randPoint(f),look:null,wait:rand(.5,1.5)}; } b.last.copy(b.pos); b.stuck=0; } } }
+    if(!sp) b.speed*=Math.exp(-dt*8);
+    // make way for the player
+    if(f===player.floor){ const dx=b.pos.x-player.pos.x, dz=b.pos.z-player.pos.z, dd=Math.hypot(dx,dz); if(dd<1.1&&dd>1e-3){ b.pos.x+=dx/dd*(1.1-dd); b.pos.z+=dz/dd*(1.1-dd); } }
+    b.pos.y=f*FH; b.G.g.position.copy(b.pos); b.G.g.rotation.y=b.yaw; animGuy(b.G,sp,dt,true);
+    const d=f===player.floor?b.pos.distanceTo(player.pos):1e9;
+    if(!b.greeted&&d<7){ b.greeted=true; if(Math.random()<.4) botEmoji(b,'👋',rand(300,1200)); }
+    b.emoT-=dt; if(b.emoT<=0){ b.emoT=rand(20,50); if(d<16&&Math.random()<.5) botEmoji(b,pick(EMOJI)); }
+    if(G.state==='play'&&d<20) place2d(b.tag,b.pos,b.pos.y+2.55); else b.tag.hidden=true;
+    if(now<b.emoUntil&&G.state==='play'&&d<30) place2d(b.emo,b.pos,b.pos.y+3.25); else b.emo.hidden=true; }
+}
+onlineEl.addEventListener('click',()=>{ const n=Math.max(1,Net.count); toast(n>1?`${n} אנשים מחוברים עכשיו לקניון`:'רק אתם מחוברים כרגע. שתפו חבר ותטיילו ביחד'); });
 // a hidden tab keeps nobody company: leave the room, and come back when the tab does
 document.addEventListener('visibilitychange',()=>{ if(!ONLINE) return; if(document.hidden) netLeave(); else if(G.state==='play'||G.state==='edit') netStart(); });
 
@@ -2233,7 +2296,7 @@ function loop(now){
     if(k>=1){ scene.remove(f.m); flyers.splice(i,1); addToCart(f.it); updateCartBadge(true); } }
   updateElevator(dt);
   const roofOn=player.floor===TOP||(elev.rider&&(elev.to===TOP||elev.y>FH+.5));
-  if(STATIC[2].visible!==roofOn){ STATIC[2].visible=roofOn; roofLive.forEach(o=>o.visible=roofOn); shoppers.forEach(s=>{ if(s.f===TOP) s.G.g.visible=roofOn; }); }
+  if(STATIC[2].visible!==roofOn){ STATIC[2].visible=roofOn; roofLive.forEach(o=>o.visible=roofOn); shoppers.forEach(s=>{ if(s.f===TOP) s.G.g.visible=roofOn; }); Bots.list.forEach(b=>{ if(b.f===TOP) b.G.g.visible=roofOn; }); }
   if(G.state==='play'){
     G.t+=dt; if(frame%20===0) renderQuest();
     updatePlayer(dt); updateNear(); updateArrow(t); netTick(dt);
@@ -2246,7 +2309,7 @@ function loop(now){
     updateCamera(dt,G.state==='menu'||G.state==='edit'); arrow.visible=false;
     hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false);
   }
-  updateNPCs(dt,t); netUpdate(dt,now);
+  updateNPCs(dt,t); netUpdate(dt,now); botsUpdate(dt,now);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }
