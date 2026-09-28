@@ -464,6 +464,14 @@ whenFonts(function(){
 const $ = s => document.querySelector(s);
 const STORE = /*__PRODUCTS__*/{"updated":"","items":[]}/*__END__*/;
 const SITE = 'https://buytoday.co.il';
+/* The game also runs at buytoday.co.il/mall (a rewrite on the shop, so the iOS app keeps it in its
+   own WebView). There the relative paths of its own files would resolve against the shop, so off
+   its home host it fetches them from play.buytoday.co.il by absolute URL. */
+const HOME = 'https://play.buytoday.co.il/', ASSET = location.hostname==='play.buytoday.co.il' ? '' : HOME;
+/* Inside the shop's iOS app a new tab is Safari: target=_blank throws the customer out of the app.
+   The app stamps its user agent; there every link opens in place instead. */
+const IN_APP = /BuyTodayApp/.test(navigator.userAgent) || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if(IN_APP) document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[target="_blank"]'); if(a) a.target='_self'; },true);
 // Direct checkout with all cart items. Empty until the site has a page that fills its cart from a list of slugs.
 const CHECKOUT_URL = /*__CHECKOUT__*/''/*__END__*/;
 const ONLINE = /*__ONLINE__*/null/*__END__*/;   // {url,key} of the Supabase Realtime project, or null to stay single-player
@@ -1514,7 +1522,7 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
      One <audio> element for all of it: it was started by the tap that opened the mall, so the
      phone lets it go on to the next track by itself. If the files can't be reached (the preview
      copy of the game) it falls back to the little synth tune below. */
-  music:null, track:0, base:'music/',
+  music:null, track:0, base:ASSET+'music/',
   startMusic(){
     if(this.music){ if(this.on&&this.music.paused&&!document.hidden) this.music.play().catch(()=>{}); return; }
     const el=new Audio(); el.preload='auto'; el.muted=!this.on; this.music=el;
@@ -1523,7 +1531,7 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
       // warm the cache for whatever plays after this one, so the change-over has no gap
       const after=f==='mall'?'kef':'mall'; if(!this['pre_'+after]){ const a=new Audio(); a.preload='auto'; a.src=this.base+after+'.mp3'; this['pre_'+after]=a; } };
     el.addEventListener('ended',next);
-    el.addEventListener('error',()=>{ if(this.base==='music/'){ this.base='https://play.buytoday.co.il/music/'; this.track=Math.max(0,this.track-1); next(); }
+    el.addEventListener('error',()=>{ if(this.base!==HOME+'music/'){ this.base=HOME+'music/'; this.track=Math.max(0,this.track-1); next(); }
       else { this.music=null; this.synthMusic(); } });
     document.addEventListener('visibilitychange',()=>{ if(document.hidden) el.pause(); else if(this.on&&G.state!=='menu') el.play().catch(()=>{}); });
     next();
@@ -1863,7 +1871,7 @@ const catEl=$('#catp'); let catData=null, catLoading=null, catDept=null, catSort
 function loadCatalog(){
   if(catData) return Promise.resolve(catData);
   if(!catLoading){ const get=u=>fetch(u,{cache:'no-cache'}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
-    catLoading=get('catalog.json').catch(()=>get('https://play.buytoday.co.il/catalog.json')).then(j=>catData=j).catch(e=>{ catLoading=null; throw e; }); }
+    catLoading=get(ASSET+'catalog.json').catch(()=>get(HOME+'catalog.json')).then(j=>catData=j).catch(e=>{ catLoading=null; throw e; }); }
   return catLoading;
 }
 const SORTS=[['rec','מומלץ'],['low','מחיר: מהזול'],['high','מחיר: מהיקר'],['deals','מבצעים']];
