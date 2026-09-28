@@ -140,7 +140,7 @@
   .bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff;}
 
   /* ---------- full screens ---------- */
-  .screen.pview{padding:calc(var(--st) + 8px) 0 0;align-items:stretch;background:rgba(8,11,28,.55);}
+  .screen.pview{padding:calc(var(--st) + 8px) 0 0;align-items:stretch;background:rgba(8,11,28,.55);z-index:15;}
   .pvpanel{width:100%;max-width:560px;height:100%;margin-inline:auto;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:#fff;overflow:hidden;box-shadow:0 -10px 40px rgba(0,0,0,.35);}
   .pvbar{flex:none;display:flex;align-items:center;gap:8px;padding:10px 10px 10px 12px;background:#161a2b;color:#fff;}
   .pvbar button{flex:none;height:38px;padding:0 14px 0 10px;border-radius:12px;background:var(--brand);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;gap:4px;}
@@ -2006,7 +2006,7 @@ function openProduct(url,name){
 }
 pvFrame.addEventListener('load',()=>{ if(pvFrame.src&&pvFrame.src!=='about:blank') pvLoad.hidden=true; });
 function closeProduct(){ if(pv.hidden) return; pv.hidden=true; pvFrame.src='about:blank'; clearTimeout(pvTimer);
-  G.paused=!!(pvPrev&&pvPrev.paused&&(!dirEl.hidden||!cartEl.hidden||!catEl.hidden)); last=performance.now();
+  G.paused=!!(pvPrev&&pvPrev.paused&&(!dirEl.hidden||!cartEl.hidden||!catEl.hidden||!ui.end.hidden)); last=performance.now();
   if(Sound.music) Sound.music.volume=Sound.track%2===0&&Sound.track>0?.42:.6; }
 $('#pvBack').addEventListener('click',closeProduct);
 // product links anywhere in the game (card, catalogue, cart, receipt) open in the sheet
