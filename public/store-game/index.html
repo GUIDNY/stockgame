@@ -1648,8 +1648,9 @@ function updateNear(){
   if(auto.on){ near={type:'stop'}; setHint('נוסעים ל'+auto.goal.label,auto.phase==='wait'?'מחכים למעלית':'',false,'עצור'); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
   if(inCabin()) near={type:'ride',to:1-elev.floor};
   else if(!elev.moving && elev.floor!==f && atCall(f)) near={type:'call'};
-  if(!near){ let best=2.3; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
-    CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz)); if(d<best){ best=d; near={type:'item',it}; } });
+  if(!near){ let best=1; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
+    // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
+    CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
     if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
   if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=!cardIt; if(cardIt) fillCard(cardIt); }
