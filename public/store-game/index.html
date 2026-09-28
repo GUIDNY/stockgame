@@ -140,6 +140,19 @@
   .bubble::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff;}
 
   /* ---------- full screens ---------- */
+  .screen.pview{padding:calc(var(--st) + 8px) 0 0;align-items:stretch;background:rgba(8,11,28,.55);}
+  .pvpanel{width:100%;max-width:560px;height:100%;margin-inline:auto;display:flex;flex-direction:column;border-radius:22px 22px 0 0;background:#fff;overflow:hidden;box-shadow:0 -10px 40px rgba(0,0,0,.35);}
+  .pvbar{flex:none;display:flex;align-items:center;gap:8px;padding:10px 10px 10px 12px;background:#161a2b;color:#fff;}
+  .pvbar button{flex:none;height:38px;padding:0 14px 0 10px;border-radius:12px;background:var(--brand);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;gap:4px;}
+  .pvbar button svg{width:18px;height:18px;transform:scaleX(-1);}
+  .pvbar span{flex:1;min-width:0;font-size:13px;font-weight:700;color:#cfd4e6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pvbar a{flex:none;height:38px;padding:0 12px;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-weight:700;font-size:13px;text-decoration:none;display:flex;align-items:center;}
+  .pvbody{position:relative;flex:1;min-height:0;background:#fff;}
+  .pvbody iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;}
+  .pvload{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;color:#6b7289;font-size:14px;font-weight:600;text-align:center;padding:24px;}
+  .pvload .bar{width:160px;height:4px;border-radius:2px;background:#eceef3;overflow:hidden;}
+  .pvload .bar i{display:block;width:40%;height:100%;border-radius:2px;background:var(--brand);animation:load 1.1s ease-in-out infinite;}
+  .pvload a{height:42px;padding:0 16px;border-radius:12px;background:var(--brand);color:#fff;font-weight:800;text-decoration:none;display:flex;align-items:center;}
   .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;direction:rtl;background:radial-gradient(120% 90% at 50% 30%,rgba(16,21,48,.3),rgba(8,11,28,.9));z-index:10;}
   .panel{width:100%;max-width:400px;padding:24px 20px 20px;border-radius:24px;background:rgba(17,23,52,.94);border:1px solid var(--line);box-shadow:0 30px 60px rgba(0,0,0,.45);}
   .brandrow{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-dim);}
@@ -322,7 +335,7 @@
   @keyframes sheetUp{from{transform:translateY(48px);opacity:0}to{transform:none;opacity:1}}
   @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
   .sheet:not([hidden]){animation:rise .22s cubic-bezier(.2,.8,.2,1);}
-  .dir:not([hidden]) .dpanel,.creator:not([hidden]) .csheet{animation:sheetUp .3s cubic-bezier(.2,.8,.2,1);}
+  .dir:not([hidden]) .dpanel,.pview:not([hidden]) .pvpanel,.creator:not([hidden]) .csheet{animation:sheetUp .3s cubic-bezier(.2,.8,.2,1);}
   .screen:not([hidden]) .panel{animation:pop .25s ease-out;}
   .drive:active,.prod:active,.drow:active,.cprod .ac a:active,.cprod .ac button:active,.chips button:active,.catgrid a:active,.segc button:active,.tiles button:active,.ctabs button:active,#map:active,#cartBtn:active,#meBtn:active{transform:scale(.96);}
   @media (prefers-reduced-motion: reduce){ .sheet,.dpanel,.csheet,.panel,#loading .bar i{animation:none!important;} }
@@ -432,6 +445,13 @@
       <div class="chips" id="catSort"></div>
     </div>
     <div class="dscroll" id="catScroll"><div class="ccount" id="catCount"></div><div class="cgrid" id="catGrid"></div><div class="cmore" id="catMore"></div><a class="cfoot" id="catSite" target="_blank" rel="noopener"></a></div>
+  </div>
+</div>
+
+<div class="screen pview" id="pview" hidden>
+  <div class="pvpanel" role="dialog" aria-modal="true" aria-label="עמוד המוצר">
+    <div class="pvbar"><button id="pvBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>חזרה לקניון</button><span id="pvTitle"></span><a id="pvOpen" target="_blank" rel="noopener">באתר ↗</a></div>
+    <div class="pvbody"><div class="pvload" id="pvLoad"><span>פותחים את עמוד המוצר…</span><div class="bar"><i></i></div></div><iframe id="pvFrame" name="bt-mall-embed" title="עמוד המוצר" allow="payment"></iframe></div>
   </div>
 </div>
 
@@ -1526,6 +1546,8 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
   startMusic(){
     if(this.music){ if(this.on&&this.music.paused&&!document.hidden) this.music.play().catch(()=>{}); return; }
     const el=new Audio(); el.preload='auto'; el.muted=!this.on; this.music=el;
+    // the jingle greets a new visit, not every return to the mall in the same session
+    try{ if(sessionStorage.getItem('bt-jingle')) this.track=1; else sessionStorage.setItem('bt-jingle','1'); }catch(e){}
     const next=()=>{ const f=this.track===0?'jingle':this.track%2?'mall':'kef'; this.track++;
       el.src=this.base+f+'.mp3'; el.volume=f==='mall'?.42:.6; el.play().catch(()=>{});
       // warm the cache for whatever plays after this one, so the change-over has no gap
@@ -1593,8 +1615,16 @@ function enterMall(){
   avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
+  const rs=loadResume();
+  if(rs){ setFloor(rs.f); player.pos.set(clamp(rs.x,-BX+1,BX-1),rs.f*FH,clamp(rs.z,-BZ+1,BZ-1)); player.yaw=rs.yaw||0; camYaw=player.yaw+Math.PI;
+    // never back inside the lift shaft: the cabin may be on another floor by now
+    if(player.pos.x>SH.x0-.4&&player.pos.x<SH.x1+.4&&player.pos.z>SH.z0-.4&&player.pos.z<SH.z1+.4){ player.pos.x=0; player.pos.z=rs.f===0?SH.z1+1.8:SH.z0-1.8; }
+    for(let k=0;k<3;k++) pushOut(player.pos,.5,0,0,rs.f);
+    hero.g.position.copy(player.pos); camPos.set(player.pos.x+Math.sin(camYaw)*7.6,player.pos.y+4.9,player.pos.z+Math.cos(camYaw)*7.6);
+    CATALOG.forEach(it=>{ if((rs.cart||[]).includes(it.slug)){ it.taken=true; it.model.visible=false; it.tag.visible=false; it.ring.visible=false; } });
+    rebuildCart(); renderMoney(); updateCartBadge(); renderList(); }
   if(!Bots.started){ Bots.started=true; const n=Math.max(0,Bots.target-1); for(let i=0;i<n;i++) botSpawn(); }
-  toast('ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
+  toast(rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
   netStart();
 }
 function openCreator(edit){
@@ -1958,6 +1988,46 @@ function renderCart(){
   [['כל המבצעים ↗','/deals','deals',true],['האזור האישי ↗','/account','account'],['לאתר BuyToday ↗','/','home']].forEach(([t,p,k,wide])=>{ const a=document.createElement('a'); a.target='_blank'; a.rel='noopener'; a.href=utm(SITE+p,'cart-'+k); a.textContent=t; if(wide) a.className='wide'; else a.style.justifyContent='center'; grid.appendChild(a); });
   body.appendChild(grid);
 }
+
+/* ---------- product pages open over the game ----------
+   Any link to a product page opens it in a sheet over the mall instead of leaving it: the shop's own
+   page, in a frame named "bt-mall-embed" (the shop hides its header and footer for that frame, and
+   sends the cart, checkout and sign-in out to the whole window). "חזרה לקניון" closes it and you are
+   exactly where you were. Adding to the cart in there is the real cart on the site. */
+const pv=$('#pview'), pvFrame=$('#pvFrame'), pvLoad=$('#pvLoad'); let pvTimer=null, pvPrev=null;
+const PV_LOADING='<span>פותחים את עמוד המוצר…</span><div class="bar"><i></i></div>';
+function isProductUrl(u){ try{ const x=new URL(u,location.href); return (x.hostname==='buytoday.co.il'||x.hostname===location.hostname&&x.hostname.endsWith('buytoday.co.il'))&&x.pathname.startsWith('/product/'); }catch(e){ return false; } }
+function openProduct(url,name){
+  pvPrev={paused:G.paused}; stopAuto(); G.paused=true;
+  pvLoad.innerHTML=PV_LOADING; pvLoad.hidden=false; $('#pvTitle').textContent=name||''; $('#pvOpen').href=url;
+  pvFrame.src=url; pv.hidden=false; ui.card.hidden=true; shownCard=null; buzz(10);
+  if(Sound.music) Sound.music.volume=.12;
+  clearTimeout(pvTimer); pvTimer=setTimeout(()=>{ if(!pvLoad.hidden){ pvLoad.innerHTML='<span>העמוד לא נפתח כאן.</span><a target="_blank" rel="noopener">פתיחת עמוד המוצר ↗</a>'; pvLoad.querySelector('a').href=url; } },9000);
+}
+pvFrame.addEventListener('load',()=>{ if(pvFrame.src&&pvFrame.src!=='about:blank') pvLoad.hidden=true; });
+function closeProduct(){ if(pv.hidden) return; pv.hidden=true; pvFrame.src='about:blank'; clearTimeout(pvTimer);
+  G.paused=!!(pvPrev&&pvPrev.paused&&(!dirEl.hidden||!cartEl.hidden||!catEl.hidden)); last=performance.now();
+  if(Sound.music) Sound.music.volume=Sound.track%2===0&&Sound.track>0?.42:.6; }
+$('#pvBack').addEventListener('click',closeProduct);
+// product links anywhere in the game (card, catalogue, cart, receipt) open in the sheet
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[href]'); if(!a||a.closest('#pview')||!isProductUrl(a.href)) return;
+  e.preventDefault(); e.stopPropagation();
+  const card=a.closest('.cprod,.citem,li'); const name=card?(card.querySelector('.nm,b,.t span')||{}).textContent:(shownCard?shownCard.full:'');
+  openProduct(a.href,name); },true);
+// the shop tells the game when something was added to the real cart
+addEventListener('message',e=>{ if(e.origin!=='https://buytoday.co.il'&&e.origin!==location.origin) return; const d=e.data;
+  if(d&&d.type==='bt-mall:added'){ toast((d.name?d.name+' · ':'')+'נוסף לעגלה באתר ✓','good'); buzz(20); Sound.cash(); }
+  if(d&&d.type==='bt-mall:ready') pvLoad.hidden=true; });
+
+/* ---------- pick up where you left off ----------
+   Leaving the mall for the shop (checkout, a full product page) and coming back within half an hour
+   puts you back on the same floor, at the same spot, with the same trolley. */
+const RESUME_KEY='bt-mall-resume';
+function saveResume(){ if(G.state!=='play'&&G.state!=='edit') return;
+  try{ localStorage.setItem(RESUME_KEY,JSON.stringify({t:Date.now(),f:player.floor,x:+player.pos.x.toFixed(2),z:+player.pos.z.toFixed(2),yaw:+player.yaw.toFixed(2),cart:cartItems().map(i=>i.slug)})); }catch(e){} }
+function loadResume(){ try{ const r=JSON.parse(localStorage.getItem(RESUME_KEY)||'null'); if(r&&Date.now()-r.t<30*60*1000&&r.f>=0&&r.f<=TOP) return r; }catch(e){} return null; }
+addEventListener('pagehide',saveResume); document.addEventListener('visibilitychange',()=>{ if(document.hidden) saveResume(); });
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[href]'); if(a) saveResume(); },true);
 const SHARE_URL='https://play.buytoday.co.il/';
 async function shareMall(){
   const data={title:'הקניון של BuyToday',text:'בואו לטייל איתי בקניון התלת־ממדי של BuyToday 🛒',url:SHARE_URL+'?utm_source=share&utm_medium=game'};
@@ -2317,7 +2387,7 @@ function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,fals
 addEventListener('resize',onResize); onResize();
 CATALOG.forEach(tagTexture);
 player.pos.set(0,0,24); player.yaw=Math.PI; hero.g.position.copy(player.pos); cart.c.visible=false; renderCreator();
-$('#loading').remove(); ui.menu.hidden=false; acctLoad();
+$('#loading').remove(); ui.menu.hidden=false; acctLoad(); if(loadResume()) $('#startBtn').textContent='חזרה לקניון';
 requestAnimationFrame(loop);
 });
 </script>
