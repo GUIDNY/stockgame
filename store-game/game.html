@@ -1357,10 +1357,29 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
   cash(){ [523,659,784,1047].forEach((f,i)=>this.tone(f,.25,'triangle',.16,i*.08)); this.tone(2600,.35,'sine',.08,.34); },
   bad(){ this.tone(220,.3,'sawtooth',.1,0,110); },
   sale(){ this.tone(440,.1,'square',.08); this.tone(330,.25,'square',.08,.1); },
-  startMusic(){ if(!this.ctx||this.musicTimer) return; const chords=[[261.6,329.6,392,493.9],[220,261.6,329.6,392],[293.7,349.2,440,523.3],[196,246.9,293.7,349.2]]; let next=this.ctx.currentTime+.1; const beat=.3;
+  /* the soundtrack: the "כיף לקנות פה" jingle once on the way in, then the mall beat, with the
+     longer "כיף לקנות פה" song as the break each time the beat runs out, and back to the beat.
+     One <audio> element for all of it: it was started by the tap that opened the mall, so the
+     phone lets it go on to the next track by itself. If the files can't be reached (the preview
+     copy of the game) it falls back to the little synth tune below. */
+  music:null, track:0, base:'music/',
+  startMusic(){
+    if(this.music){ if(this.on&&this.music.paused&&!document.hidden) this.music.play().catch(()=>{}); return; }
+    const el=new Audio(); el.preload='auto'; el.muted=!this.on; this.music=el;
+    const next=()=>{ const f=this.track===0?'jingle':this.track%2?'mall':'kef'; this.track++;
+      el.src=this.base+f+'.mp3'; el.volume=f==='mall'?.42:.6; el.play().catch(()=>{});
+      // warm the cache for whatever plays after this one, so the change-over has no gap
+      const after=f==='mall'?'kef':'mall'; if(!this['pre_'+after]){ const a=new Audio(); a.preload='auto'; a.src=this.base+after+'.mp3'; this['pre_'+after]=a; } };
+    el.addEventListener('ended',next);
+    el.addEventListener('error',()=>{ if(this.base==='music/'){ this.base='https://play.buytoday.co.il/music/'; this.track=Math.max(0,this.track-1); next(); }
+      else { this.music=null; this.synthMusic(); } });
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden) el.pause(); else if(this.on&&G.state!=='menu') el.play().catch(()=>{}); });
+    next();
+  },
+  synthMusic(){ if(!this.ctx||this.musicTimer) return; const chords=[[261.6,329.6,392,493.9],[220,261.6,329.6,392],[293.7,349.2,440,523.3],[196,246.9,293.7,349.2]]; let next=this.ctx.currentTime+.1; const beat=.3;
     this.musicTimer=setInterval(()=>{ if(!this.ctx) return; while(next<this.ctx.currentTime+.6){ const c=chords[((this.step/8)|0)%4]; const n=c[[0,2,1,3,2,1,3,2][this.step%8]]; const dl=next-this.ctx.currentTime;
       this.tone(n,.45,'sine',.035,dl); if(this.step%8===0) this.tone(c[0]/2,1.2,'triangle',.05,dl); this.step++; next+=beat; } },150); },
-  setOn(v){ this.on=v; if(this.master) this.master.gain.value=v?1:0; }
+  setOn(v){ this.on=v; if(this.master) this.master.gain.value=v?1:0; if(this.music){ this.music.muted=!v; if(v&&this.music.paused) this.music.play().catch(()=>{}); } }
 };
 
 
