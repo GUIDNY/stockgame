@@ -10,6 +10,13 @@ people playing never load the shop's servers.
 Only changed the game code?                   python3 store-game/build.py --offline
 Only refresh the hot deals?                   python3 store-game/build.py --add-deals
 reuses the products already baked into public/store-game/index.html.
+Only refresh the full department catalogues?  python3 store-game/build.py --catalog
+
+Besides the showroom products baked into the page, every department has a
+catalogue kiosk listing the WHOLE category. That list is crawled from every
+page of the category and written to public/store-game/catalog.json, which the
+game fetches only when somebody opens a kiosk. Photos in it are the shop's own
+URLs, loaded lazily as the list scrolls.
 
 Outputs: public/store-game/index.html (deploy anywhere) and store-game/dist/game.html.
 Requires: Pillow (pip install pillow)
@@ -83,8 +90,50 @@ def thumb(url):
     buf = io.BytesIO(); bg.save(buf, 'JPEG', quality=70, optimize=True)
     return 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
 
+def crawl_catalog(cfg):
+    """Every product of every category, all pages, text only."""
+    out = {}
+    for cat in cfg['categories']:
+        base = SITE + cat.get('path', f"/category/{cat['slug']}")
+        rows, seen = [], set()
+        for page in range(1, 60):
+            try:
+                pg = get(base + (f'?page={page}' if page > 1 else ''))
+            except Exception as e:
+                print(f"  catalog {cat['slug']} page {page}: {e}", file=sys.stderr); break
+            new = [c for c in cards(pg) if c['slug'] not in seen]
+            if not new: break
+            for c in new:
+                seen.add(c['slug'])
+                img = c['image']
+                if img.startswith('/'): img = SITE + img
+                rows.append([c['slug'], c['name'], c['brand'], c['price'], c['old'] if c['old'] and c['old'] > c['price'] else 0,
+                             c['disc'] if c['old'] else 0, img, 1 if c['soldOut'] else 0])
+            if f'page={page + 1}' not in pg: break
+            time.sleep(.25)
+        out[cat['slug']] = rows
+        print(f"  catalogue {cat['name']:<24} {len(rows)} מוצרים")
+    return {'updated': datetime.date.today().isoformat(), 'cats': out}
+
+def write_catalog(cat):
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / 'catalog.json').write_text(json.dumps(cat, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+
+def with_totals(data):
+    """How many products each department's kiosk will list, so its screen can say so before the list loads."""
+    try: cat = json.loads((OUT / 'catalog.json').read_text(encoding='utf-8'))['cats']
+    except Exception: return data
+    for c in data.get('cats', []):
+        if c['slug'] in cat: c['total'] = len(cat[c['slug']])
+    return data
+
 def main():
     cfg = json.loads((ROOT / 'products.config.json').read_text(encoding='utf-8'))
+    if '--catalog' in sys.argv:
+        write_catalog(crawl_catalog(cfg))
+        prev = (OUT / 'index.html').read_text(encoding='utf-8')
+        data = json.loads(re.search(r'/\*__PRODUCTS__\*/(.*?)/\*__END__\*/', prev, re.S).group(1))
+        return write(data, cfg)
     if '--offline' in sys.argv:
         prev = (OUT / 'index.html').read_text(encoding='utf-8')
         data = json.loads(re.search(r'/\*__PRODUCTS__\*/(.*?)/\*__END__\*/', prev, re.S).group(1))
@@ -100,6 +149,7 @@ def main():
         return write(data, json.loads((ROOT / 'products.config.json').read_text(encoding='utf-8')))
     data = collect(cfg, set())
     if len(data['items']) < 20: sys.exit('too few products fetched, not writing')
+    write_catalog(crawl_catalog(cfg))
     write(data, cfg)
 
 def collect(cfg, seen):
@@ -128,6 +178,7 @@ def collect(cfg, seen):
     return {'updated': datetime.date.today().isoformat(), 'cats': cats, 'items': items}
 
 def write(data, cfg):
+    data = with_totals(data)
     src = (ROOT / 'game.html').read_text(encoding='utf-8')
     frag = re.sub(r'/\*__PRODUCTS__\*/.*?/\*__END__\*/', lambda m: '/*__PRODUCTS__*/' + json.dumps(data, ensure_ascii=False) + '/*__END__*/', src, flags=re.S)
     frag = re.sub(r'/\*__CHECKOUT__\*/.*?/\*__END__\*/', lambda m: '/*__CHECKOUT__*/' + json.dumps(cfg.get('checkout_url', '')) + '/*__END__*/', frag, flags=re.S)

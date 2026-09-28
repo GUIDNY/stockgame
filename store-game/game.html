@@ -88,8 +88,6 @@
   #emoTray button:active,#emoBtn:active{transform:scale(.92);}
   .nametag{position:fixed;left:0;top:0;padding:2px 8px;border-radius:8px;background:rgba(15,20,44,.72);color:#fff;font-weight:700;font-size:12px;white-space:nowrap;pointer-events:none;}
   .bubble.emo{font-size:28px;padding:4px 8px;line-height:1;}
-  .csheet input{width:100%;height:38px;padding:0 12px;border-radius:11px;border:1px solid var(--line);background:var(--raise);color:#fff;font-size:15px;font-weight:700;}
-  .csheet input::placeholder{color:var(--ink-faint);font-weight:500;}
 
   #toast{position:fixed;left:50%;top:36%;transform:translate(-50%,6px);max-width:calc(100vw - 2*var(--g));padding:10px 16px;border-radius:14px;font-weight:700;font-size:14.5px;text-align:center;
     opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:6;}
@@ -166,19 +164,41 @@
   .creator{flex-direction:column;align-items:stretch;justify-content:space-between;padding:calc(var(--st) + 14px) 0 0;
     background:linear-gradient(to bottom,rgba(8,11,28,.82),rgba(8,11,28,.25) 26%,transparent 38%,transparent 44%,rgba(8,11,28,.35));}
   .ctop{padding:0 18px;max-width:520px;width:100%;margin:0 auto;}
-  .ctop h1{font-size:clamp(30px,9vw,44px);margin:10px 0 6px;}
-  .ctop p{margin:0;font-size:14px;line-height:1.5;color:var(--ink-dim);max-width:34ch;}
+  .ctop h1{font-size:clamp(30px,9vw,44px);margin:10px 0 4px;}
+  .ctop p{margin:0;font-size:14px;line-height:1.5;color:#d3d8e8;max-width:34ch;text-shadow:0 1px 8px rgba(0,0,0,.6);}
+  .ctop h1{text-shadow:0 2px 14px rgba(0,0,0,.45);}
   .csheet{width:100%;max-width:520px;margin:0 auto;padding:14px 16px calc(var(--sb) + 16px);border-radius:24px 24px 0 0;background:rgba(17,23,52,.95);border:1px solid var(--line);border-bottom:0;
     display:grid;grid-template-columns:minmax(0,1fr);gap:10px;box-shadow:0 -10px 30px rgba(0,0,0,.35);}
-  .crow{display:grid;grid-template-columns:62px minmax(0,1fr);align-items:center;gap:10px;}
-  .crow > div{min-width:0;}
-  .crow > span{font-size:12.5px;font-weight:700;color:var(--ink-dim);}
-  .seg{display:flex;gap:6px;flex-wrap:wrap;}
-  .seg button{height:36px;padding:0 14px;border-radius:11px;background:var(--raise);font-weight:700;font-size:14px;color:var(--ink-dim);border:1px solid transparent;}
-  .seg button.on{background:rgba(245,83,4,.18);border-color:var(--brand);color:#fff;}
-  .sw{display:flex;gap:7px;flex-wrap:wrap;}
-  .sw button{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);box-shadow:inset 0 0 0 2px rgba(0,0,0,.15);}
-  .sw button.on{border-color:#fff;box-shadow:0 0 0 3px var(--brand);}
+  .csheet input{width:100%;height:46px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-weight:700;}
+  .csheet input::placeholder{color:var(--ink-faint);font-weight:500;}
+  .nrow{display:flex;gap:8px;}
+  .nrow input{flex:1;min-width:0;}
+  .dice{flex:none;width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid var(--line);display:grid;place-items:center;color:#fff;}
+  .dice svg{width:22px;height:22px;}
+  .dice:active{transform:rotate(-20deg) scale(.94);}
+  .ctabs{display:flex;gap:2px;padding:4px;border-radius:15px;background:rgba(255,255,255,.06);}
+  .ctabs button{flex:1;min-width:0;height:38px;border-radius:11px;font-size:13px;font-weight:700;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .15s,color .15s;}
+  .ctabs button.on{background:#fff;color:#161a2b;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+  .cpane{min-height:146px;display:grid;align-content:center;gap:10px;}
+  .tiles{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;padding:6px 4px 8px;}
+  .tiles button{flex:none;width:50px;height:50px;border-radius:15px;position:relative;display:grid;place-items:center;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 3px 8px rgba(0,0,0,.28);transition:transform .15s,box-shadow .15s;}
+  .tiles button svg{width:22px;height:22px;opacity:0;transform:scale(.6);transition:opacity .15s,transform .15s;}
+  .tiles button.on{transform:translateY(-3px);box-shadow:0 0 0 2px #0f1430,0 0 0 4px #fff,0 8px 16px rgba(0,0,0,.35);}
+  .tiles button.on svg{opacity:1;transform:none;}
+  .srow{display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:10px;}
+  .srow > span{font-size:12.5px;font-weight:700;color:var(--ink-dim);}
+  .segc{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px;padding:3px;border-radius:13px;background:rgba(255,255,255,.06);}
+  .segc button{height:36px;border-radius:10px;font-size:14px;font-weight:700;color:var(--ink-dim);transition:background .15s,color .15s;}
+  .segc button.on{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(245,83,4,.35);}
+  .acct{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:16px;background:linear-gradient(135deg,rgba(255,255,255,.1),rgba(255,255,255,.04));border:1px solid var(--line);}
+  .acct .t{flex:1;min-width:0;display:grid;gap:1px;}
+  .acct b{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .acct small{font-size:12px;color:var(--ink-dim);line-height:1.35;}
+  .acct a{flex:none;height:38px;padding:0 14px;border-radius:12px;background:#fff;color:#161a2b;font-weight:800;font-size:13.5px;text-decoration:none;display:flex;align-items:center;gap:6px;}
+  .acct a svg{width:16px;height:16px;}
+  .acct .ok{flex:none;width:34px;height:34px;border-radius:50%;background:var(--good);color:#06301b;display:grid;place-items:center;}
+  .acct .ok svg{width:18px;height:18px;}
   .csheet .go{margin-top:4px;}
 
   /* ---------- mall directory ---------- */
@@ -248,6 +268,41 @@
   .catgrid a .ico svg{width:17px;height:17px;}
   .catgrid a.wide{grid-column:1/-1;justify-content:center;background:var(--brand);color:#fff;}
   .empty{padding:24px;text-align:center;color:#6b7289;font-size:14px;}
+  /* ---------- department catalogue ---------- */
+  .chead{display:flex;align-items:center;gap:12px;}
+  .chead .ico{width:46px;height:46px;border-radius:14px;}
+  .chead .tt{flex:1;min-width:0;}
+  .chead .tt small{display:block;font-size:11.5px;font-weight:700;color:var(--brand);letter-spacing:.4px;}
+  .chead .tt h2{margin:0;font-size:20px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chead .tt span{font-size:12.5px;color:#6b7289;}
+  .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;touch-action:pan-x;margin:0 -16px;padding:0 16px;}
+  .chips button{flex:none;height:34px;padding:0 13px;border-radius:17px;background:#eef0f5;color:#5a6178;font-weight:700;font-size:13px;}
+  .chips button.on{background:#161a2b;color:#fff;}
+  .cgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  @media (min-width:480px){ .cgrid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+  .cprod{min-width:0;display:flex;flex-direction:column;border-radius:16px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;position:relative;}
+  .cprod .im{aspect-ratio:1;background:#fff;display:grid;place-items:center;padding:10px;border-bottom:1px solid #f0f1f5;}
+  .cprod img{width:100%;height:100%;object-fit:contain;}
+  .cprod .im.noimg::after{content:"BuyToday";font-size:11px;font-weight:700;color:#b5bacb;}
+  .cprod .off{position:absolute;top:8px;right:8px;padding:2px 7px;border-radius:8px;background:#e63946;color:#fff;font-size:11.5px;font-weight:800;}
+  .cprod .here{position:absolute;top:8px;left:8px;padding:2px 7px;border-radius:8px;background:var(--brand);color:#fff;font-size:11px;font-weight:700;}
+  .cprod .bd{padding:8px 10px 10px;display:flex;flex-direction:column;gap:3px;flex:1;}
+  .cprod .br{font-size:11px;font-weight:700;color:#8a90a3;min-height:14px;}
+  .cprod .nm{font-size:12.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:33px;}
+  .cprod .pr{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:4px;}
+  .cprod .pr b{font-size:16px;font-weight:800;}
+  .cprod .pr s{font-size:11.5px;color:#8a90a3;}
+  .cprod .ac{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-top:6px;}
+  .cprod .ac a,.cprod .ac button{height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;text-decoration:none;}
+  .cprod .ac a{background:var(--brand);color:#fff;}
+  .cprod .ac button{background:#eef0f5;color:#161a2b;}
+  .cprod.out{opacity:.55;}
+  .cmore{height:1px;}
+  .cfoot{display:flex;align-items:center;justify-content:center;gap:6px;height:46px;border-radius:14px;background:#161a2b;color:#fff;text-decoration:none;font-weight:700;font-size:14px;}
+  .cfoot svg{width:15px;height:15px;}
+  .ccount{font-size:12px;font-weight:700;color:#8a90a3;margin:0 2px -4px;}
+  .skel{border-radius:16px;background:linear-gradient(90deg,#eceef3,#f7f8fb,#eceef3);background-size:200% 100%;animation:skel 1.2s linear infinite;aspect-ratio:.62;}
+  @keyframes skel{to{background-position:-200% 0}}
   #loading{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;background:radial-gradient(90% 60% at 50% 40%,#1b2350,#0b0f26);color:var(--ink-dim);font-size:14px;direction:rtl;z-index:20;}
   #loading .logo{height:40px;font-size:19px;padding:0 16px;border-radius:12px;}
   #loading .bar{width:180px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;}
@@ -259,7 +314,7 @@
   .sheet:not([hidden]){animation:rise .22s cubic-bezier(.2,.8,.2,1);}
   .dir:not([hidden]) .dpanel,.creator:not([hidden]) .csheet{animation:sheetUp .3s cubic-bezier(.2,.8,.2,1);}
   .screen:not([hidden]) .panel{animation:pop .25s ease-out;}
-  .drive:active,.prod:active,.drow:active,.catgrid a:active,.seg button:active,.sw button:active,#map:active,#cartBtn:active,#meBtn:active{transform:scale(.96);}
+  .drive:active,.prod:active,.drow:active,.cprod .ac a:active,.cprod .ac button:active,.chips button:active,.catgrid a:active,.segc button:active,.tiles button:active,.ctabs button:active,#map:active,#cartBtn:active,#meBtn:active{transform:scale(.96);}
   @media (prefers-reduced-motion: reduce){ .sheet,.dpanel,.csheet,.panel,#loading .bar i{animation:none!important;} }
   @media (prefers-reduced-motion: reduce){ #toast,.quest-h svg{transition:none;} #clockPill.late b{animation:none;} }
 </style>
@@ -317,17 +372,14 @@
   <div class="ctop">
     <div class="brandrow"><span class="logo">BuyToday</span><span>קניון · 2 קומות · 10 מחלקות</span></div>
     <h1>הקניון של <em>BuyToday</em></h1>
-    <p>בחרו איך תיראו, ותטיילו בין המחלקות. כל מוצר על המדפים אמיתי, במחיר של היום באתר.</p>
+    <p>בחרו איך תיראו ותטיילו בין המחלקות. כל מוצר אמיתי, במחיר של היום באתר.</p>
   </div>
   <div class="csheet">
-    <div class="crow"><span>שם</span><div><input id="optName" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="איך יקראו לכם בקניון" dir="auto"></div></div>
-    <div class="crow"><span>דמות</span><div class="seg" id="optGender"></div></div>
-    <div class="crow"><span>צבע עור</span><div class="sw" id="optSkin"></div></div>
-    <div class="crow"><span>שיער</span><div class="sw" id="optHair"></div></div>
-    <div class="crow"><span>חולצה</span><div class="sw" id="optShirt"></div></div>
-    <div class="crow"><span>תחתון</span><div class="seg" id="optBottom"></div></div>
-    <div class="crow"><span id="bottomLabel">מכנסיים</span><div class="sw" id="optPants"></div></div>
-    <div class="crow"><span>תוספת</span><div class="seg" id="optExtra"></div></div>
+    <div class="acct" id="acct" hidden></div>
+    <div class="nrow"><input id="optName" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="השם שלכם בקניון" dir="auto" aria-label="השם שלכם בקניון">
+      <button class="dice" id="dice" aria-label="דמות אקראית"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="16" cy="16" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="16" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="16" r="1.2" fill="currentColor"/></svg></button></div>
+    <div class="ctabs" id="ctabs" role="tablist" aria-label="עריכת הדמות"></div>
+    <div class="cpane" id="cpane" role="tabpanel"></div>
     <button class="go" id="startBtn">נכנסים לקניון</button>
   </div>
 </div>
@@ -356,6 +408,19 @@
         <button id="cartClose" aria-label="סגירת העגלה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     </div>
     <div class="dscroll" id="cartScroll"><div id="cartBody"></div></div>
+  </div>
+</div>
+
+<div class="screen dir" id="catp" hidden>
+  <div class="dpanel" role="dialog" aria-modal="true" aria-labelledby="catTitle">
+    <div class="dtop">
+      <div class="chead"><span class="ico" id="catIco"></span><div class="tt"><small>קטלוג המחלקה</small><h2 id="catTitle"></h2><span id="catSub"></span></div>
+        <div class="dhead"><button id="catClose" aria-label="סגירת הקטלוג"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>
+      <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="catSearch" type="search" placeholder="חיפוש במחלקה: מותג, דגם, סוג" autocomplete="off" enterkeyhint="search"></label>
+      <div class="chips" id="catSort"></div>
+    </div>
+    <div class="dscroll" id="catScroll"><div class="ccount" id="catCount"></div><div class="cgrid" id="catGrid"></div><div class="cmore" id="catMore"></div><a class="cfoot" id="catSite" target="_blank" rel="noopener"></a></div>
   </div>
 </div>
 
@@ -1073,7 +1138,56 @@ function buildJumbo(){
 }
 
 /* ---------- build + bake ---------- */
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildItems(); buildJumbo(); buildAdBoard();
+const DEPTS=[
+  {id:'tv',f:0,name:'טלוויזיות ומולטימדיה',sub:'מסכים · מקרנים',rect:[-24,-8.5,-32,-9],to:[-16,-16.8],color:'#3a57c9',cat:'tv-multimedia',icon:'screens'},
+  {id:'audio',f:0,name:'סטריאו וקולנוע ביתי',sub:'רמקולים · רסיברים',rect:[-24,-8.5,-9,13],to:[-16.7,-2],color:'#7a4fd0',cat:'audio-home-theater',icon:'sound'},
+  {id:'kitchen',f:0,name:'מוצרי חשמל למטבח',sub:'קפה · בלנדרים · אייר פרייר',rect:[8.5,24,-32,-9],to:[16,-22.5],color:'#c9853a',cat:'small-kitchen-appliances',icon:'kitchen'},
+  {id:'ovens',f:0,name:'תנורים וכיריים',sub:'תנורים · כיריים · מיקרוגלים',rect:[8.5,24,-9,13],to:[16.8,-2],color:'#b8472e',cat:'ovens-cooktops',icon:'oven'},
+  {id:'deal',f:0,name:'הדיל החם',sub:'ההנחות הגדולות באתר',rect:[-8,8,-32,-8],to:[0,-16],color:'#f55304',icon:'deal',url:'/deals'},
+  {id:'care',f:0,name:'טיפוח אישי',sub:'גילוח · שיער · תספורת',rect:[8.5,24,14,32],to:[15,20.5],color:'#d0508a',cat:'personal-care',icon:'care'},
+  {id:'checkout',f:0,name:'קופות',sub:'תשלום ויציאה',rect:[-24,-8.5,18,32],to:[-13,21.8],color:'#3fbf7f',icon:'checkout'},
+  {id:'fridge',f:1,name:'מקררים וקירור',sub:'מקררים · מקפיאים · יין',rect:[-24,-8.5,-32,-9],to:[-15,-20],color:'#3f8fd0',cat:'refrigeration',icon:'home'},
+  {id:'laundry',f:1,name:'כביסה, ייבוש ומדיחים',sub:'כביסה · מייבשים · מדיחים',rect:[-24,-8.5,-9,13],to:[-16.2,-1],color:'#5b6fe0',cat:'laundry',icon:'laundry'},
+  {id:'home',f:1,name:'מוצרי חשמל לבית',sub:'שואבים · מגהצים',rect:[8.5,24,-32,-1],to:[14,-15],color:'#2fb592',cat:'home-appliances',icon:'clean'},
+  {id:'ac',f:1,name:'מיזוג אוויר',sub:'מזגנים עיליים',rect:[8.5,24,-1,13],to:[14.5,4.5],color:'#2aa7c9',cat:'air-conditioning',icon:'ac'},
+  {id:'heat',f:1,name:'חימום ואוורור',sub:'מאווררים · תנורי חימום',rect:[-24,24,13.5,32],to:[-6,22.5],color:'#e07a2a',cat:'heating-ventilation',icon:'heat'},
+];
+
+/* ---------- catalogue kiosks: one per department, listing the whole category ---------- */
+const catKey=d=>d.cat||(d.id==='deal'?'deals':null);
+const catTotal=d=>{ const c=(STORE.cats||[]).find(c=>c.slug===catKey(d)); return c&&c.total||0; };
+function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
+  const bg=g.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#1a2150'); bg.addColorStop(1,'#0d1231'); g.fillStyle=bg; g.fillRect(0,0,W,H);
+  g.fillStyle=d.color; g.fillRect(0,0,W,78); g.fillStyle='rgba(255,255,255,.18)'; g.fillRect(0,78,W,3);
+  g.fillStyle='#fff'; g.textAlign='center'; g.direction='rtl'; g.font='700 20px Rubik,sans-serif'; g.fillText('קטלוג המחלקה',W/2,32);
+  g.font='800 23px Rubik,sans-serif'; let t=d.name; while(g.measureText(t).width>W-24) t=t.slice(0,-1); g.fillText(t===d.name?t:t+'…',W/2,63);
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++){ g.fillStyle=(r+c)%3===0?d.color:'rgba(255,255,255,.14)'; rrect(g,40+c*62,100+r*52,52,42,8); g.fill(); }
+  const n=catTotal(d); g.fillStyle='#fff'; g.font='800 46px Rubik,sans-serif'; g.fillText(n?String(n):'הכל',W/2,300);
+  g.font='600 18px Rubik,sans-serif'; g.fillStyle='#aab1c8'; g.fillText(n?'מוצרים · לחצו לפתיחה':'לחצו לפתיחה',W/2,332); }); }
+function buildKiosks(){
+  const frame=mat(0x1b2033,{roughness:.35,metalness:.4});
+  DEPTS.forEach(d=>{ if(!catKey(d)) return;
+    const [x0,x1,z0,z1]=d.rect, f=d.f; let best=null, bs=1e9;
+    for(let x=x0+1.4;x<=x1-1.4;x+=.5) for(let z=z0+1.4;z<=z1-1.4;z+=.5){
+      if(!walkable(x,z,1.45,f)) continue;
+      if(Math.abs(x)<VOID.maxX+1.8&&z>VOID.minZ-1.8&&z<VOID.maxZ+1.8&&f===1) continue;
+      if(x>SH.x0-2&&x<SH.x1+2&&z>SH.z0-2&&z<SH.z1+2) continue;
+      if(CATALOG.some(it=>it.f===f&&Math.hypot(it.x-x,it.z-z)<2.3)) continue;
+      const sc=Math.abs(Math.hypot(x-d.to[0],z-d.to[1])-2.4); if(sc<bs){ bs=sc; best=[x,z]; } }
+    if(!best) return;
+    const [x,z]=best, ry=Math.atan2(d.to[0]-x,d.to[1]-z), y=f*FH, P=STATIC[f], g=new THREE.Group();
+    box(.8,.08,.56,frame,0,.04,0,g); box(.14,.95,.14,frame,0,.5,-.06,g);
+    const scr=new THREE.Group(); scr.position.set(0,1.62,0); scr.rotation.x=-.12; g.add(scr);
+    box(1.02,1.38,.1,frame,0,0,0,scr); box(1.06,.06,.12,mat(new THREE.Color(d.color).getHex()),0,.72,0,scr);
+    plane(.92,1.27,new THREE.MeshBasicMaterial({map:kioskTex(d)}),0,-.01,.052,0,scr);
+    // a totem taller than the shoppers, so it reads over the player's own head from the follow camera
+    const top=new THREE.Group(); top.position.set(0,2.5,0); g.add(top); box(1.02,.3,.3,mat(new THREE.Color(d.color).getHex()),0,0,-.02,top);
+    plane(.96,.24,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=d.color; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.textAlign='center'; c.direction='rtl'; c.font='800 34px Rubik,sans-serif'; c.fillText('כל המוצרים',W/2,45); })}),0,0,.131,0,top);
+    place(g,x,y,z,ry,1.45,P);
+    solid(f,x,z,1.5,1.3,'kiosk'); d.kiosk={x,z,f};
+  });
+}
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -1135,20 +1249,6 @@ for(let i=0;i<3;i++){ const r=mkRobot(); r.scale.setScalar(1.1); scene.add(r); r
 setShadowFloor(0);
 
 /* ---------- mall directory + autopilot ("סע") ---------- */
-const DEPTS=[
-  {id:'tv',f:0,name:'טלוויזיות ומולטימדיה',sub:'מסכים · מקרנים',rect:[-24,-8.5,-32,-9],to:[-16,-16.8],color:'#3a57c9',cat:'tv-multimedia',icon:'screens'},
-  {id:'audio',f:0,name:'סטריאו וקולנוע ביתי',sub:'רמקולים · רסיברים',rect:[-24,-8.5,-9,13],to:[-16.7,-2],color:'#7a4fd0',cat:'audio-home-theater',icon:'sound'},
-  {id:'kitchen',f:0,name:'מוצרי חשמל למטבח',sub:'קפה · בלנדרים · אייר פרייר',rect:[8.5,24,-32,-9],to:[16,-22.5],color:'#c9853a',cat:'small-kitchen-appliances',icon:'kitchen'},
-  {id:'ovens',f:0,name:'תנורים וכיריים',sub:'תנורים · כיריים · מיקרוגלים',rect:[8.5,24,-9,13],to:[16.8,-2],color:'#b8472e',cat:'ovens-cooktops',icon:'oven'},
-  {id:'deal',f:0,name:'הדיל החם',sub:'ההנחות הגדולות באתר',rect:[-8,8,-32,-8],to:[0,-16],color:'#f55304',icon:'deal',url:'/deals'},
-  {id:'care',f:0,name:'טיפוח אישי',sub:'גילוח · שיער · תספורת',rect:[8.5,24,14,32],to:[15,20.5],color:'#d0508a',cat:'personal-care',icon:'care'},
-  {id:'checkout',f:0,name:'קופות',sub:'תשלום ויציאה',rect:[-24,-8.5,18,32],to:[-13,21.8],color:'#3fbf7f',icon:'checkout'},
-  {id:'fridge',f:1,name:'מקררים וקירור',sub:'מקררים · מקפיאים · יין',rect:[-24,-8.5,-32,-9],to:[-15,-20],color:'#3f8fd0',cat:'refrigeration',icon:'home'},
-  {id:'laundry',f:1,name:'כביסה, ייבוש ומדיחים',sub:'כביסה · מייבשים · מדיחים',rect:[-24,-8.5,-9,13],to:[-16.2,-1],color:'#5b6fe0',cat:'laundry',icon:'laundry'},
-  {id:'home',f:1,name:'מוצרי חשמל לבית',sub:'שואבים · מגהצים',rect:[8.5,24,-32,-1],to:[14,-15],color:'#2fb592',cat:'home-appliances',icon:'clean'},
-  {id:'ac',f:1,name:'מיזוג אוויר',sub:'מזגנים עיליים',rect:[8.5,24,-1,13],to:[14.5,4.5],color:'#2aa7c9',cat:'air-conditioning',icon:'ac'},
-  {id:'heat',f:1,name:'חימום ואוורור',sub:'מאווררים · תנורי חימום',rect:[-24,24,13.5,32],to:[-6,22.5],color:'#e07a2a',cat:'heating-ventilation',icon:'heat'},
-];
 const deptItems=d=>CATALOG.filter(it=>it.zone===d.id);
 const deptUrl=d=>d.cat?SITE+'/category/'+d.cat:d.url?SITE+d.url:null;
 const NAV={cell:.5,nx:Math.round(2*BX/.5),nz:Math.round(2*BZ/.5),grid:[null,null]};
@@ -1290,7 +1390,7 @@ function renderQuest(force){
   const d=deptAt(); if(d===lastDept&&!force) return; lastDept=d;
   const ico=$('#ring');
   if(d){ ico.innerHTML=svgI(ICONS[d.icon]); ico.style.setProperty('--c',d.color); $('#nextLabel').textContent='אתם ב'+(player.floor?'קומה 1':'קומת הקרקע'); $('#nextName').textContent=d.name;
-    const n=deptItems(d).length; $('#nextMeta').textContent=n?n+' מוצרים':d.sub; }
+    const n=catTotal(d); $('#nextMeta').textContent=catKey(d)?(n?`כל ה־${n}`:'כל המוצרים'):d.sub; }
   else { ico.innerHTML=svgI(ICONS.map); ico.style.setProperty('--c','#8a90a3'); $('#nextLabel').textContent=player.floor?'קומה 1 · לובי':'אטריום · קומת הקרקע';
     $('#nextName').textContent='לאן הולכים?'; $('#nextMeta').textContent='למפה'; }
 }
@@ -1311,7 +1411,7 @@ function resetGame(){
 function enterMall(){
   Sound.init(); if(Sound.ctx&&Sound.ctx.state==='suspended') Sound.ctx.resume(); Sound.startMusic();
   try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){}
-  avatar.name=cleanName(avatar.name); saveAvatar(); cart.c.visible=true;
+  avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
   toast('ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
@@ -1347,22 +1447,71 @@ const AV_CHOICES={
   pants:[0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a,0xe8e2d6],
 };
 const hex=c=>'#'+c.toString(16).padStart(6,'0');
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const light=c=>{ const r=c>>16&255, g=c>>8&255, b=c&255; return .299*r+.587*g+.114*b>170; };
+let ctab='style';
 function renderCreator(){
-  const seg=(id,key,vals)=>{ const el=$('#'+id); el.innerHTML=''; vals.forEach(([v,label])=>{ const b=document.createElement('button'); b.textContent=label; b.setAttribute('aria-pressed',String(avatar[key]===v)); if(avatar[key]===v) b.className='on';
-    b.addEventListener('click',()=>{ const a=Object.assign({},avatar,{[key]:v}); if(key==='girl') a.bottom=v?'skirt':'pants'; setAvatar(a); renderCreator(); }); el.appendChild(b); }); };
-  seg('optGender','girl',[[false,'בן'],[true,'בת']]);
-  seg('optBottom','bottom',[['pants','מכנסיים'],['skirt','חצאית']]);
-  seg('optExtra','extra',[['none','בלי'],['cap','כובע'],['glasses','משקפיים']]);
-  ['skin','hair','shirt','pants'].forEach(key=>{ const el=$('#opt'+key[0].toUpperCase()+key.slice(1)); el.innerHTML='';
-    AV_CHOICES[key].forEach(c=>{ const b=document.createElement('button'); b.style.background=hex(c); b.setAttribute('aria-label',key+' '+hex(c)); b.setAttribute('aria-pressed',String(avatar[key]===c)); if(avatar[key]===c) b.className='on';
-      b.addEventListener('click',()=>{ setAvatar(Object.assign({},avatar,{[key]:c})); renderCreator(); }); el.appendChild(b); }); });
-  $('#bottomLabel').textContent=avatar.bottom==='skirt'?'חצאית':'מכנסיים';
+  const tabs=[['style','סגנון'],['skin','עור'],['hair','שיער'],['shirt','חולצה'],['pants',avatar.bottom==='skirt'?'חצאית':'מכנסיים']];
+  const tb=$('#ctabs'); tb.innerHTML='';
+  tabs.forEach(([k,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(k===ctab)); if(k===ctab) b.className='on';
+    b.addEventListener('click',()=>{ ctab=k; renderCreator(); buzz(6); }); tb.appendChild(b); });
+  const pane=$('#cpane'); pane.innerHTML='';
+  const set=(key,v)=>{ const a=Object.assign({},avatar,{[key]:v}); if(key==='girl') a.bottom=v?'skirt':'pants'; setAvatar(a); renderCreator(); buzz(6); };
+  if(ctab==='style'){
+    [['דמות','girl',[[false,'בן'],[true,'בת']]],['תחתון','bottom',[['pants','מכנסיים'],['skirt','חצאית']]],['אביזר','extra',[['none','בלי'],['cap','כובע'],['glasses','משקפיים']]]].forEach(([label,key,vals])=>{
+      const row=document.createElement('div'); row.className='srow'; row.innerHTML='<span></span><div class="segc"></div>'; row.firstChild.textContent=label;
+      vals.forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('aria-pressed',String(avatar[key]===v)); if(avatar[key]===v) b.className='on'; b.addEventListener('click',()=>set(key,v)); row.lastChild.appendChild(b); });
+      pane.appendChild(row); });
+  } else {
+    const row=document.createElement('div'); row.className='tiles';
+    AV_CHOICES[ctab].forEach(c=>{ const b=document.createElement('button'); b.style.background=hex(c); b.style.color=light(c)?'#161a2b':'#fff'; b.innerHTML=CHECK;
+      b.setAttribute('aria-label',hex(c)); b.setAttribute('aria-pressed',String(avatar[ctab]===c)); if(avatar[ctab]===c) b.className='on';
+      b.addEventListener('click',()=>set(ctab,c)); row.appendChild(b); });
+    pane.appendChild(row);
+  }
   const nm=$('#optName'); if(document.activeElement!==nm) nm.value=avatar.name||'';
 }
+$('#dice').addEventListener('click',()=>{ const girl=Math.random()<.5;
+  setAvatar(Object.assign({},avatar,{girl,bottom:girl&&Math.random()<.65?'skirt':'pants',extra:pick(['none','none','cap','glasses']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}));
+  renderCreator(); buzz(12); });
 $('#optName').addEventListener('input',e=>{ avatar.name=e.target.value; });
 $('#optName').addEventListener('change',e=>{ avatar.name=cleanName(e.target.value); e.target.value=avatar.name; });
 $('#optName').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') e.target.blur(); });
 $('#optName').addEventListener('keyup',e=>e.stopPropagation());
+
+
+/* ---------- BuyToday account: the character is kept on the shopper's own account ----------
+   The site owns sign-in (Google, Apple, password). The game only asks it who is signed in and
+   hands it the character to keep: https://buytoday.co.il/api/game/profile, with the site's own
+   cookie (same site, so the browser sends it). Any failure means "no account here" and the
+   card simply stays hidden; the character still lives in localStorage as before. */
+const ACCT_API='https://buytoday.co.il/api/game/profile', LOGIN_URL='https://buytoday.co.il/login?redirect=/api/game/return';
+const Acct={state:'unknown',first:null,saved:''};
+const acctEl=$('#acct');
+function profileOf(a){ return {name:cleanName(a.name),girl:!!a.girl,skin:a.skin,hair:a.hair,shirt:a.shirt,pants:a.pants,bottom:a.bottom,extra:a.extra}; }
+function renderAcct(){
+  if(Acct.state!=='in'&&Acct.state!=='out'){ acctEl.hidden=true; return; }
+  acctEl.hidden=false;
+  if(Acct.state==='in'){ acctEl.innerHTML='<span class="ok">'+CHECK+'</span><div class="t"><b></b><small>הדמות נשמרת בחשבון שלכם, בכל מכשיר</small></div>';
+    acctEl.querySelector('b').textContent=Acct.first?`שלום, ${Acct.first}`:'מחוברים לחשבון BuyToday'; }
+  else { acctEl.innerHTML='<div class="t"><b>שמרו את הדמות בחשבון</b><small>עם Google, Apple או חשבון האתר</small></div><a>התחברות</a>';
+    const a=acctEl.querySelector('a'); a.href=LOGIN_URL; a.addEventListener('click',()=>saveAvatar()); }
+}
+async function acctLoad(){
+  try{ const r=await fetch(ACCT_API,{credentials:'include',cache:'no-store'}); if(!r.ok) throw 0; const j=await r.json();
+    if(j.signedIn){ Acct.state='in'; Acct.first=j.firstName||null;
+      const pr=j.profile&&typeof j.profile==='object'?j.profile:null;
+      if(pr){ const a=unpackAv([pr.girl?1:0,pr.skin,pr.hair,pr.shirt,pr.pants,AV_BOTTOM.indexOf(pr.bottom),AV_EXTRA.indexOf(pr.extra)]);
+        setAvatar(Object.assign({},a,{name:cleanName(pr.name)||avatar.name})); saveAvatar(); Acct.saved=JSON.stringify(profileOf(avatar)); if(G.state!=='play') renderCreator(); }
+      else acctSave(); }
+    else Acct.state='out'; }
+  catch(e){ Acct.state='none'; }
+  renderAcct();
+  if(/[?&]signedin=1/.test(location.search)){ try{ history.replaceState(null,'',location.pathname); }catch(e){}
+    if(Acct.state==='in') toast(Acct.first?`מחוברים, ${Acct.first}. הדמות נשמרת בחשבון`:'מחוברים. הדמות נשמרת בחשבון','good'); }
+}
+function acctSave(){ if(Acct.state!=='in') return; const pr=profileOf(avatar), k=JSON.stringify(pr); if(k===Acct.saved) return;
+  fetch(ACCT_API,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:pr})}).then(r=>{ if(r.ok) Acct.saved=k; }).catch(()=>{}); }
 
 /* ---------- input ---------- */
 const joy={x:0,y:0,id:null};
@@ -1386,7 +1535,7 @@ addEventListener('keyup',e=>{ keys[e.code]=false; });
 ['gesturestart','dblclick'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
 ui.act.addEventListener('pointerdown',e=>{ e.preventDefault(); doAction(); });
 $('#cardAdd').addEventListener('click',()=>{ if(near&&near.type==='item') doAction(); });
-$('#listH').addEventListener('click',()=>openDir());
+$('#listH').addEventListener('click',()=>{ const d=deptAt(); if(d&&catKey(d)) openCatalog(d); else openDir(); });
 $('#mute').addEventListener('click',()=>{ Sound.setOn(!Sound.on); $('#waves').style.display=Sound.on?'':'none'; $('#xmark').style.display=Sound.on?'none':''; });
 $('#startBtn').addEventListener('click',enterMall);
 $('#againBtn').addEventListener('click',closeReceipt);
@@ -1408,6 +1557,8 @@ function doAction(){
     it.model.visible=false; flyers.push({m:fm,from:wp.clone(),t:0,it});
     Sound.pickup(); renderMoney(); renderList();
     toast(it.name+' נוסף לעגלה','good'); buzz(18);
+  } else if(near.type==='kiosk'){
+    openCatalog(near.d);
   } else if(near.type==='checkout'){
     openReceipt();
   }
@@ -1493,7 +1644,7 @@ function deptCard(d,its){
   el.querySelector('small').textContent=d.sub+(its.length?` · ${its.length} מוצרים`:'')+(wantHere?` · ${wantHere} ברשימה`:'');
   el.querySelector('.drow').addEventListener('click',()=>{ closeDir(); driveTo(deptGoal(d)); });
   if(its.length){ const row=document.createElement('div'); row.className='prods'; its.forEach(it=>row.appendChild(prodCard(it))); el.appendChild(row); }
-  const u=deptUrl(d); if(u){ const a=document.createElement('a'); a.className='dlink'; a.target='_blank'; a.rel='noopener'; a.href=utm(u,'map-'+d.id); a.innerHTML='לכל '+(d.id==='deal'?'המבצעים':'המוצרים במחלקה')+' באתר '+svgI(ICONS.ext,2.4); el.appendChild(a); }
+  if(catKey(d)){ const n=catTotal(d), a=document.createElement('button'); a.className='dlink'; a.style.width='calc(100% - 24px)'; a.textContent=n?`כל ${n} המוצרים במחלקה ›`:'כל המוצרים במחלקה ›'; a.addEventListener('click',()=>{ closeDir(); openCatalog(d); }); el.appendChild(a); }
   return el;
 }
 function renderDepts(){
@@ -1528,6 +1679,70 @@ big.addEventListener('click',e=>{ const r=big.getBoundingClientRect(); const px=
   const d=DEPTS.find(d=>d.f===dirFloor&&x>=d.rect[0]&&x<=d.rect[1]&&z>=d.rect[2]&&z<=d.rect[3]); if(d){ closeDir(); driveTo(deptGoal(d)); } });
 
 /* ---------- my cart ---------- */
+
+/* ---------- department catalogue: the whole category, not just the showroom ----------
+   catalog.json is written by build.py from every page of every category and fetched only
+   the first time somebody opens a catalogue, so the mall itself loads no heavier. */
+const catEl=$('#catp'); let catData=null, catLoading=null, catDept=null, catSortKey='rec', catQuery='', catRows=[], catList=[], catShown=0, catFailed=false;
+function loadCatalog(){
+  if(catData) return Promise.resolve(catData);
+  if(!catLoading){ const get=u=>fetch(u,{cache:'no-cache'}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
+    catLoading=get('catalog.json').catch(()=>get('https://play.buytoday.co.il/catalog.json')).then(j=>catData=j).catch(e=>{ catLoading=null; throw e; }); }
+  return catLoading;
+}
+const SORTS=[['rec','מומלץ'],['low','מחיר: מהזול'],['high','מחיר: מהיקר'],['deals','מבצעים']];
+function renderSortChips(){ const box=$('#catSort'); box.innerHTML='';
+  const deals=catRows.filter(r=>r.old).length;
+  SORTS.forEach(([k,t])=>{ if(k==='deals'&&!deals) return; const b=document.createElement('button'); b.textContent=k==='deals'?`${t} (${deals})`:t; b.className=k===catSortKey?'on':''; b.setAttribute('aria-pressed',String(k===catSortKey));
+    b.addEventListener('click',()=>{ catSortKey=k; renderSortChips(); renderCatalog(); $('#catScroll').scrollTop=0; }); box.appendChild(b); }); }
+function openCatalog(d){
+  if(G.state!=='play'||!catKey(d)) return;
+  stopAuto(); G.paused=true; catDept=d; catQuery=''; catSortKey='rec'; catRows=[]; $('#catSearch').value='';
+  const ico=$('#catIco'); ico.innerHTML=svgI(ICONS[d.icon]); ico.style.setProperty('--c',d.color);
+  $('#catTitle').textContent=d.name; const n=catTotal(d); $('#catSub').textContent=(n?n+' מוצרים · ':'')+'אותם מחירים כמו באתר';
+  const site=$('#catSite'); site.href=utm(deptUrl(d),'catalog-'+d.id); site.innerHTML=(d.id==='deal'?'לכל המבצעים באתר ':'לקטגוריה באתר ')+svgI(ICONS.ext,2.4);
+  renderSortChips(); $('#catCount').textContent=''; $('#catGrid').innerHTML='<div class="skel"></div>'.repeat(4);
+  catEl.hidden=false; $('#catScroll').scrollTop=0; buzz(10);
+  loadCatalog().then(()=>{ catFailed=false; }).catch(()=>{ catFailed=true; }).then(()=>{ if(catDept!==d) return;
+    const rows=!catFailed&&catData.cats&&catData.cats[catKey(d)];
+    catRows=rows ? rows.map(r=>({slug:r[0],name:r[1],brand:r[2],price:r[3],old:r[4],disc:r[5],img:r[6],out:!!r[7]}))
+      : deptItems(d).map(it=>({slug:it.slug,name:it.full,brand:it.brand,price:it.price,old:it.old||0,disc:it.disc||0,img:it.img,out:false}));
+    renderSortChips(); renderCatalog(); });
+}
+function closeCatalog(){ catDept=null; G.paused=false; catEl.hidden=true; last=performance.now(); try{ document.activeElement.blur(); }catch(e){} }
+function renderCatalog(){
+  const words=catQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  let list=catRows.filter(r=>{ const h=(r.name+' '+r.brand).toLowerCase(); return words.every(w=>h.includes(w)); });
+  if(catSortKey==='deals') list=list.filter(r=>r.old).sort((a,b)=>b.disc-a.disc);
+  else if(catSortKey==='low') list.sort((a,b)=>a.out-b.out||a.price-b.price);
+  else if(catSortKey==='high') list.sort((a,b)=>a.out-b.out||b.price-a.price);
+  else list=list.filter(r=>!r.out).concat(list.filter(r=>r.out));
+  catList=list; catShown=0; $('#catGrid').innerHTML='';
+  $('#catCount').textContent=catRows.length?(words.length?`${list.length} תוצאות`:`${list.length} מוצרים`)+(catFailed?' · מוצגים המוצרים שבקניון':''):'';
+  if(!list.length){ $('#catGrid').innerHTML='<div class="empty" style="grid-column:1/-1">לא מצאנו במחלקה הזאת. נסו מילה אחרת, או חפשו בכל האתר.</div>'; return; }
+  catMore();
+}
+function catMore(){ const grid=$('#catGrid'), end=Math.min(catList.length,catShown+24); for(;catShown<end;catShown++) grid.appendChild(catCard(catList[catShown])); }
+function catCard(r){
+  const el=document.createElement('div'); el.className='cprod'+(r.out?' out':''); const it=CATALOG.find(i=>i.slug===r.slug);
+  el.innerHTML='<div class="im"><img alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div><div class="bd"><span class="br"></span><span class="nm" dir="auto"></span><div class="pr"><b class="num"></b></div><div class="ac"><a target="_blank" rel="noopener">לעמוד המוצר ↗</a></div></div>';
+  const img=el.querySelector('img'), im=el.querySelector('.im');
+  if(r.img){ img.src=r.img; img.onerror=()=>{ img.remove(); im.classList.add('noimg'); }; } else { img.remove(); im.classList.add('noimg'); }
+  el.querySelector('.br').textContent=r.brand||''; el.querySelector('.nm').textContent=r.name;
+  const pr=el.querySelector('.pr'); pr.querySelector('b').textContent=r.out?'אזל במלאי':shekel(r.price);
+  if(r.old&&!r.out){ const s=document.createElement('s'); s.className='num'; s.textContent=shekel(r.old); pr.appendChild(s);
+    if(r.disc){ const o=document.createElement('span'); o.className='off'; o.dir='ltr'; o.textContent=`-${r.disc}%`; el.appendChild(o); } }
+  el.querySelector('a').href=utm(SITE+'/product/'+r.slug,'catalog-'+(catDept?catDept.id:'x'));
+  if(it){ const h=document.createElement('span'); h.className='here'; h.textContent='בקניון'; el.appendChild(h);
+    const b=document.createElement('button'); b.textContent=it.taken?'כבר בעגלה':'סע למדף'; b.disabled=it.taken;
+    b.addEventListener('click',()=>{ if(it.taken) return; closeCatalog(); driveTo(itemGoal(it)); }); el.querySelector('.ac').appendChild(b); }
+  return el;
+}
+$('#catClose').addEventListener('click',closeCatalog);
+$('#catSearch').addEventListener('input',e=>{ catQuery=e.target.value; renderCatalog(); $('#catScroll').scrollTop=0; });
+$('#catSearch').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') e.target.blur(); });
+$('#catSearch').addEventListener('keyup',e=>e.stopPropagation());
+$('#catScroll').addEventListener('scroll',()=>{ const s=$('#catScroll'); if(catShown<catList.length&&s.scrollTop+s.clientHeight>s.scrollHeight-1200) catMore(); },{passive:true});
 const cartEl=$('#cartp');
 function cartItems(){ return CATALOG.filter(i=>i.taken); }
 function updateCartBadge(bump){ const n=cartItems().length; $('#cartCount').textContent=n?String(n):''; if(bump){ const b=$('#cartBtn'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
@@ -1675,6 +1890,7 @@ function updateNear(){
   if(!near){ let best=1; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
     // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
     CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
+    if(!near){ for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.5||Math.hypot(k.x-cx,k.z-cz)<1.9)){ near={type:'kiosk',d}; break; } } }
     if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
   if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=!cardIt; if(cardIt) fillCard(cardIt); }
@@ -1682,6 +1898,7 @@ function updateNear(){
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית',near.to?'לקומה 1: בית, ניקיון, גיימינג':'לקרקע: מסכים, מטבח, קופות',false,near.to?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
+  else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
 function updateArrow(t){ arrow.visible=false; return;
@@ -1842,7 +2059,7 @@ function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,fals
 addEventListener('resize',onResize); onResize();
 CATALOG.forEach(tagTexture);
 player.pos.set(0,0,24); player.yaw=Math.PI; hero.g.position.copy(player.pos); cart.c.visible=false; renderCreator();
-$('#loading').remove(); ui.menu.hidden=false;
+$('#loading').remove(); ui.menu.hidden=false; acctLoad();
 requestAnimationFrame(loop);
 });
 </script>
