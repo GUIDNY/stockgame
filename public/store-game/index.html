@@ -83,6 +83,37 @@
   #online{position:fixed;right:var(--g);top:calc(var(--st) + 178px);height:30px;padding:0 10px;border-radius:10px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;}
   #online i{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px rgba(67,209,139,.25);}
   #emoBtn{position:fixed;right:var(--g);top:calc(var(--st) + 218px);width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:23px;line-height:1;}
+  #coins{position:fixed;right:var(--g);top:calc(var(--st) + 270px);height:32px;padding:0 10px;border-radius:11px;display:flex;align-items:center;gap:5px;font-size:15px;}
+  #coins b{font-size:14px;font-weight:800;color:#ffd166;}
+  #coins.bump{animation:bump .5s;}
+  /* rooftop mini-games and the merch shop */
+  .screen.mg{padding:0;background:#0b0e26;align-items:stretch;z-index:16;}
+  .mgwrap{position:relative;flex:1;display:flex;flex-direction:column;}
+  .mgtop{flex:none;display:flex;align-items:center;gap:10px;padding:calc(var(--st) + 10px) 12px 10px;background:#12163a;color:#fff;}
+  .mgtop b{flex:1;font-size:16px;font-weight:800;}
+  .mgtop span{font-weight:800;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.1);padding:6px 10px;border-radius:10px;font-size:14px;}
+  .mgtop button{height:36px;padding:0 12px;border-radius:11px;background:rgba(255,255,255,.12);color:#fff;font-weight:700;}
+  #mgCanvas{flex:1;width:100%;min-height:0;display:block;touch-action:none;}
+  .mgover{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;background:rgba(8,11,28,.82);color:#fff;padding:24px;}
+  .mgover h3{margin:0;font-size:26px;font-weight:900;}
+  .mgover p{margin:0;color:#c9cfe6;font-size:15px;line-height:1.5;max-width:30ch;}
+  .mgover .big{font-size:44px;font-weight:900;color:#ffd166;}
+  .mgover .row{display:flex;gap:10px;margin-top:6px;}
+  .mgover .row button{height:48px;padding:0 20px;border-radius:14px;font-weight:800;font-size:16px;}
+  .mgover .go1{background:var(--brand);color:#fff;box-shadow:0 4px 0 var(--brand-deep);}
+  .mgover .go2{background:rgba(255,255,255,.12);color:#fff;}
+  .shopgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .sitem{min-width:0;border-radius:16px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:10px;display:flex;flex-direction:column;gap:6px;text-align:center;}
+  .sitem .ic{height:74px;border-radius:12px;display:grid;place-items:center;font-size:40px;background:#f4f5f9;}
+  .sitem b{font-size:14px;font-weight:800;}
+  .sitem small{font-size:12px;color:#6b7289;min-height:30px;}
+  .sitem button{height:38px;border-radius:11px;font-weight:800;font-size:14px;background:var(--brand);color:#fff;}
+  .sitem button.own{background:#eef0f5;color:#161a2b;}
+  .sitem button.on{background:#1f9d62;color:#fff;}
+  .sitem button:disabled{background:#eef0f5;color:#9aa0b4;}
+  .coinbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:16px;background:#161a2b;color:#fff;}
+  .coinbar b{font-size:22px;font-weight:900;color:#ffd166;}
+  .coinbar small{color:#aab1c8;font-size:12.5px;line-height:1.4;}
   #emoTray{position:fixed;right:calc(var(--g) + 52px);top:calc(var(--st) + 212px);display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:6px;border-radius:18px;z-index:6;max-width:calc(100vw - 2*var(--g) - 52px);}
   #emoTray button{width:44px;height:44px;border-radius:12px;font-size:25px;line-height:1;}
   #emoTray button:active,#emoBtn:active{transform:scale(.92);}
@@ -126,6 +157,8 @@
   #act:active{transform:translateY(3px);box-shadow:0 2px 0 var(--sh);}
   /* the button says what it will do: its colour and icon change with the action, not only the word */
   #act[data-k="kiosk"]{--bg:#2f7de1;--sh:#1a4f99;}
+  #act[data-k="game"]{--bg:#b5179e;--sh:#7a0f6a;}
+  #act[data-k="shop"]{--bg:#d4a017;--sh:#8d6a0c;}
   #act[data-k="up"],#act[data-k="down"],#act[data-k="call"]{--bg:#3949ab;--sh:#232e75;}
   #act[data-k="checkout"]{--bg:#1f9d62;--sh:#136b41;}
   #act[data-k="stop"]{--bg:#e63946;--sh:#9b1d27;}
@@ -368,6 +401,7 @@
   <button id="online" class="glass" hidden aria-label="שחקנים מחוברים עכשיו"><i></i><span class="num" id="onlineN">1</span><span>מחוברים</span></button>
   <button id="emoBtn" class="glass" hidden aria-label="שליחת אימוג'י" aria-expanded="false">😀</button>
   <div id="emoTray" class="glass" hidden></div>
+  <button id="coins" class="glass" aria-label="המטבעות שלי"><span aria-hidden="true">🪙</span><b class="num" id="coinsN">0</b></button>
   <div id="toast" class="glass" role="status" aria-live="polite"></div>
   <div id="hint" class="sheet glass" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
   <div id="card" class="sheet" hidden>
@@ -452,6 +486,22 @@
   <div class="pvpanel" role="dialog" aria-modal="true" aria-label="עמוד המוצר">
     <div class="pvbar"><button id="pvBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>חזרה לקניון</button><span id="pvTitle"></span><a id="pvOpen" target="_blank" rel="noopener">באתר ↗</a></div>
     <div class="pvbody"><div class="pvload" id="pvLoad"><span>פותחים את עמוד המוצר…</span><div class="bar"><i></i></div></div><iframe id="pvFrame" name="bt-mall-embed" title="עמוד המוצר" allow="payment"></iframe></div>
+  </div>
+</div>
+
+<div class="screen mg" id="mg" hidden>
+  <div class="mgwrap">
+    <div class="mgtop"><b id="mgTitle"></b><span id="mgScore">0</span><span id="mgTime">30</span><button id="mgClose">יציאה</button></div>
+    <canvas id="mgCanvas"></canvas>
+    <div class="mgover" id="mgOver"></div>
+  </div>
+</div>
+
+<div class="screen dir" id="shopp" hidden>
+  <div class="dpanel" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+    <div class="dtop"><div class="dhead"><div><small>BuyToday · הגג</small><h2 id="shopTitle">חנות BuyToday</h2></div>
+      <button id="shopClose" aria-label="סגירת החנות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>
+    <div class="dscroll"><div class="coinbar"><div><small>המטבעות שלכם</small><br><b id="shopCoins">0 🪙</b></div><small>צוברים מטבעות בשתי המכונות<br>בארקייד, כאן על הגג</small></div><div class="sect">חולצות</div><div class="shopgrid" id="shopShirts"></div><div class="sect">לראש</div><div class="shopgrid" id="shopHats"></div></div>
   </div>
 </div>
 
@@ -1088,7 +1138,7 @@ const BLOB=new THREE.MeshBasicMaterial({map:canvasTex(64,64,(g,W)=>{ const gr=g.
 const blobGeo=new THREE.PlaneGeometry(1.2,1.2);
 function mkGuy(o){
   const g=new THREE.Group(), body=new THREE.Group(); g.add(body);
-  const skin=mat(o.skin,{roughness:.6}), shirt=mat(o.shirt), pants=mat(o.pants), hair=mat(o.hair,{roughness:.9}), shoe=mat(o.girl?0x7a2a3a:0x1b1b1f);
+  const skin=mat(o.skin,{roughness:.6}), shirt=o.shiny?mat(o.shirt,{metalness:.65,roughness:.28}):mat(o.shirt), pants=mat(o.pants), hair=mat(o.hair,{roughness:.9}), shoe=mat(o.girl?0x7a2a3a:0x1b1b1f);
   const skirt=o.bottom==='skirt';
   const legs=[-1,1].map(s=>{ const l=new THREE.Group(); l.position.set(.17*s,.8,0); body.add(l);
     if(skirt){ box(.24,.7,.26,skin,0,-.35,0,l); } else box(.28,.7,.3,pants,0,-.35,0,l);
@@ -1096,7 +1146,8 @@ function mkGuy(o){
   box(o.girl?.66:.72,.8,.42,shirt,0,1.2,0,body);
   if(skirt){ box(.8,.38,.5,pants,0,.84,0,body); box(.84,.06,.54,pants,0,.67,0,body); }
   if(o.vest){ box(.76,.62,.46,mat(o.vest),0,1.26,0,body); box(.14,.1,.02,M.white,-.18,1.4,.24,body,false); }
-  if(o.logo){ box(.3,.12,.02,M.white,0,1.36,.215,body,false); }
+  if(o.logo){ box(.3,.12,.02,o.logoColor?mat(o.logoColor):M.white,0,1.36,.215,body,false); if(o.logoBack) box(.4,.16,.02,o.logoColor?mat(o.logoColor):M.white,0,1.3,-.215,body,false); }
+  if(o.stripes){ const st=mat(o.stripes); [1.5,1.02].forEach(y=>box(o.girl?.67:.73,.07,.43,st,0,y,0,body,false)); box(.1,.22,.02,st,0,1.16,.215,body,false); }
   const head=new THREE.Group(); head.position.y=1.6; body.add(head);
   const hm=new THREE.Mesh(bgeo(.56,.56,.52),[skin,skin,skin,skin,faceMat(o),skin]); hm.position.y=.3; hm.castShadow=true; head.add(hm);
   const blob=new THREE.Mesh(blobGeo,BLOB); blob.rotation.x=-Math.PI/2; blob.position.y=.02; blob.renderOrder=1; g.add(blob);
@@ -1106,6 +1157,11 @@ function mkGuy(o){
   else if(o.tuft!==false) box(.2,.14,.3,hair,.12,.74,.06,head);
   if(o.extra==='glasses'){ const fr=mat(0x16181d); [-.12,.12].forEach(x=>{ box(.18,.13,.015,fr,x,.33,.275,head,false); box(.13,.08,.012,mat(0x9fc4e8,{roughness:.1}),x,.33,.283,head,false); }); box(.08,.025,.015,fr,0,.35,.275,head,false); }
   if(o.extra==='cap'){ const cm=mat(o.capColor||BRAND); box(.62,.14,.58,cm,0,.67,0,head); box(.5,.04,.28,cm,0,.62,.38,head); box(.12,.06,.02,M.white,0,.68,.291,head,false); }
+  // shop headwear, bought with coins earned in the rooftop arcade
+  if(o.extra==='beanie'){ const bm=mat(BRAND,{roughness:.95}); box(.64,.24,.6,bm,0,.7,0,head); box(.66,.08,.62,mat(0x22305f,{roughness:.95}),0,.6,0,head); const pom=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),mat(0xffffff,{roughness:1})); pom.position.set(0,.88,0); head.add(pom); }
+  if(o.extra==='crown'){ const gm=mat(0xf2c230,{metalness:.8,roughness:.25}); box(.5,.12,.5,gm,0,.74,0,head); [[-.2,-.2],[.2,-.2],[-.2,.2],[.2,.2],[0,.22],[0,-.22]].forEach(([x,z])=>box(.08,.14,.08,gm,x,.86,z,head)); box(.06,.06,.02,mat(0xe63946,{roughness:.2}),0,.75,.255,head,false); }
+  if(o.extra==='headphones'){ const hm=mat(0x16181d,{roughness:.4}), am=mat(BRAND,{roughness:.4}); box(.66,.06,.1,hm,0,.72,0,head); [-1,1].forEach(s=>{ box(.06,.3,.08,hm,s*.32,.56,0,head); box(.1,.22,.2,am,s*.32,.36,0,head); }); }
+  if(o.extra==='shades'){ const fr=mat(0x0b0c10,{roughness:.2}); [-.12,.12].forEach(x=>box(.2,.11,.02,fr,x,.34,.28,head,false)); box(.5,.035,.02,fr,0,.39,.28,head,false); }
   const arms=[-1,1].map(s=>{ const a=new THREE.Group(); a.position.set((o.girl?.44:.47)*s,1.52,0); body.add(a); box(o.girl?.18:.2,.62,.22,shirt,0,-.28,0,a); box(.18,.16,.2,skin,0,-.66,0,a); return a; });
   return {g,body,legs,arms,head,phase:Math.random()*6};
 }
@@ -1218,6 +1274,8 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
    the city, a cinema screen playing the deals, and the outlet corner with the deals kiosk.
    Everything is baked into STATIC[2], which is only drawn while somebody is on the roof. */
 const roofLive=[];
+const GAME_SPOTS=[{id:'catch',title:'תפוס את המבצע',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',title:'צייד ההנחות',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4}];
+const SHOP_SPOT={x:0,z:0};
 const arcadeTexes=[0,1,2,3,4,5].map(i=>canvasTex(128,96,(g,W,H)=>{ const hue=[200,300,40,140,0,260][i];
   g.fillStyle=`hsl(${hue},70%,12%)`; g.fillRect(0,0,W,H);
   for(let k=0;k<16;k++){ g.fillStyle=`hsl(${(hue+k*27)%360},95%,60%)`; g.fillRect((k*37)%W,(k*23)%(H-24),6+(k%3)*5,6+(k%4)*3); }
@@ -1331,6 +1389,28 @@ function buildRoof(){
   [12.7,19.3].forEach(x=>{ box(.12,3.4,.12,M.dark,x,Y+1.7,8.6); solid(f,x,8.6,.3,.3); });
   neon('אאוטלט',16,Y+3.9,8.6,0,5,true,'ההנחות הגדולות של BuyToday',true);
 
+  // --- BuyToday merch stand: shirts and hats for coins ---
+  { const sx=17, sz=-6.6;
+    box(3.6,1.05,.9,M.white,sx,Y+.52,sz); box(3.7,.08,1,mat(BRAND),sx,Y+1.08,sz,null,false);
+    box(3.6,.35,.05,new THREE.MeshBasicMaterial({map:canvasTex(512,48,(g,W,H)=>{ g.fillStyle='#22305f'; g.fillRect(0,0,W,H); g.fillStyle='#fff'; g.font='800 30px Rubik,sans-serif'; g.textAlign='center'; g.direction='rtl'; g.fillText('חנות BuyToday · קונים במטבעות',W/2,34); })}),sx,Y+.8,sz+.46,null,false);
+    box(4,.1,.1,M.steel,sx,Y+2.3,sz-1.3); [sx-1.95,sx+1.95].forEach(x=>{ box(.08,2.3,.08,M.steel,x,Y+1.15,sz-1.3); });
+    [[BRAND,0xffffff],[0x22305f,BRAND],[0xf3f4f6,BRAND],[0xd4a017,0x22305f]].forEach(([c,l],i)=>{ const x=sx-1.4+i*.95; box(.05,.35,.05,M.steel,x,Y+2.1,sz-1.3,null,false);
+      box(.66,.72,.12,mat(c,c===0xd4a017?{metalness:.6,roughness:.3}:{}),x,Y+1.55,sz-1.3); box(.3,.1,.02,mat(l),x,Y+1.72,sz-1.23,null,false); });
+    box(4,2.6,.2,mat(0x22263a),sx,Y+1.3,sz-1.8); solidR(f,sx-2.1,sx+2.1,sz-2,sz+.5);
+    SHOP_SPOT.x=sx; SHOP_SPOT.z=sz+1.7;
+    neon('חנות BuyToday',sx,Y+3.6,sz-1.75,0,4.2,false,'חולצות · כובעים · אביזרים',true);
+    // spelled out rather than through avOpts/MERCH, which are declared after the building code runs
+    const m=mkGuy({girl:false,skin:0xe0ac80,hair:0x16110d,shirt:0xd4a017,shiny:true,logo:true,logoColor:0x22305f,logoBack:true,pants:0x2b2f3a,bottom:'pants',extra:'crown',tuft:false});
+    m.g.position.set(sx+2.6,Y,sz+.2); m.g.rotation.y=-.5; scene.add(m.g); roofLive.push(m.g); solid(f,sx+2.6,sz+.2,.8,.8); }
+
+  // --- two prize machines: play, win coins ---
+  GAME_SPOTS.forEach((gs,i)=>{ const g=new THREE.Group(), col=[0xf72585,0x4cc9f0][i];
+    box(1.5,2.3,1.1,mat(col,{roughness:.35}),0,1.15,0,g); box(1.3,.9,.06,new THREE.MeshBasicMaterial({map:canvasTex(256,180,(c,W,H)=>{ const gr=c.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1b1f4a'); gr.addColorStop(1,'#0b0e26'); c.fillStyle=gr; c.fillRect(0,0,W,H);
+      c.font='56px sans-serif'; c.textAlign='center'; c.fillText(i?'🏷️':'🛒',W/2,86); c.fillStyle='#ffd166'; c.font='800 26px Rubik,sans-serif'; c.direction='rtl'; c.fillText('מטבעות!',W/2,140); })}),0,1.55,.56,g,false);
+    box(1.5,.14,.6,M.dark,0,1,.7,g); box(.12,.12,.12,M.red,-.3,1.12,.75,g,false); box(.12,.12,.12,M.ledCyan,.3,1.12,.75,g,false);
+    box(1.55,.4,.5,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=i?'#4cc9f0':'#f72585'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='800 30px Rubik,sans-serif'; c.textAlign='center'; c.direction='rtl'; c.fillText(gs.title,W/2,43); })}),0,2.5,.3,g,false);
+    place(g,gs.mx,Y,gs.mz,-Math.PI/2); solid(f,gs.mx,gs.mz,1.3,1.7); });
+
   // --- helipad behind the elevator ---
   const pad=new THREE.Mesh(new THREE.CircleGeometry(4.6,48),mat(0x2b2f3d,overlay({roughness:.8}))); pad.rotation.x=-Math.PI/2; pad.position.set(0,Y+.014,-21); SG.add(pad);
   const ring=new THREE.Mesh(new THREE.RingGeometry(4,4.3,48),new THREE.MeshBasicMaterial({color:0xfee440})); ring.rotation.x=-Math.PI/2; ring.position.set(0,Y+.02,-21); SG.add(ring);
@@ -1401,11 +1481,18 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 
 // player
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
-const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',name:''};
+const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:''};
 function loadAvatar(){ try{ const v=JSON.parse(localStorage.getItem('bt-avatar')||'null'); if(v&&typeof v==='object') return Object.assign({},AV_DEFAULT,v); }catch(e){} return Object.assign({},AV_DEFAULT); }
 function saveAvatar(){ try{ localStorage.setItem('bt-avatar',JSON.stringify(avatar)); }catch(e){} }
 let avatar=loadAvatar();
-const avOpts=a=>Object.assign({},a,{pony:a.girl,tuft:!a.girl,logo:a.shirt===BRAND,capColor:a.shirt===BRAND?0x22305f:BRAND});
+/* BuyToday merch from the rooftop shop: a shirt that replaces the chosen colour for as long as it is worn. */
+const MERCH={
+  'bt-orange':{shirt:BRAND,logo:true,logoBack:true},
+  'bt-navy':{shirt:0x22305f,logo:true,logoBack:true,logoColor:BRAND},
+  'jersey':{shirt:0xf3f4f6,logo:true,logoColor:BRAND,stripes:BRAND,logoBack:true},
+  'gold':{shirt:0xd4a017,shiny:true,logo:true,logoColor:0x22305f,logoBack:true},
+};
+const avOpts=a=>{ const m=MERCH[a.merch]; const o=Object.assign({},a,{pony:a.girl,tuft:!a.girl&&!['crown','beanie','headphones'].includes(a.extra),logo:a.shirt===BRAND,capColor:a.shirt===BRAND?0x22305f:BRAND}); return m?Object.assign(o,m,{capColor:BRAND}):o; };
 let hero=mkGuy(avOpts(avatar));
 const cart=mkCart(); cart.c.position.set(0,0,1.32); hero.g.add(cart.c); scene.add(hero.g);
 function setAvatar(a){ avatar=a; const p=hero.g.position.clone(), r=hero.g.rotation.y; hero.g.remove(cart.c); scene.remove(hero.g);
@@ -1668,7 +1755,11 @@ function renderCreator(){
   const pane=$('#cpane'); pane.innerHTML='';
   const set=(key,v)=>{ const a=Object.assign({},avatar,{[key]:v}); if(key==='girl') a.bottom=v?'skirt':'pants'; setAvatar(a); renderCreator(); buzz(6); };
   if(ctab==='style'){
-    [['דמות','girl',[[false,'בן'],[true,'בת']]],['תחתון','bottom',[['pants','מכנסיים'],['skirt','חצאית']]],['אביזר','extra',[['none','בלי'],['cap','כובע'],['glasses','משקפיים']]]].forEach(([label,key,vals])=>{
+    const ownedX=(typeof Coins!=='undefined'?Coins.owned:[]), SH_=typeof SHOP!=='undefined'?SHOP:[];
+    const extras=[['none','בלי'],['cap','כובע'],['glasses','משקפיים']].concat(SH_.filter(i=>i.slot==='extra'&&ownedX.includes(i.id)).map(i=>[i.id,i.icon]));
+    const rows=[['דמות','girl',[[false,'בן'],[true,'בת']]],['תחתון','bottom',[['pants','מכנסיים'],['skirt','חצאית']]],['אביזר','extra',extras]];
+    const merch=SH_.filter(i=>i.slot==='merch'&&ownedX.includes(i.id)); if(merch.length) rows.push(['חולצת BT','merch',[['none','בלי']].concat(merch.map(i=>[i.id,i.icon]))]);
+    rows.forEach(([label,key,vals])=>{
       const row=document.createElement('div'); row.className='srow'; row.innerHTML='<span></span><div class="segc"></div>'; row.firstChild.textContent=label;
       vals.forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('aria-pressed',String(avatar[key]===v)); if(avatar[key]===v) b.className='on'; b.addEventListener('click',()=>set(key,v)); row.lastChild.appendChild(b); });
       pane.appendChild(row); });
@@ -1698,7 +1789,7 @@ $('#optName').addEventListener('keyup',e=>e.stopPropagation());
 const ACCT_API='https://buytoday.co.il/api/game/profile', LOGIN_URL='https://buytoday.co.il/login?redirect=/api/game/return';
 const Acct={state:'unknown',first:null,saved:''};
 const acctEl=$('#acct');
-function profileOf(a){ return {name:cleanName(a.name),girl:!!a.girl,skin:a.skin,hair:a.hair,shirt:a.shirt,pants:a.pants,bottom:a.bottom,extra:a.extra}; }
+function profileOf(a){ return {name:cleanName(a.name),girl:!!a.girl,skin:a.skin,hair:a.hair,shirt:a.shirt,pants:a.pants,bottom:a.bottom,extra:['none','cap','glasses'].includes(a.extra)?a.extra:'none'}; }
 function renderAcct(){
   if(Acct.state!=='in'&&Acct.state!=='out'){ acctEl.hidden=true; return; }
   acctEl.hidden=false;
@@ -1712,7 +1803,8 @@ async function acctLoad(){
     if(j.signedIn){ Acct.state='in'; Acct.first=j.firstName||null;
       const pr=j.profile&&typeof j.profile==='object'?j.profile:null;
       if(pr){ const a=unpackAv([pr.girl?1:0,pr.skin,pr.hair,pr.shirt,pr.pants,AV_BOTTOM.indexOf(pr.bottom),AV_EXTRA.indexOf(pr.extra)]);
-        setAvatar(Object.assign({},a,{name:cleanName(pr.name)||avatar.name})); saveAvatar(); Acct.saved=JSON.stringify(profileOf(avatar)); if(G.state!=='play') renderCreator(); }
+        const keep=AV_EXTRA.indexOf(avatar.extra)>2?{extra:avatar.extra}:{};
+        setAvatar(Object.assign({},a,{name:cleanName(pr.name)||avatar.name,merch:avatar.merch||'none'},keep)); saveAvatar(); Acct.saved=JSON.stringify(profileOf(avatar)); if(G.state!=='play') renderCreator(); }
       else acctSave(); }
     else Acct.state='out'; }
   catch(e){ Acct.state='none'; }
@@ -1756,7 +1848,7 @@ $('#meBtn').addEventListener('click',()=>{ if(G.state==='play') openCreator(true
 let near=null;
 const flyers=[];
 function doAction(){
-  if(G.state!=='play'||!near) return;
+  if(G.state!=='play'||G.paused||!near) return;
   if(near.type==='stop'){ stopAuto('עצרתם'); return; }
   if(near.type==='ride'){ startRide(near.to,true); return; }
   if(near.type==='call'){ startRide(player.floor,false); toast('המעלית בדרך'); return; }
@@ -1767,6 +1859,10 @@ function doAction(){
     it.model.visible=false; flyers.push({m:fm,from:wp.clone(),t:0,it});
     Sound.pickup(); renderMoney(); renderList();
     toast(it.name+' נוסף לעגלה','good'); buzz(18);
+  } else if(near.type==='game'){
+    openGame(near.gs);
+  } else if(near.type==='shop'){
+    openShop();
   } else if(near.type==='kiosk'){
     openCatalog(near.d);
   } else if(near.type==='checkout'){
@@ -1801,6 +1897,7 @@ const ICONS={
   grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   up:'<path d="M12 19V5M5 12l7-7 7 7"/>', down:'<path d="M12 5v14M19 12l-7 7-7-7"/>', bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  shirt:'<path d="M8 3 4 6l2 4 2-1v12h8V9l2 1 2-4-4-3c-.5 1.5-2 2.5-4 2.5S8.5 4.5 8 3z"/>',
   ext:'<path d="M7 17 17 7M8 7h9v9"/>',
   home:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 9h14M8 5v2M8 12v3"/>',
   clean:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
@@ -2028,6 +2125,107 @@ function saveResume(){ if(G.state!=='play'&&G.state!=='edit') return;
 function loadResume(){ try{ const r=JSON.parse(localStorage.getItem(RESUME_KEY)||'null'); if(r&&Date.now()-r.t<30*60*1000&&r.f>=0&&r.f<=TOP) return r; }catch(e){} return null; }
 addEventListener('pagehide',saveResume); document.addEventListener('visibilitychange',()=>{ if(document.hidden) saveResume(); });
 document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[href]'); if(a) saveResume(); },true);
+
+/* ---------- coins, rooftop mini-games and the merch shop ----------
+   Two prize machines in the rooftop arcade pay out coins; the BuyToday stand in the outlet corner
+   sells shirts and headwear for them. Coins and what was bought live on this device. No real money
+   is involved anywhere. */
+const Coins={n:0,owned:[]};
+try{ Coins.n=Math.max(0,parseInt(localStorage.getItem('bt-coins')||'0',10)||0); Coins.owned=JSON.parse(localStorage.getItem('bt-owned')||'[]'); if(!Array.isArray(Coins.owned)) Coins.owned=[]; }catch(e){}
+function saveCoins(){ try{ localStorage.setItem('bt-coins',String(Coins.n)); localStorage.setItem('bt-owned',JSON.stringify(Coins.owned)); }catch(e){} }
+function renderCoins(bump){ $('#coinsN').textContent=Coins.n.toLocaleString('he-IL'); if(bump){ const b=$('#coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
+function addCoins(n){ if(n<=0) return; Coins.n+=n; saveCoins(); renderCoins(true); }
+renderCoins();
+$('#coins').addEventListener('click',()=>toast(Coins.n?`יש לכם ${Coins.n} מטבעות. החנות של BuyToday בגג, בפינת האאוטלט`:'צוברים מטבעות בשתי המכונות בארקייד שעל הגג'));
+
+const SHOP=[
+  {id:'bt-orange',slot:'merch',name:'חולצת BuyToday כתומה',desc:'הקלאסית, עם הלוגו מקדימה ומאחורה',price:40,icon:'👕'},
+  {id:'bt-navy',slot:'merch',name:'חולצת BuyToday כחולה',desc:'כחול כהה ולוגו כתום',price:60,icon:'👕'},
+  {id:'jersey',slot:'merch',name:"ג'רזי BuyToday",desc:'לבן עם פסים כתומים',price:90,icon:'🎽'},
+  {id:'gold',slot:'merch',name:'חולצת זהב',desc:'לאספנים בלבד. מבריקה',price:220,icon:'✨'},
+  {id:'beanie',slot:'extra',name:'כובע גרב BuyToday',desc:'כתום עם פונפון',price:50,icon:'🧢'},
+  {id:'shades',slot:'extra',name:'משקפי שמש',desc:'לגג בלילה. למה לא',price:70,icon:'🕶️'},
+  {id:'headphones',slot:'extra',name:'אוזניות',desc:'לשמוע את Bouncy Mall',price:120,icon:'🎧'},
+  {id:'crown',slot:'extra',name:'כתר',desc:'מלך הקניון',price:300,icon:'👑'},
+];
+const shopEl=$('#shopp');
+function wearing(it){ return avatar[it.slot]===it.id; }
+function wear(it,on){ const a=Object.assign({},avatar,{[it.slot]:on?it.id:'none'}); setAvatar(a); saveAvatar(); acctSave(); netRetrack(); }
+function renderShop(){
+  $('#shopCoins').textContent=Coins.n.toLocaleString('he-IL')+' 🪙';
+  [['merch','#shopShirts'],['extra','#shopHats']].forEach(([slot,sel])=>{ const box=$(sel); box.innerHTML='';
+    SHOP.filter(it=>it.slot===slot).forEach(it=>{ const el=document.createElement('div'); el.className='sitem';
+      el.innerHTML='<div class="ic"></div><b></b><small></small><button></button>'; el.querySelector('.ic').textContent=it.icon; el.querySelector('b').textContent=it.name; el.querySelector('small').textContent=it.desc;
+      const b=el.querySelector('button'), own=Coins.owned.includes(it.id);
+      if(own){ const on=wearing(it); b.textContent=on?'לובשים ✓':'ללבוש'; b.className=on?'on':'own'; b.onclick=()=>{ wear(it,!on); buzz(10); renderShop(); toast(on?it.name+' הוסר':'לובשים '+it.name,'good'); }; }
+      else { b.textContent=it.price+' 🪙'; b.disabled=Coins.n<it.price; if(b.disabled) b.textContent=`${it.price} 🪙 · חסרים ${it.price-Coins.n}`;
+        b.onclick=()=>{ if(Coins.n<it.price) return; Coins.n-=it.price; Coins.owned.push(it.id); saveCoins(); renderCoins(true); wear(it,true); Sound.cash(); buzz(30); toast('קניתם '+it.name+'. לובשים!','good'); renderShop(); }; }
+      box.appendChild(el); }); });
+}
+function openShop(){ if(G.state!=='play') return; stopAuto(); G.paused=true; renderShop(); shopEl.hidden=false; }
+function closeShop(){ shopEl.hidden=true; G.paused=false; last=performance.now(); }
+$('#shopClose').addEventListener('click',closeShop);
+
+/* the two prize machines: a canvas over the game, 30 seconds each */
+const MG={on:false,game:null,t:0,score:0,raf:0,last:0,items:[],cells:[],cartX:.5,spawn:0,W:0,H:0,dpr:1,imgs:[]};
+const mgEl=$('#mg'), mgC=$('#mgCanvas'), mgX=mgC.getContext('2d'), mgOver=$('#mgOver');
+(function(){ CATALOG.filter(i=>i.img).slice(0,14).forEach(i=>{ const im=new Image(); im.src=i.img; MG.imgs.push(im); }); })();
+function mgResize(){ const r=mgC.getBoundingClientRect(); MG.dpr=Math.min(2,devicePixelRatio||1); MG.W=r.width; MG.H=r.height; mgC.width=r.width*MG.dpr; mgC.height=r.height*MG.dpr; mgX.setTransform(MG.dpr,0,0,MG.dpr,0,0); }
+function openGame(gs){ if(G.state!=='play') return; stopAuto(); G.paused=true; MG.game=gs; $('#mgTitle').textContent=gs.title; mgEl.hidden=false; mgResize(); mgIntro(); }
+function mgIntro(){ const gs=MG.game; MG.on=false; cancelAnimationFrame(MG.raf); mgX.clearRect(0,0,MG.W,MG.H);
+  mgOver.hidden=false; mgOver.innerHTML=gs.id==='catch'
+    ?'<h3>🛒 תפוס את המבצע</h3><p>גררו את העגלה ותפסו מוצרים ותגיות מבצע שנופלים. מבצע = 3 נקודות, מוצר = 1. היזהרו מהנורה השרופה ⚡</p><p>כל 2 נקודות = מטבע</p><div class="row"><button class="go1">התחלה</button><button class="go2">יציאה</button></div>'
+    :'<h3>🏷️ צייד ההנחות</h3><p>לחצו מהר על תגיות ההנחה הירוקות. לא על "מחיר מלא" האדום, זה מוריד נקודות!</p><p>כל נקודה = מטבע</p><div class="row"><button class="go1">התחלה</button><button class="go2">יציאה</button></div>';
+  mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
+function mgStart(){ mgOver.hidden=true; MG.on=true; MG.t=MG.game.id==='catch'?30:25; MG.score=0; MG.items=[]; MG.cells=[]; MG.spawn=0; MG.cartX=.5; MG.last=performance.now(); buzz(15); MG.raf=requestAnimationFrame(mgLoop); }
+function mgEnd(){ MG.on=false; cancelAnimationFrame(MG.raf); const coins=Math.max(0,MG.game.id==='catch'?Math.floor(MG.score/2):MG.score); addCoins(coins); if(coins) Sound.cash();
+  let best=0; try{ best=+localStorage.getItem('bt-best-'+MG.game.id)||0; if(MG.score>best) localStorage.setItem('bt-best-'+MG.game.id,String(MG.score)); }catch(e){}
+  mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':'נגמר הזמן'}</h3><p>צברתם</p><div class="big">+${coins} 🪙</div><p>יש לכם ${Coins.n} מטבעות. החנות של BuyToday מחכה בפינת האאוטלט.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
+  mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
+function closeGame(){ MG.on=false; cancelAnimationFrame(MG.raf); mgEl.hidden=true; G.paused=false; last=performance.now(); }
+$('#mgClose').addEventListener('click',()=>{ if(MG.on) mgEnd(); else closeGame(); });
+addEventListener('resize',()=>{ if(!mgEl.hidden) mgResize(); });
+function mgPointer(e){ const r=mgC.getBoundingClientRect(), x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+  if(!MG.on) return;
+  if(MG.game.id==='catch') MG.cartX=clamp(x,.08,.92);
+  else if(e.type==='pointerdown'){ const c=MG.cells.find(c=>c.alive&&Math.abs(c.cx-x*MG.W)<c.r&&Math.abs(c.cy-y*MG.H)<c.r); if(c){ c.alive=false; c.hit=.35; if(c.good){ MG.score+=1; buzz(8); Sound.pickup(); } else { MG.score=Math.max(0,MG.score-2); buzz(40); Sound.bad(); } } } }
+mgC.addEventListener('pointerdown',e=>{ mgC.setPointerCapture&&mgC.setPointerCapture(e.pointerId); mgPointer(e); });
+mgC.addEventListener('pointermove',e=>{ if(MG.game&&MG.game.id==='catch') mgPointer(e); });
+function rr(x,y,w,h,r){ mgX.beginPath(); mgX.moveTo(x+r,y); mgX.arcTo(x+w,y,x+w,y+h,r); mgX.arcTo(x+w,y+h,x,y+h,r); mgX.arcTo(x,y+h,x,y,r); mgX.arcTo(x,y,x+w,y,r); mgX.closePath(); }
+function mgLoop(now){
+  if(!MG.on) return; const dt=Math.min(.05,(now-MG.last)/1000); MG.last=now; MG.t-=dt;
+  if(keys.ArrowLeft||keys.KeyA) MG.cartX=clamp(MG.cartX-dt*1.4,.08,.92); if(keys.ArrowRight||keys.KeyD) MG.cartX=clamp(MG.cartX+dt*1.4,.08,.92);
+  const W=MG.W, H=MG.H, X=mgX; const gr=X.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1b1f4a'); gr.addColorStop(1,'#0b0e26'); X.fillStyle=gr; X.fillRect(0,0,W,H);
+  X.textAlign='center'; X.textBaseline='middle';
+  if(MG.game.id==='catch'){
+    const speedUp=1+(30-MG.t)/30; MG.spawn-=dt; if(MG.spawn<=0){ MG.spawn=.55/speedUp; const r=Math.random();
+      MG.items.push({x:rand(.08,.92),y:-.08,v:rand(.28,.42)*speedUp,kind:r<.22?'bad':r<.55?'deal':'prod',img:pick(MG.imgs),rot:rand(-.3,.3)}); }
+    const cw=Math.min(120,W*.28), cy=H-70, cx=MG.cartX*W;
+    for(let i=MG.items.length-1;i>=0;i--){ const it=MG.items[i]; it.y+=it.v*dt; const x=it.x*W, y=it.y*H, s=Math.min(64,W*.15);
+      if(y>cy-30&&y<cy+10&&Math.abs(x-cx)<cw/2+10){ MG.items.splice(i,1);
+        if(it.kind==='bad'){ MG.score=Math.max(0,MG.score-5); buzz(60); Sound.bad(); } else { MG.score+=it.kind==='deal'?3:1; buzz(8); Sound.pickup(); } continue; }
+      if(it.y>1.1){ MG.items.splice(i,1); continue; }
+      X.save(); X.translate(x,y); X.rotate(it.rot);
+      if(it.kind==='bad'){ X.font=`${s*.9}px sans-serif`; X.fillText('⚡',0,0); }
+      else if(it.kind==='deal'){ X.fillStyle='#e63946'; rr(-s/2,-s/3,s,s*.66,10); X.fill(); X.fillStyle='#fff'; X.font=`800 ${s*.3}px Rubik,sans-serif`; X.direction='ltr'; X.fillText('-'+(10+((it.x*97)|0)%40)+'%',0,2); }
+      else { X.fillStyle='#fff'; rr(-s/2,-s/2,s,s,12); X.fill(); if(it.img&&it.img.complete&&it.img.naturalWidth){ const k=Math.min((s-10)/it.img.naturalWidth,(s-10)/it.img.naturalHeight); X.drawImage(it.img,-it.img.naturalWidth*k/2,-it.img.naturalHeight*k/2,it.img.naturalWidth*k,it.img.naturalHeight*k); } else { X.font=`${s*.55}px sans-serif`; X.fillText('📦',0,2); } }
+      X.restore(); }
+    // the trolley
+    X.fillStyle='#f55304'; rr(cx-cw/2,cy-26,cw,34,8); X.fill(); X.fillStyle='#ffd8c2'; for(let k=1;k<5;k++) X.fillRect(cx-cw/2+k*cw/5-1,cy-22,2,26);
+    X.fillStyle='#c9ced6'; X.fillRect(cx+cw/2-4,cy-44,5,22); X.fillStyle='#161a2b'; [cx-cw/3,cx+cw/3].forEach(wx=>{ X.beginPath(); X.arc(wx,cy+16,9,0,7); X.fill(); });
+  } else {
+    const cols=3, rows=4, gw=Math.min(W,440), cellW=gw/cols, cellH=Math.min((H-40)/rows,cellW), ox=(W-gw)/2, oy=(H-cellH*rows)/2;
+    if(!MG.cells.length) for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) MG.cells.push({cx:ox+cellW*(c+.5),cy:oy+cellH*(r+.5),r:Math.min(cellW,cellH)*.42,alive:false,t:0,good:true,hit:0,label:''});
+    const pace=1+(25-MG.t)/25; MG.spawn-=dt;
+    if(MG.spawn<=0){ MG.spawn=rand(.35,.6)/pace; const free=MG.cells.filter(c=>!c.alive&&c.hit<=0); if(free.length){ const c=pick(free); c.alive=true; c.t=rand(.7,1.1)/pace; c.good=Math.random()<.68; c.label=c.good?'-'+pick([15,20,25,30,40,50])+'%':'מחיר מלא'; } }
+    MG.cells.forEach(c=>{ X.fillStyle='rgba(255,255,255,.06)'; rr(c.cx-c.r,c.cy-c.r,c.r*2,c.r*2,18); X.fill();
+      if(c.alive){ c.t-=dt; if(c.t<=0) c.alive=false; X.fillStyle=c.good?'#1f9d62':'#e63946'; rr(c.cx-c.r*.9,c.cy-c.r*.6,c.r*1.8,c.r*1.2,14); X.fill(); X.fillStyle='#fff'; X.font=`800 ${c.good?c.r*.5:c.r*.3}px Rubik,sans-serif`; X.direction=c.good?'ltr':'rtl'; X.fillText(c.label,c.cx,c.cy+2); }
+      if(c.hit>0){ c.hit-=dt; X.globalAlpha=Math.max(0,c.hit/.35); X.fillStyle=c.good?'#7bff9b':'#ff8a8a'; X.font=`800 ${c.r*.5}px Rubik,sans-serif`; X.direction='ltr'; X.fillText(c.good?'+1':'-2',c.cx,c.cy-c.r*.8); X.globalAlpha=1; } });
+  }
+  $('#mgScore').textContent=MG.score+' נק׳'; $('#mgTime').textContent=Math.max(0,Math.ceil(MG.t))+'s';
+  if(MG.t<=0){ mgEnd(); return; }
+  MG.raf=requestAnimationFrame(mgLoop);
+}
 const SHARE_URL='https://play.buytoday.co.il/';
 async function shareMall(){
   const data={title:'הקניון של BuyToday',text:'בואו לטייל איתי בקניון התלת־ממדי של BuyToday 🛒',url:SHARE_URL+'?utm_source=share&utm_medium=game'};
@@ -2137,7 +2335,7 @@ function fillCard(it){
   $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardAdd').textContent='הוספה לעגלה';
 }
 
-const ACT_ICON={item:'cart',kiosk:'grid',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
+const ACT_ICON={item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
 let actKind='';
 function setActKind(k){ if(k===actKind) return; actKind=k; ui.act.dataset.k=k; ui.act.querySelector('svg').innerHTML=ICONS[ACT_ICON[k]||'cart']; }
 const liftPad=$('#liftPad');
@@ -2153,6 +2351,8 @@ function updateNear(){
   if(!near){ let best=1; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
     // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
     CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
+    if(!near&&f===TOP){ for(const gs of GAME_SPOTS){ if(Math.hypot(gs.x-p.x,gs.z-p.z)<2.1||Math.hypot(gs.x-cx,gs.z-cz)<1.6){ near={type:'game',gs}; break; } }
+      if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'}; }
     if(!near){ for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.5||Math.hypot(k.x-cx,k.z-cz)<1.9)){ near={type:'kiosk',d}; break; } } }
     if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
@@ -2163,6 +2363,8 @@ function updateNear(){
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית','בחרו קומה, או '+(near.to>elev.floor?'למעלה':'למטה')+' ל'+FLOOR_SHORT[near.to],false,near.to>elev.floor?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
+  else if(near.type==='game') setHint(near.gs.title,'משחקים וצוברים מטבעות · '+Coins.n+' 🪙',false,'שחק');
+  else if(near.type==='shop') setHint('חנות BuyToday','חולצות וכובעים למטבעות · יש לכם '+Coins.n+' 🪙',false,'לחנות');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
@@ -2187,12 +2389,12 @@ const EMOJI=['👋','👍','🔥','😂','😍','🛒'];
 const ROOM_CAP=12, ROOMS=8, SEND_EVERY=1/3, IDLE_EVERY=12, INTERP=420;
 const BAD_NAME=/(זונה|שרמוט|כוס|זין|מניאק|הומו|נאצי|fuck|shit|bitch|dick|cunt|porn|sex|nazi|hitler)/i;
 function cleanName(v){ v=String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,12); return BAD_NAME.test(v)?'':v; }
-const AV_BOTTOM=['pants','skirt'], AV_EXTRA=['none','cap','glasses'];
-const packAv=a=>[a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra)];
+const AV_BOTTOM=['pants','skirt'], AV_EXTRA=['none','cap','glasses','beanie','crown','headphones','shades'], AV_MERCH=['none','bt-orange','bt-navy','jersey','gold'];
+const packAv=a=>[a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra),Math.max(0,AV_MERCH.indexOf(a.merch||'none'))];
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
-  return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none'}; }
+  return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none',merch:AV_MERCH[v[7]]||'none'}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
@@ -2290,7 +2492,7 @@ emoBtn.addEventListener('click',()=>{ emoTray.hidden=!emoTray.hidden; emoBtn.set
 const BOT_NAMES=['נועה','איתי','מאיה','יונתן','שירה','אורי','תמר','עומר','דניאל','ליה','רוני','אביב','יעל','עידו','הילה','גיא','נוי','אליה','בן','אגם','עדי','שקד','רז','מיכל','טל','אלון','רותם','Tal88','Shaked','Omer_K','דור','ים','סהר','לירון','אופיר','מעיין'];
 const BOT_FLOORS=[0,0,0,1,1,2,2];
 const Bots={list:[],target:5+((Math.random()*8)|0),driftT:rand(40,80),spawnT:0,names:BOT_NAMES.slice().sort(()=>Math.random()-.5),ni:0,started:false};
-function botAvatar(){ const girl=Math.random()<.5; return {girl,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:pick(['none','none','cap','glasses']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}; }
+function botAvatar(){ const girl=Math.random()<.5; return {girl,merch:Math.random()<.3?pick(AV_MERCH.slice(1,4)):'none',bottom:girl&&Math.random()<.6?'skirt':'pants',extra:pick(['none','none','cap','glasses','beanie','shades','headphones']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}; }
 function botGoal(b){
   const r=Math.random(), f=b.f;
   const its=CATALOG.filter(it=>it.f===f&&!it.taken), ks=DEPTS.filter(d=>d.kiosk&&d.kiosk.f===f);
@@ -2354,7 +2556,8 @@ function loop(now){
   if(Q.acc>2.5){ const fps=Q.n/Q.acc; Q.acc=0; Q.n=0;   // keep it smooth: trade resolution for frame rate
     const np = fps<40 ? Math.max(.75,Q.pr-.25) : fps>57 ? Math.min(Q.max,Q.pr+.25) : Q.pr;
     if(np!==Q.pr){ Q.pr=np; renderer.setPixelRatio(np); onResize(); } }
-  if(G.paused && G.state!=='edit'){ renderer.render(scene,camera); requestAnimationFrame(loop); return; }
+  // a mini-game covers the whole screen: don't spend the phone's GPU on the mall behind it
+  if(G.paused && G.state!=='edit'){ if(mgEl.hidden) renderer.render(scene,camera); requestAnimationFrame(loop); return; }
   if(frame%3===0) drawScreen(screens[(frame/3)%3|0],t);
   if(frame%10===0){ const menu=G.state!=='play'; CATALOG.forEach(it=>{ const near=menu||(it.f===player.floor&&Math.hypot(it.x-player.pos.x,it.z-player.pos.z)<24); it.tag.visible=!it.taken&&near; it.near=near; }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
