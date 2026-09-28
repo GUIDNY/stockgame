@@ -197,6 +197,9 @@ def write(data, cfg):
             '<meta property="og:url" content="https://play.buytoday.co.il/"><meta property="og:image" content="https://play.buytoday.co.il/og.jpg">'
             '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">'
             '<link rel="icon" href="https://buytoday.co.il/favicon.ico">'
+            # Safari's own app banner on iPhone: "פתח" when the Buy Today app is installed, "הורד" when it is not.
+            # app-argument is this page, so a version of the app that handles it opens straight into the mall.
+            '<meta name="apple-itunes-app" content="app-id=6810211732, app-argument=https://play.buytoday.co.il/">'
             '</head><body>')
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / 'index.html').write_text(head + frag + '</body></html>', encoding='utf-8')

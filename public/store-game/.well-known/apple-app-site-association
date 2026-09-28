@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "ZX5VG4RDTL.il.co.buytoday.app",
+        "appIDs": ["ZX5VG4RDTL.il.co.buytoday.app"],
+        "paths": ["*"],
+        "components": [{ "/": "/*", "comment": "The whole 3D mall opens in the Buy Today app when it is installed" }]
+      }
+    ]
+  }
+}
