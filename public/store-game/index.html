@@ -1735,16 +1735,18 @@ function netJoin(room){
     if(!placed){ placed=true;   // full? move on to the next room before showing up in this one
       if(ids.filter(id=>id!==Net.id).length>=ROOM_CAP && room<ROOMS){ Net.ch=null; Net.sb.removeChannel(ch); netJoin(room+1); return; }
       ch.track(netMeta()).then(()=>{ if(ch!==Net.ch) return; Net.ready=true; Net.joining=false; Net.force=true; updateOnline(); }); }
-    Net.count=ids.length+(st[Net.id]?0:1);
-    Net.peers.forEach((q,id)=>{ if(!st[id]) netDrop(id); });
-    ids.forEach(id=>{ if(id!==Net.id&&st[id][0]) netPeer(id,st[id][0]); });
-    updateOnline(); });
+    netReconcile(); });
   ch.on('presence',{event:'join'},({key})=>{ if(key!==Net.id) Net.force=true; });   // let the newcomer see where we stand
   ch.on('broadcast',{event:'m'},({payload})=>netMove(payload));
   ch.on('broadcast',{event:'e'},({payload})=>netEmoIn(payload));
   ch.subscribe(status=>{ if(ch!==Net.ch) return;
     if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){ Net.ready=false; Net.joining=false; updateOnline(); } });
 }
+function netReconcile(){ if(!Net.ch) return; const st=Net.ch.presenceState(), ids=Object.keys(st);
+  Net.count=ids.length+(st[Net.id]?0:1);
+  Net.peers.forEach((q,id)=>{ if(!st[id]) netDrop(id); });
+  ids.forEach(id=>{ if(id!==Net.id&&st[id][0]) netPeer(id,st[id][0]); });
+  updateOnline(); }
 function netLeave(){ const ch=Net.ch; Net.ch=null; Net.ready=false; Net.joining=false; if(ch){ try{ ch.untrack(); }catch(e){} Net.sb.removeChannel(ch); }
   Net.peers.forEach((q,id)=>netDrop(id)); Net.count=0; updateOnline(); }
 function netRetrack(){ if(Net.ready&&Net.ch) Net.ch.track(netMeta()); }
@@ -1770,6 +1772,7 @@ function netSend(){ const s=netState(); Net.sent=s; Net.sendT=SEND_EVERY; Net.id
   Net.ch.send({type:'broadcast',event:'m',payload:{i:Net.id,s}}); }
 function netTick(dt){
   if(!Net.ready) return; Net.sendT-=dt; Net.idleT+=dt;
+  Net.syncT=(Net.syncT||0)+dt; if(Net.syncT>10){ Net.syncT=0; netReconcile(); }   // belt and braces: re-read the room now and then
   const s=Net.sent, cur=player.pos;
   const moved=!s||Math.abs(s[0]-cur.x)>.04||Math.abs(s[1]-cur.y)>.04||Math.abs(s[2]-cur.z)>.04||Math.abs(s[3]-player.yaw)>.06;
   if((moved&&Net.sendT<=0)||Net.force||Net.idleT>=IDLE_EVERY) netSend();
