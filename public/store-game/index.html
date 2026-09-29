@@ -186,6 +186,11 @@
   .pvbar span{flex:1;min-width:0;font-size:13px;font-weight:700;color:#cfd4e6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .pvbar a{flex:none;height:38px;padding:0 12px;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-weight:700;font-size:13px;text-decoration:none;display:flex;align-items:center;}
   .pvbody{position:relative;flex:1;min-height:0;background:#fff;}
+  .coview .pvpanel{max-width:620px;}
+  .coview .pvbar{background:#123a2a;}
+  .coview .pvbar span{color:#bff0d6;} .coview .pvbar span b{font-weight:400;}
+  .coview.done .pvbar{background:#1f9d62;} .coview.done .pvbar span{color:#fff;font-size:14px;}
+  .coview.done .pvbar button{background:#fff;color:#136b41;}
   .pvbody iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;}
   .pvload{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;color:#6b7289;font-size:14px;font-weight:600;text-align:center;padding:24px;}
   .pvload .bar{width:160px;height:4px;border-radius:2px;background:#eceef3;overflow:hidden;}
@@ -597,6 +602,13 @@
   <div class="pvpanel" role="dialog" aria-modal="true" aria-label="עמוד המוצר">
     <div class="pvbar"><button id="pvBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>חזרה לקניון</button><span id="pvTitle"></span><a id="pvOpen" target="_blank" rel="noopener">באתר ↗</a></div>
     <div class="pvbody"><div class="pvload" id="pvLoad"><span>פותחים את עמוד המוצר…</span><div class="bar"><i></i></div></div><iframe id="pvFrame" name="bt-mall-embed" title="עמוד המוצר" allow="payment"></iframe></div>
+  </div>
+</div>
+
+<div class="screen pview coview" id="coview" hidden>
+  <div class="pvpanel" role="dialog" aria-modal="true" aria-label="הקופה">
+    <div class="pvbar"><button id="coBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>חזרה לקניון</button><span id="coTitle"><b>🔒</b> הקופה · תשלום מאובטח</span><a id="coOpen" target="_blank" rel="noopener">מסך מלא ↗</a></div>
+    <div class="pvbody"><div class="pvload" id="coLoad"></div><iframe id="coFrame" name="bt-mall-checkout" title="הקופה" allow="payment"></iframe></div>
   </div>
 </div>
 
@@ -1839,12 +1851,14 @@ function resetGame(){
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
   renderList(); renderMoney(); updateCartBadge(); shownCard=null; ui.card.hidden=true;
 }
+let coPending=false;
 function enterMall(){
   Sound.init(); if(Sound.ctx&&Sound.ctx.state==='suspended') Sound.ctx.resume(); Sound.startMusic();
   try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){}
   avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
+  if(coPending){ coPending=false; setTimeout(()=>openCheckout(utm(SITE+'/checkout','signin-return')),400); }
   const rs=loadResume();
   if(rs){ setFloor(rs.f); player.pos.set(clamp(rs.x,-BX+1,BX-1),rs.f*FH,clamp(rs.z,-BZ+1,BZ-1)); player.yaw=rs.yaw||0; camYaw=player.yaw+Math.PI;
     // never back inside the lift shaft: the cabin may be on another floor by now
@@ -1952,6 +1966,7 @@ async function acctLoad(){
     else Acct.state='out'; }
   catch(e){ Acct.state='none'; }
   renderAcct();
+  if(/[?&]checkout=1/.test(location.search)&&CO_INSIDE){ if(G.state==='play') openCheckout(utm(SITE+'/checkout','signin-return')); else coPending=true; }
   if(/[?&]signedin=1/.test(location.search)){ try{ history.replaceState(null,'',location.pathname); }catch(e){}
     if(Acct.state==='in') toast(Acct.first?`מחוברים, ${Acct.first}. הדמות נשמרת בחשבון`:'מחוברים. הדמות נשמרת בחשבון','good'); }
 }
@@ -2258,7 +2273,46 @@ document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closes
 // the shop tells the game when something was added to the real cart
 addEventListener('message',e=>{ if(e.origin!=='https://buytoday.co.il'&&e.origin!==location.origin) return; const d=e.data;
   if(d&&d.type==='bt-mall:added'){ toast((d.name?d.name+' · ':'')+'נוסף לעגלה באתר ✓','good'); buzz(20); Sound.cash(); }
-  if(d&&d.type==='bt-mall:ready') pvLoad.hidden=true; });
+  if(d&&d.type==='bt-mall:ready'&&e.source===coFrame.contentWindow) coLoad.hidden=true;
+  else if(d&&d.type==='bt-mall:ready') pvLoad.hidden=true;
+  if(d&&d.type==='bt-mall:ordered') orderDone(d); });
+
+/* The checkout inside the game. "קנה עכשיו" opens the shop's real checkout in a full-screen sheet
+   over the mall, in a frame named "bt-mall-checkout": the shop keeps cart and checkout inside that
+   frame (the product sheet sends them out to the whole window), Pelecard's card form runs in it, and
+   the confirmation page lands in it and tells the game the order is paid. "חזרה לקניון" closes it.
+   Until it is switched on for everyone it is opt-in: ?beta=checkout turns it on for this browser,
+   ?beta=off turns it back off; without it, the button opens the checkout in a tab as before. */
+const coView=$('#coview'), coFrame=$('#coFrame'), coLoad=$('#coLoad'); let coPrev=null, coTimer=null;
+let CO_INSIDE=false;
+try{ const b=new URLSearchParams(location.search).get('beta'); if(b==='checkout') localStorage.setItem('bt-co-inside','1'); if(b==='off') localStorage.removeItem('bt-co-inside'); CO_INSIDE=localStorage.getItem('bt-co-inside')==='1'; }catch(e){}
+const CO_LOADING='<span>פותחים את הקופה…</span><div class="bar"><i></i></div>';
+function isCheckoutUrl(u){ try{ const x=new URL(u,location.href); return x.hostname.endsWith('buytoday.co.il')&&/^\/(api\/game\/buy|checkout|cart)(\/|$)/.test(x.pathname); }catch(e){ return false; } }
+function openCheckout(url){
+  if(!coView.hidden) return;
+  coPrev={paused:G.paused}; stopAuto(); G.paused=true; closeProduct();
+  coView.classList.remove('done'); $('#coTitle').innerHTML='<b>🔒</b> הקופה · תשלום מאובטח';
+  coLoad.innerHTML=CO_LOADING; coLoad.hidden=false; $('#coOpen').href=url; $('#coOpen').hidden=false;
+  coFrame.src=url; coView.hidden=false; ui.card.hidden=true; shownCard=null; syncCardSpace&&syncCardSpace(); buzz(10);
+  if(Sound.music) Sound.music.volume=.12;
+  clearTimeout(coTimer); coTimer=setTimeout(()=>{ if(!coLoad.hidden){ coLoad.innerHTML='<span>הקופה לא נפתחה כאן.</span><a target="_blank" rel="noopener">פתיחת הקופה באתר ↗</a>'; coLoad.querySelector('a').href=url; } },12000);
+}
+coFrame.addEventListener('load',()=>{ if(coFrame.src&&coFrame.src!=='about:blank') coLoad.hidden=true; });
+function closeCheckout(){ if(coView.hidden) return; coView.hidden=true; coFrame.src='about:blank'; clearTimeout(coTimer);
+  G.paused=!!(coPrev&&coPrev.paused&&(!dirEl.hidden||!cartEl.hidden||!catEl.hidden||!ui.end.hidden)); last=performance.now();
+  if(Sound.music) Sound.music.volume=Sound.track%2===0&&Sound.track>0?.42:.6; }
+$('#coBack').addEventListener('click',closeCheckout);
+// a paid order: the bar turns green, the receipt page stays in view, and a first-time thank-you in coins
+function orderDone(d){
+  const no=String(d.orderNumber||'').slice(0,20); let first=true;
+  try{ const k='bt-order-'+no; first=!localStorage.getItem(k); localStorage.setItem(k,'1'); }catch(e){}
+  coView.classList.add('done'); $('#coTitle').textContent='🎉 ההזמנה התקבלה!'+(no?' · '+no:''); $('#coOpen').hidden=true;
+  Sound.cash(); buzz([30,60,30]);
+  if(first){ addCoins(100); toast('תודה על הקנייה! קיבלתם 100 מטבעות 🎉','good'); }
+}
+// buy-now links anywhere in the game (card, receipt) open the checkout sheet
+document.addEventListener('click',e=>{ if(!CO_INSIDE) return; const a=e.target.closest&&e.target.closest('a[href]'); if(!a||a.closest('#coview,#pview')||!isCheckoutUrl(a.href)) return;
+  e.preventDefault(); e.stopPropagation(); if(!ui.end.hidden) closeReceipt(); openCheckout(a.href); },true);
 
 /* ---------- pick up where you left off ----------
    Leaving the mall for the shop (checkout, a full product page) and coming back within half an hour
