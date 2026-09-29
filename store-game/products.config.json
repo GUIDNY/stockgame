@@ -1,7 +1,7 @@
 {
   "note": "כל קטגוריה ראשית באתר היא מחלקה בקניון. build.py מושך מכל קטגוריה את המוצרים הראשונים שיש להם תמונה ומלאי. zone קובע איפה בקניון, count כמה מוצרים.",
-  "checkout_url": "",
-  "checkout_note": "כשיהיה באתר עמוד שממלא את העגלה מרשימת slugs (ראו site-integration/), שימו כאן את הכתובת עם {items}, למשל https://buytoday.co.il/game-checkout?items={items}",
+  "checkout_url": "https://buytoday.co.il/api/game/buy?items={items}",
+  "checkout_note": "קנה עכשיו: /api/game/buy באתר מכניס את המוצרים לעגלה של הלקוח ופותח את הקופה. {items} היא רשימת slugs מופרדת בפסיקים.",
   "online": {
     "enabled": true,
     "url": "https://fiyglezjgmltzruombno.supabase.co",

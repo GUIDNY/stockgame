@@ -149,6 +149,7 @@
   .btn1,.btn2{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:12px;font-weight:700;font-size:14.5px;text-decoration:none;}
   .btn1{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-deep);}
   .btn2{background:#eef0f5;color:#161a2b;}
+  #card .buy{grid-column:1/-1;background:#1f9d62;box-shadow:0 3px 0 #136b41;font-size:15.5px;} #card .buy[hidden]{display:none;}
   .btn1:active,.btn2:active{transform:translateY(2px);box-shadow:none;}
 
   #joyzone{position:fixed;left:0;bottom:0;width:50vw;height:40vh;touch-action:none;z-index:1;}
@@ -456,7 +457,7 @@
     #card .pr{font-size:24px;font-weight:900;letter-spacing:-.3px;}
     #card .note{display:none;}
     #card .cb{order:3;margin-top:8px;grid-template-columns:1.25fr 1fr;}
-    #card #cardLink{order:1;} #card #cardAdd{order:2;}
+    #card #cardLink{order:1;} #card #cardAdd{order:2;} #card #cardBuy{order:3;height:48px;}
     .hud.card-open #act,.hud.card-open #hint{visibility:hidden;}
     .hud.card-open #joyzone{bottom:var(--cardH,0px);height:26vh;}
   }
@@ -464,6 +465,13 @@
   @media (max-width:700px) and (max-height:640px){
     :root{--m-top:calc(var(--st) + 60px);}
     #card{padding-top:16px;} #card img,#card .ph{width:76px;height:76px;} #card .nm{font-size:15px;} #card .pr{font-size:21px;}
+  }
+  /* short phones: the three card buttons share one row, buy-now first, so the sheet stays low */
+  @media (max-width:700px) and (max-height:700px){
+    #card .cb{grid-template-columns:1.15fr 1fr 1fr;gap:6px;}
+    #card .cb .btn1,#card .cb .btn2{height:44px;font-size:13px;padding:0 4px;white-space:nowrap;letter-spacing:-.2px;}
+    #card #cardBuy{order:0;grid-column:auto;height:44px;font-size:13.5px;}
+    #card .cb:has(#cardBuy[hidden]){grid-template-columns:1.25fr 1fr;}
   }
   @media (max-width:340px){
     .mh-logo{padding:0 8px;font-size:12px;}
@@ -517,6 +525,7 @@
     <div class="cb">
       <button class="btn2" id="cardAdd">הוספה לעגלה</button>
       <a class="btn1" id="cardLink" target="_blank" rel="noopener">לעמוד המוצר ↗</a>
+      <a class="btn1 buy" id="cardBuy" target="_blank" rel="noopener" hidden>קנה עכשיו ⚡</a>
     </div>
   </div>
   <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div></div></div>
@@ -646,7 +655,10 @@ const HOME = 'https://play.buytoday.co.il/', ASSET = location.hostname==='play.b
 const IN_APP = /BuyTodayApp/.test(navigator.userAgent) || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 if(IN_APP) document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[target="_blank"]'); if(a) a.target='_self'; },true);
 // Direct checkout with all cart items. Empty until the site has a page that fills its cart from a list of slugs.
-const CHECKOUT_URL = /*__CHECKOUT__*/""/*__END__*/;
+/* "קנה עכשיו": the shop's /api/game/buy puts these products into the customer's own cart and opens
+   the checkout (saved address already filled in when signed in). {items} is a comma list of slugs. */
+const buyUrl = (its,where) => utm(CHECKOUT_URL.replace('{items}',its.map(i=>encodeURIComponent(i.slug)).join(',')),where);
+const CHECKOUT_URL = /*__CHECKOUT__*/"https://buytoday.co.il/api/game/buy?items={items}"/*__END__*/;
 const ONLINE = /*__ONLINE__*/{"url": "https://fiyglezjgmltzruombno.supabase.co", "key": "sb_publishable_8ymAM2J3jeoQXEqgm4qlTA_nkhzPs28"}/*__END__*/;   // {url,key} of the Supabase Realtime project, or null to stay single-player
 const utm = (url,where) => url + (url.includes('?')?'&':'?') + 'utm_source=closing-time-game&utm_medium=game&utm_campaign=' + where;
 const rand = (a,b) => a + Math.random()*(b-a);
@@ -1859,9 +1871,9 @@ function openReceipt(){
   const rc=$('#receipt'); rc.innerHTML='';
   its.forEach(it=>{ const li=document.createElement('li'); li.innerHTML='<img alt=""><div class="t"><span dir="auto"></span><small></small></div><a class="buy" target="_blank" rel="noopener">קנה עכשיו ↗</a>';
     if(it.img) li.querySelector('img').src=it.img; else li.querySelector('img').style.visibility='hidden'; li.querySelector('.t span').textContent=it.name; li.querySelector('small').textContent=shekel(it.price)+(it.old?` · במקום ${shekel(it.old)}`:'');
-    li.querySelector('a').href=utm(it.url,'receipt'); rc.appendChild(li); });
+    li.querySelector('a').href=CHECKOUT_URL&&it.slug?buyUrl([it],'receipt'):utm(it.url,'receipt'); rc.appendChild(li); });
   const pay=$('#payLink'); pay.hidden=!CHECKOUT_URL;
-  if(!pay.hidden){ pay.href=utm(CHECKOUT_URL.replace('{items}',its.map(i=>encodeURIComponent(i.slug)).join(',')),'checkout'); pay.textContent='לתשלום באתר · '+shekel(cartTotal()); }
+  if(!pay.hidden){ pay.href=buyUrl(its,'checkout'); pay.textContent='לתשלום באתר · '+shekel(cartTotal()); }
   $('#stMoney').textContent=String(its.length); $('#stTime').textContent=shekel(cartTotal()); $('#stScore').textContent=shekel(cartSaved());
   ui.end.hidden=false; Sound.cash();
 }
@@ -2555,6 +2567,7 @@ function fillCard(it){
   if(it.img) $('#cardImg').src=it.img; $('#cardImg').hidden=!it.img; $('#cardPh').hidden=!!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
   $('#cardPrice').textContent=shekel(it.price); $('#cardOld').textContent=it.old?shekel(it.old):''; $('#cardDisc').textContent=it.old?`-${it.disc}%`:''; $('#cardDisc').hidden=!it.old;
   $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardAdd').textContent='הוספה לעגלה';
+  $('#cardBuy').hidden=!CHECKOUT_URL||!it.slug; if(!$('#cardBuy').hidden) $('#cardBuy').href=buyUrl([it],'buy-now');
   const sp=specOf(it); $('#cardSpec').textContent=sp; $('#cardSpec').hidden=!sp;
 }
 
