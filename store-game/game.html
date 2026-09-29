@@ -399,9 +399,10 @@
     .mh-t b{font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .mh-t small{font-size:10.5px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .mh-dept > svg{flex:none;width:15px;height:15px;color:var(--ink-dim);}
-    .mh-on{height:36px;padding:0 10px;border-radius:12px;background:rgba(255,255,255,.06);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
-    .mh-on[hidden]{display:none;}
-    .mh-on i{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px rgba(67,209,139,.22);}
+    /* connection light only: green = online, others see you; red = offline */
+    .mh-on{width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.06);display:grid;place-items:center;}
+    .mh-on i{width:10px;height:10px;border-radius:50%;background:var(--good);box-shadow:0 0 0 4px rgba(67,209,139,.22);transition:background .3s,box-shadow .3s;}
+    .mh-on.off i{background:var(--bad);box-shadow:0 0 0 4px rgba(255,90,78,.22);}
 
     /* 2. a small round minimap, no label */
     #map{top:var(--m-top);left:var(--g);width:64px;height:64px;border:1.5px solid rgba(255,255,255,.22);opacity:.94;}
@@ -466,7 +467,6 @@
   }
   @media (max-width:340px){
     .mh-logo{padding:0 8px;font-size:12px;}
-    .mh-on{padding:0 8px;}
     #card{grid-template-columns:minmax(0,1fr) 76px;} #card img,#card .ph{width:76px;height:76px;}
   }
 </style>
@@ -477,7 +477,7 @@
   <div class="mhead glass" id="mhead">
     <a class="mh-logo" id="mhLogo" target="_blank" rel="noopener" aria-label="לאתר BuyToday">BuyToday</a>
     <button class="mh-dept" id="mhDept" aria-label="המחלקה שאתם בה"><span class="mh-ic" id="mhIc"></span><span class="mh-t"><b id="mhName" dir="auto"></b><small id="mhSub"></small></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></button>
-    <button class="mh-on" id="mhOn" hidden aria-label="מחוברים עכשיו"><i></i><span id="mhOnN">1</span></button>
+    <button class="mh-on off" id="mhOn" aria-label="לא מחוברים"><i></i></button>
   </div>
   <div class="topbar">
     <a class="chip glass" id="clockPill" target="_blank" rel="noopener" aria-label="לאתר BuyToday"><span class="logo sm">BuyToday</span></a>
@@ -2621,7 +2621,7 @@ function unpackAv(v){ if(!Array.isArray(v)) return null;
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
-function updateOnline(){ const on=Net.ready; onlineEl.hidden=!on; emoBtn.hidden=!on; if(!on) emoTray.hidden=true; $('#onlineN').textContent=String(Math.max(1,Net.count)); $('#mhOn').hidden=!on; $('#mhOnN').textContent=String(Math.max(1,Net.count)); }
+function updateOnline(){ const on=Net.ready; onlineEl.hidden=!on; emoBtn.hidden=!on; if(!on) emoTray.hidden=true; $('#onlineN').textContent=String(Math.max(1,Net.count)); const mo=$('#mhOn'); mo.classList.toggle('off',!on); mo.setAttribute('aria-label',on?'מחוברים: אחרים רואים אתכם':'לא מחוברים'); }
 function netLoad(){ return new Promise((res,rej)=>{ if(window.supabase) return res(); const s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 async function netStart(){
@@ -2767,7 +2767,7 @@ function botsUpdate(dt,now){
     if(G.state==='play'&&d<20) place2d(b.tag,b.pos,b.pos.y+2.55); else b.tag.hidden=true;
     if(now<b.emoUntil&&G.state==='play'&&d<30) place2d(b.emo,b.pos,b.pos.y+3.25); else b.emo.hidden=true; }
 }
-$('#mhOn').addEventListener('click',()=>onlineEl.click());
+$('#mhOn').addEventListener('click',()=>toast(Net.ready?'אתם אונליין. שחקנים אחרים בקניון רואים אתכם':'אתם אופליין כרגע. שחקנים אחרים לא רואים אתכם',Net.ready?'good':''));
 onlineEl.addEventListener('click',()=>{ const n=Math.max(1,Net.count); toast(n>1?`${n} אנשים מחוברים עכשיו לקניון`:'רק אתם מחוברים כרגע. שתפו חבר ותטיילו ביחד'); });
 // a hidden tab keeps nobody company: leave the room, and come back when the tab does
 document.addEventListener('visibilitychange',()=>{ if(!ONLINE) return; if(document.hidden) netLeave(); else if(G.state==='play'||G.state==='edit') netStart(); });
