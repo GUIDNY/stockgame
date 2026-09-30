@@ -92,7 +92,8 @@
   /* rooftop mini-games and the merch shop */
   .screen.mg{padding:0;background:#0b0e26;align-items:stretch;z-index:16;}
   .mgwrap{position:relative;flex:1;display:flex;flex-direction:column;}
-  .mgtop{flex:none;display:flex;align-items:center;gap:10px;padding:calc(var(--st) + 10px) 12px 10px;background:#12163a;color:#fff;}
+  /* above the start / game-over layer, so "יציאה" can always be pressed */
+  .mgtop{position:relative;z-index:3;flex:none;display:flex;align-items:center;gap:10px;padding:calc(var(--st) + 10px) 12px 10px;background:#12163a;color:#fff;}
   .mgtop b{flex:1;font-size:16px;font-weight:800;}
   .mgtop span{font-weight:800;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.1);padding:6px 10px;border-radius:10px;font-size:14px;}
   .mgtop button{height:36px;padding:0 12px;border-radius:11px;background:rgba(255,255,255,.12);color:#fff;font-weight:700;}
@@ -169,7 +170,14 @@
   #joyzone{position:fixed;left:0;bottom:0;width:50vw;height:40vh;touch-action:none;z-index:1;}
   #joy{position:absolute;width:124px;height:124px;margin:-62px 0 0 -62px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04),rgba(255,255,255,.12));border:2px solid rgba(255,255,255,.3);pointer-events:none;transition:opacity .2s;}
   #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(250,250,252,.92);box-shadow:0 4px 12px rgba(0,0,0,.3);}
-  #joyzone.idle #joy{opacity:.55;}
+  #joyzone.idle #joy{opacity:.85;}
+  /* first visit: the joystick says what it is, and pulses until it is used once */
+  #joyTip{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);white-space:nowrap;text-align:center;font-size:12.5px;font-weight:800;line-height:1.25;color:#fff;background:var(--brand);padding:7px 11px;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.35);}
+  #joyTip b{display:block;font-size:18px;animation:joyNudge 1.1s ease-in-out infinite;}
+  #joyTip::after{content:"";position:absolute;left:50%;top:100%;margin-left:-7px;border:7px solid transparent;border-top-color:var(--brand);}
+  #joyzone.teach #joy{animation:joyPulse 1.4s ease-in-out infinite;opacity:1;border-color:rgba(255,255,255,.75);}
+  @keyframes joyPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.45);}50%{box-shadow:0 0 0 14px rgba(255,255,255,0);}}
+  @keyframes joyNudge{0%,100%{transform:translate(0,0);}50%{transform:translate(0,-6px);}}
   #act{--bg:var(--brand);--sh:var(--brand-deep);position:fixed;right:22px;bottom:calc(var(--sb) + 34px);width:84px;height:84px;border-radius:50%;background:var(--bg);color:#fff;z-index:3;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 5px 0 var(--sh),0 12px 26px rgba(0,0,0,.35);font-weight:700;font-size:14px;transition:opacity .2s,background .2s,box-shadow .2s;}
   #act svg{width:28px;height:28px;}
@@ -448,7 +456,7 @@
     #joyzone{width:52vw;height:34vh;}
     #joy{width:96px;height:96px;margin:-48px 0 0 -48px;background:radial-gradient(circle,rgba(255,255,255,.03),rgba(255,255,255,.09));border:1.5px solid rgba(255,255,255,.22);}
     #knob{width:42px;height:42px;margin:-21px 0 0 -21px;background:rgba(250,250,252,.85);}
-    #joyzone.idle #joy{opacity:.45;}
+    #joyzone.idle #joy{opacity:.8;}
 
     /* 7. the action button: still the call to action, just not the whole corner */
     #act{width:64px;height:64px;right:16px;bottom:calc(var(--sb) + 22px);font-size:11.5px;gap:0;box-shadow:0 4px 0 var(--sh),0 10px 22px rgba(0,0,0,.32);}
@@ -546,7 +554,7 @@
       <a class="cbtn" id="cardLink" target="_blank" rel="noopener" aria-label="לעמוד המוצר"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>פרטים</span></a>
     </div>
   </div>
-  <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div></div></div>
+  <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div><div id="joyTip" hidden><b>👆</b>גררו כאן<br>כדי ללכת</div></div></div>
   <div id="liftPad" class="glass" hidden role="group" aria-label="בחירת קומה"><button data-f="2">הגג<small>פודקורט</small></button><button data-f="1">1<small>לבית</small></button><button data-f="0">קרקע<small>כניסה</small></button></div>
   <button id="act" class="off" aria-label="פעולה">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/></svg>
@@ -1012,8 +1020,8 @@ function buildGround(){
   floorPlane(8.5,BX,-BZ,-9,.01,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.55})),null,3);
   box(10,1.05,1.2,M.navy,16,.53,-BZ+1); box(10.2,.06,1.35,M.marble,16,1.08,-BZ+1); solid(0,16,-BZ+1,10.4,1.5);
   [12.5,16,19.5].forEach(x=>place(mkCoffee(),x,1.11,-BZ+1.1,0,1.1));
-  const menu=canvasTex(1024,400,(g,W,H)=>{ g.fillStyle='#1b1f2b'; rrect(g,4,4,W-8,H-8,30); g.fill(); g.direction='rtl'; g.textAlign='right'; g.fillStyle='#ff8a4c'; g.font='90px "Secular One", sans-serif'; g.fillText('בר הקפה',W-60,120);
-    g.fillStyle='#fff'; g.font='500 46px Rubik, sans-serif'; [['אספרסו','₪9'],['קפוצ׳ינו','₪14'],['קולד ברו','₪16']].forEach(([a,b],i)=>{ g.textAlign='right'; g.fillText(a,W-60,210+i*62); g.textAlign='left'; g.fillText(b,60,210+i*62); }); });
+  const menu=canvasTex(1024,400,(g,W,H)=>{ g.fillStyle='#1b1f2b'; rrect(g,4,4,W-8,H-8,30); g.fill(); g.direction='rtl'; g.textAlign='right'; g.fillStyle='#ff8a4c'; g.font='90px "Secular One", sans-serif'; g.fillText('מכונות קפה ב־BuyToday',W-60,120);
+    g.fillStyle='#fff'; g.font='500 46px Rubik, sans-serif'; [['מכונות אספרסו','☕'],['מקציפי חלב ומטחנות','🥛'],['משלוח חינם מעל ₪600','🚚']].forEach(([a,b],i)=>{ g.textAlign='right'; g.fillText(a,W-60,210+i*62); g.textAlign='left'; g.fillText(b,60,210+i*62); }); });
   plane(5,1.95,new THREE.MeshBasicMaterial({map:menu}),16,3.3,-BZ+.06,0);
   box(6,.95,1.6,M.white,16,.48,-18); box(6.3,.07,1.85,M.marble,16,.98,-18); solid(0,16,-18,6.4,1.9);
   [13.8,15.3,16.7,18.2].forEach(x=>{ cyl(.22,.22,.08,M.yellow,x,.8,-16.6); cyl(.04,.04,.75,M.steel,x,.4,-16.6,null,8); solid(0,x,-16.6,.45,.45); });
@@ -1413,8 +1421,7 @@ const DEPTS=[
   {id:'laundry',f:1,name:'כביסה, ייבוש ומדיחים',sub:'כביסה · מייבשים · מדיחים',rect:[-24,-8.5,-9,13],to:[-16.2,-1],color:'#5b6fe0',cat:'laundry',icon:'laundry'},
   {id:'home',f:1,name:'מוצרי חשמל לבית',sub:'שואבים · מגהצים',rect:[8.5,24,-32,-1],to:[14,-15],color:'#2fb592',cat:'home-appliances',icon:'clean'},
   {id:'ac',f:1,name:'מיזוג אוויר',sub:'מזגנים עיליים',rect:[8.5,24,-1,13],to:[14.5,4.5],color:'#2aa7c9',cat:'air-conditioning',icon:'ac'},
-  {id:'food',f:2,name:'פודקורט',sub:'פיצה · בורגר · סושי · קפה',rect:[-24,24,9,32],to:[0,13],color:'#ff9f1c',icon:'food'},
-  {id:'arcade',f:2,name:'ארקייד',sub:'משחקים · רחבת ריקודים',rect:[-24,-8.5,-32,-9],to:[-15,-14],color:'#9b5de5',icon:'gaming'},
+  {id:'arcade',f:2,name:'ארקייד',sub:'משחקים על מטבעות',rect:[-24,-8.5,-32,-9],to:[-15,-14],color:'#9b5de5',icon:'gaming'},
   {id:'terrace',f:2,name:'טרסת העיר',sub:'ספות · תצפית על העיר',rect:[8.5,24,-32,-9],to:[15,-12],color:'#2ec4b6',icon:'view'},
   {id:'cinema',f:2,name:'קולנוע גג',sub:'המבצעים על מסך ענק',rect:[-24,-8.5,-9,9],to:[-10.5,0],color:'#e63946',icon:'screens'},
   {id:'outlet',f:2,name:'אאוטלט מבצעים',sub:'ההנחות הגדולות',rect:[8.5,24,-9,9],to:[13.5,0],color:'#d6336c',icon:'deal',url:'/deals',ck:'deals'},
@@ -1440,10 +1447,6 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
 const roofLive=[];
 const GAME_SPOTS=[{id:'catch',title:'תפוס את המבצע',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',title:'צייד ההנחות',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4}];
 const SHOP_SPOT={x:0,z:0};
-const arcadeTexes=[0,1,2,3,4,5].map(i=>canvasTex(128,96,(g,W,H)=>{ const hue=[200,300,40,140,0,260][i];
-  g.fillStyle=`hsl(${hue},70%,12%)`; g.fillRect(0,0,W,H);
-  for(let k=0;k<16;k++){ g.fillStyle=`hsl(${(hue+k*27)%360},95%,60%)`; g.fillRect((k*37)%W,(k*23)%(H-24),6+(k%3)*5,6+(k%4)*3); }
-  g.fillStyle='#fff'; g.font='800 15px Rubik,sans-serif'; g.textAlign='center'; g.fillText(['PAC','RACE','SPACE','KICK','DANCE','BLOCK'][i],W/2,H-9); }));
 function buildRoof(){
   SG=STATIC[2]; const Y=2*FH, f=2;
   // deck everywhere outside the skylight, plus the bridge to the elevator
@@ -1480,19 +1483,8 @@ function buildRoof(){
   const cityM=new THREE.MeshBasicMaterial({map:cityTex,transparent:true});
   [[0,-BZ-38,0],[0,BZ+38,Math.PI],[-BX-38,0,Math.PI/2],[BX+38,0,-Math.PI/2]].forEach(([x,z,r])=>plane(170,42,cityM,x,Y-8,z,r));
 
-  // --- food court (front) ---
+  // --- seating plaza (front): tables, umbrellas and lights. Only somewhere to sit: nothing here pretends to sell anything ---
   floorPlane(-BX+.3,BX-.3,9.5,BZ-.3,Y+.012,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.7})),null,3);
-  [['פיצה',0xe63946,-15],['בורגר',0xff9f1c,-5],['סושי',0x2ec4b6,5],['קפה',0x9b5de5,15]].forEach(([name,c,x],i)=>{ const cm=mat(c,{roughness:.5});
-    box(6,1.1,1.1,M.white,x,Y+.55,28.4); box(6.1,.08,1.2,cm,x,Y+1.14,28.4);
-    box(6,3.2,.3,mat(0x22263a),x,Y+1.6,31.4); box(.2,3.2,3.2,M.dark,x-3,Y+1.6,29.9); box(.2,3.2,3.2,M.dark,x+3,Y+1.6,29.9);
-    const aw=box(6.5,.14,3.4,cm,x,Y+3.25,29.6); aw.rotation.x=-.14;
-    for(let k=-2;k<=2;k++) box(.9,.02,3.3,M.white,x+k*1.3,Y+3.33,29.6,null,false).rotation.x=-.14;
-    box(3.2,1.2,.05,new THREE.MeshBasicMaterial({color:0x10142c}),x,Y+2.2,31.22,null,false);
-    for(let k=0;k<3;k++) box(2.6,.08,.02,M.glowWhite,x,Y+2.55-k*.3,31.2,null,false);
-    neon(name,x,Y+4.1,28.1,Math.PI,3,false,null,true);
-    solidR(f,x-3.2,x+3.2,27.7,BZ);
-    const cook=mkGuy({girl:i%2===1,skin:[0xf1c7a0,0xc98e62,0xe0ac80,0x8d5a3b][i],hair:0x2b1a10,shirt:0xf3f4f6,pants:0x2b2f3a,vest:c,extra:'cap',capColor:c,tuft:false});
-    cook.g.position.set(x,Y,29.6); cook.g.rotation.y=Math.PI; scene.add(cook.g); roofLive.push(cook.g); cashiers.push(cook); });
   const umb=[0xe63946,0xff9f1c,0x2ec4b6,0x9b5de5,0xfee440,0x4361ee]; let un=0;
   for(const x of [-18,-11.5,-5,5,11.5,18]) for(const z of [14,19,24]){
     cyl(.75,.75,.06,M.white,x,Y+.78,z); cyl(.06,.06,.76,M.steel,x,Y+.38,z,null,8);
@@ -1509,19 +1501,10 @@ function buildRoof(){
   floorPlane(-BX+.3,-8.8,-BZ+.3,-9.2,Y+.012,mat(0x12132a,overlay({roughness:.6})));
   for(let x=-23;x<=-9.5;x+=2) box(.05,.02,22.4,M.ledPink,x,Y+.03,-20.6,null,false);
   for(let z=-31;z<=-10;z+=2) box(14.6,.02,.05,M.ledCyan,-16.2,Y+.03,z,null,false);
-  const cabinet=(x,z,ry,i)=>{ const g=new THREE.Group(); const body=mat([0x3a0ca3,0x7209b7,0xf72585,0x4361ee,0x06d6a0,0xff9f1c][i%6],{roughness:.4});
-    box(.95,1.95,.9,body,0,.975,0,g); plane(.78,.58,new THREE.MeshBasicMaterial({map:arcadeTexes[i%6]}),0,1.42,.456,0,g);
-    const cp=box(.95,.1,.42,M.dark,0,1.02,.55,g); cp.rotation.x=-.35; box(.08,.12,.08,M.red,-.18,1.11,.55,g,false); box(.08,.08,.08,M.ledCyan,.18,1.1,.55,g,false);
-    box(.97,.28,.35,new THREE.MeshBasicMaterial({color:[0xff5ec4,0x5ee7ff,0xffd166,0x7bff9b][i%4]}),0,2.05,.3,g,false);
-    place(g,x,Y,z,ry); };
-  let ci=0; for(let z=-29.5;z<=-12;z+=1.45) cabinet(-23,z,Math.PI/2,ci++);
-  for(let x=-21.5;x<=-10.5;x+=1.45) cabinet(x,-31,0,ci++);
-  solidR(f,-BX,-22.4,-30.3,-11.2); solidR(f,-22.3,-9.7,-BZ,-30.4);
   const dance=[0xff3fb4,0x2fe6ff,0xffd166,0x7bff9b].map(c=>new THREE.MeshBasicMaterial({color:c}));
   for(let i=0;i<4;i++) for(let j=0;j<4;j++){ const t=new THREE.Mesh(new THREE.PlaneGeometry(1.05,1.05),dance[(i+j*2)%4]); t.rotation.x=-Math.PI/2; t.position.set(-17.2+i*1.15,Y+.02,-22.7+j*1.15); SG.add(t); }
-  box(2.3,.85,1.3,M.white,-13,Y+.43,-14); box(2.1,.04,1.1,mat(0x2d6cdf),-13,Y+.87,-14,null,false); solid(f,-13,-14,2.5,1.5);
   [-19.3,-12.7].forEach(x=>{ box(.12,3.4,.12,M.dark,x,Y+1.7,-9.5); solid(f,x,-9.5,.3,.3); });
-  neon('ארקייד',-16,Y+3.9,-9.5,0,5.6,true,'משחקים · ריקודים · תחרויות',true);
+  neon('ארקייד',-16,Y+3.9,-9.5,0,5.6,true,'שתי מכונות · זוכים במטבעות',true);
 
   // --- city terrace (back right) ---
   floorPlane(8.8,BX-.3,-BZ+.3,-9.2,Y+.012,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.7})),null,2.5);
@@ -1530,7 +1513,6 @@ function buildRoof(){
   const logo=new THREE.MeshBasicMaterial({map:logoTex()}); plane(9,2.25,logo,15.5,Y+2.9,-BZ+.5,0);
   [11.4,19.6].forEach(x=>{ box(.14,4,.14,M.dark,x,Y+2,-BZ+.45); });
   plane(12.5,4.3,GLOW,15.5,Y+2.9,-BZ+.44,0);
-  [[10,-29.5],[22,-29.5]].forEach(([x,z])=>{ cyl(.05,.05,1.2,M.dark,x,Y+.6,z,null,6); const t=cyl(.09,.13,.9,M.steel,x,Y+1.35,z,null,10); t.rotation.x=-1.1; solid(f,x,z,.5,.5); });
   planter(10,Y,-10.8,f); planter(22.4,Y,-10.8,f);
 
   // --- rooftop cinema (left, middle) ---
@@ -1544,9 +1526,6 @@ function buildRoof(){
 
   // --- outlet corner (right, middle) with the deals kiosk ---
   floorPlane(8.8,BX-.3,-8.8,8.8,Y+.012,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#5a1f2c','#6a2533'),roughness:.95})),null,3);
-  [-5.5,0,5.5].forEach(z=>{ box(1.7,.9,1.3,M.red,21.8,Y+.45,z); box(1.75,.06,1.35,M.white,21.8,Y+.93,z,null,false);
-    plane(1.2,.45,new THREE.MeshBasicMaterial({map:canvasTex(128,48,(g,W,H)=>{ g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.fillStyle='#e63946'; g.font='800 30px Rubik,sans-serif'; g.textAlign='center'; g.fillText('SALE',W/2,35); })}),20.93,Y+.55,z,-Math.PI/2);
-    solid(f,21.8,z,1.9,1.5); });
   [[10.5,6.5],[11.3,7.2],[10,7.6]].forEach(([x,z],i)=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(.38,14,10),new THREE.MeshStandardMaterial({color:[0xe63946,0xff9f1c,0xfee440][i],roughness:.25,metalness:.1})); b.scale.set(1,1.2,1); b.position.set(x,Y+2.9+i*.25,z); SG.add(b);
     box(.01,2.4+i*.25,.01,M.white,x,Y+1.4+i*.12,z,null,false); });
   box(.5,.3,.5,M.dark,10.6,Y+.15,7.1); solid(f,10.6,7.1,.8,.8);
@@ -1806,12 +1785,24 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
     el.addEventListener('ended',next);
     el.addEventListener('error',()=>{ if(this.base!==HOME+'music/'){ this.base=HOME+'music/'; this.track=Math.max(0,this.track-1); next(); }
       else { this.music=null; this.synthMusic(); } });
-    document.addEventListener('visibilitychange',()=>{ if(document.hidden) el.pause(); else if(this.on&&G.state!=='menu') el.play().catch(()=>{}); });
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden) el.pause(); else this.wake(); });
     next();
   },
   synthMusic(){ if(!this.ctx||this.musicTimer) return; const chords=[[261.6,329.6,392,493.9],[220,261.6,329.6,392],[293.7,349.2,440,523.3],[196,246.9,293.7,349.2]]; let next=this.ctx.currentTime+.1; const beat=.3;
     this.musicTimer=setInterval(()=>{ if(!this.ctx) return; while(next<this.ctx.currentTime+.6){ const c=chords[((this.step/8)|0)%4]; const n=c[[0,2,1,3,2,1,3,2][this.step%8]]; const dl=next-this.ctx.currentTime;
       this.tone(n,.45,'sine',.035,dl); if(this.step%8===0) this.tone(c[0]/2,1.2,'triangle',.05,dl); this.step++; next+=beat; } },150); },
+  /* Coming back to the app. A phone suspends both kinds of sound when the app goes to the background:
+     the effects' AudioContext is left "suspended" (iOS: "interrupted") and is never resumed by itself,
+     and the music's play() on return is often refused because no tap came with it. So both are asked
+     again the moment the page is visible, and, if the phone said no, again on the very next tap. */
+  wake(){ if(document.hidden||G.state==='menu') return;
+    const ctxOk=()=>!this.ctx||this.ctx.state==='running', musOk=()=>!this.on||!this.music||!this.music.paused;
+    const kick=()=>{ try{ if(this.ctx&&this.ctx.state!=='running') this.ctx.resume().catch(()=>{}); }catch(e){}
+      if(this.on&&this.music&&this.music.paused) this.music.play().catch(()=>{}); };
+    kick();
+    setTimeout(()=>{ if(ctxOk()&&musOk()) return;
+      const once=()=>{ kick(); removeEventListener('pointerdown',once,true); removeEventListener('touchend',once,true); removeEventListener('keydown',once,true); };
+      addEventListener('pointerdown',once,true); addEventListener('touchend',once,true); addEventListener('keydown',once,true); },300); },
   setOn(v){ this.on=v; if(this.master) this.master.gain.value=v?1:0; if(this.music){ this.music.muted=!v; if(v&&this.music.paused) this.music.play().catch(()=>{}); } }
 };
 
@@ -1871,6 +1862,7 @@ function enterMall(){
   avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
+  requestAnimationFrame(()=>{ joyHome(); joyTeach(); });
   if(coPending){ coPending=false; setTimeout(()=>openCheckout(utm(SITE+'/checkout','signin-return')),400); }
   const rs=loadResume();
   if(rs){ setFloor(rs.f); player.pos.set(clamp(rs.x,-BX+1,BX-1),rs.f*FH,clamp(rs.z,-BZ+1,BZ-1)); player.yaw=rs.yaw||0; camYaw=player.yaw+Math.PI;
@@ -1994,19 +1986,25 @@ let joyC={x:0,y:0};
 zone.addEventListener('pointerdown',e=>{ e.preventDefault(); if(joy.id!==null) return; joy.id=e.pointerId; try{zone.setPointerCapture(e.pointerId);}catch(_){}
   const r=zone.getBoundingClientRect(); joyC={x:e.clientX,y:e.clientY}; joyEl.style.left=(e.clientX-r.left)+'px'; joyEl.style.top=(e.clientY-r.top)+'px'; zone.classList.remove('idle'); moveJoy(e); });
 zone.addEventListener('pointermove',e=>{ if(e.pointerId===joy.id) moveJoy(e); });
+/* the first-visit lesson: shown on entering the mall until the player has walked once, then never again */
+let joyTaught=false; try{ joyTaught=localStorage.getItem('bt-joy-ok')==='1'; }catch(e){}
+function joyTeach(){ if(joyTaught) return;
+  if(PHONE.matches||matchMedia('(pointer:coarse)').matches){ $('#joyTip').hidden=false; zone.classList.add('teach'); }
+  else setTimeout(()=>toast('הולכים עם החצים או W A S D · גוררים את המסך כדי להסתכל מסביב'),900); }
+function joyLearned(){ if(joyTaught) return; joyTaught=true; $('#joyTip').hidden=true; zone.classList.remove('teach'); try{ localStorage.setItem('bt-joy-ok','1'); }catch(e){} }
 function endJoy(e){ if(e.pointerId!==joy.id) return; joy.id=null; joy.x=joy.y=0; knob.style.transform=''; zone.classList.add('idle'); joyHome(); }
 zone.addEventListener('pointerup',endJoy); zone.addEventListener('pointercancel',endJoy);
-function moveJoy(e){ let dx=e.clientX-joyC.x, dy=e.clientY-joyC.y; const R=PHONE.matches?36:46, d=Math.hypot(dx,dy); if(d>R){ dx*=R/d; dy*=R/d; } joy.x=dx/R; joy.y=dy/R; knob.style.transform=`translate(${dx}px,${dy}px)`; }
+function moveJoy(e){ let dx=e.clientX-joyC.x, dy=e.clientY-joyC.y; const R=PHONE.matches?36:46, d=Math.hypot(dx,dy); if(d>R){ dx*=R/d; dy*=R/d; } joy.x=dx/R; joy.y=dy/R; knob.style.transform=`translate(${dx}px,${dy}px)`; if(d>R*.6) joyLearned(); }
 let camYaw=0, dragT=0; const drag={id:null,x:0};
 canvas.addEventListener('pointerdown',e=>{ if(drag.id!==null) return; drag.id=e.pointerId; drag.x=e.clientX; try{canvas.setPointerCapture(e.pointerId);}catch(_){} });
 canvas.addEventListener('pointermove',e=>{ if(e.pointerId!==drag.id) return; camYaw-=(e.clientX-drag.x)*.0075; drag.x=e.clientX; dragT=1.4; });
 const endDrag=e=>{ if(e.pointerId===drag.id) drag.id=null; };
 canvas.addEventListener('pointerup',endDrag); canvas.addEventListener('pointercancel',endDrag);
 const keys={};
-addEventListener('keydown',e=>{ keys[e.code]=true; if((e.code==='Space'||e.code==='Enter')&&G.state==='play'){ e.preventDefault(); doAction(); } });
+addEventListener('keydown',e=>{ keys[e.code]=true; if(/^(Arrow|Key[WASD])/.test(e.code)&&G.state==='play') joyLearned(); if((e.code==='Space'||e.code==='Enter')&&G.state==='play'){ e.preventDefault(); doAction(); } });
 addEventListener('keyup',e=>{ keys[e.code]=false; });
 ['gesturestart','dblclick'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
-ui.act.addEventListener('pointerdown',e=>{ e.preventDefault(); doAction(); });
+ui.act.addEventListener('pointerdown',e=>{ e.preventDefault(); if(!near&&G.state==='play'&&!G.paused){ toast('גשו למוצר, לעמדת קטלוג או למעלית, והכפתור יפעל'); return; } doAction(); });
 $('#cardAdd').addEventListener('click',()=>{ if(near&&near.type==='item') doAction(); });
 $('#listH').addEventListener('click',()=>{ const d=deptAt(); if(d&&catKey(d)) openCatalog(d); else openDir(); });
 $('#mhDept').addEventListener('click',()=>$('#listH').click());
@@ -2344,7 +2342,7 @@ const RESUME_KEY='bt-mall-resume';
 function saveResume(){ if(G.state!=='play'&&G.state!=='edit') return;
   try{ localStorage.setItem(RESUME_KEY,JSON.stringify({t:Date.now(),f:player.floor,x:+player.pos.x.toFixed(2),z:+player.pos.z.toFixed(2),yaw:+player.yaw.toFixed(2),cart:cartItems().map(i=>i.slug)})); }catch(e){} }
 function loadResume(){ try{ const r=JSON.parse(localStorage.getItem(RESUME_KEY)||'null'); if(r&&Date.now()-r.t<30*60*1000&&r.f>=0&&r.f<=TOP) return r; }catch(e){} return null; }
-addEventListener('pagehide',saveResume); document.addEventListener('visibilitychange',()=>{ if(document.hidden) saveResume(); });
+addEventListener('pagehide',saveResume); addEventListener('pageshow',()=>Sound.wake()); addEventListener('focus',()=>Sound.wake()); document.addEventListener('visibilitychange',()=>{ if(document.hidden) saveResume(); else Sound.wake(); });
 document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[href]'); if(a) saveResume(); },true);
 
 /* ---------- coins, rooftop mini-games and the merch shop ----------
