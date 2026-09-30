@@ -224,6 +224,11 @@
   .odds{margin:0;font-size:11.5px;line-height:1.5;color:#6b7289;text-align:center;}
   .guestspin{display:block;width:100%;padding:10px 12px;border-radius:12px;background:#fff7ec;border:1px solid #ffd9a8;color:#8a4a22;font-size:13px;font-weight:800;text-align:center;text-decoration:none;}
   .guestspin[hidden],.wincard[hidden]{display:none;}
+  .loyal{display:grid;gap:8px;margin-bottom:14px;}
+  .lrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#f5f6fa;border:1px solid #e6e8ef;}
+  .lrow>span{flex:none;font-size:22px;} .lrow>div{flex:1;min-width:0;display:grid;gap:4px;} .lrow b{font-size:14px;color:#161a2b;} .lrow small{font-size:12px;color:#6b7289;}
+  .lrow .lvbar{height:8px;background:#e3e6ee;} .lrow>i{font-style:normal;font-size:12px;font-weight:800;color:#1f9d62;}
+  .lrow.done{background:#e8f8ef;border-color:#bfe9d1;}
   .wincard{width:100%;display:grid;gap:8px;padding:14px;border-radius:16px;background:linear-gradient(180deg,#fff6d8,#ffe9a8);border:1px solid #f2c94c;text-align:center;}
   .wincard b{font-size:18px;color:#7a4b00;} .wincard small{font-size:12px;color:#7a5a1a;}
   .wcode{display:flex;align-items:center;justify-content:center;gap:8px;} .wcode span{font:900 18px ui-monospace,monospace;letter-spacing:1px;background:#fff;border:2px dashed #e0a100;border-radius:10px;padding:6px 12px;color:#161a2b;}
@@ -709,9 +714,14 @@
       <div class="spincard"><div class="spinhead"><b>🎡 הגלגל היומי</b><small id="spinSub">סיבוב אחד בחינם כל יום</small></div>
         <div class="wheelwrap"><canvas id="wheel" width="560" height="560"></canvas><i class="pin"></i></div>
         <button class="btn1 spinbtn" id="spinBtn">מסובבים!</button>
-        <div class="wincard" id="winCard" hidden><b id="winTitle"></b><div class="wcode"><span id="winCode" dir="ltr"></span><button id="winCopy">העתקה</button></div><small id="winTerms"></small><button class="btn1" id="winApply">הפעלה בעגלה</button></div>
-        <p class="odds" id="spinOdds">סיכויים בכל סיבוב: ₪50 הנחה 0.3% · ₪20 הנחה 2% · 5% הנחה 1.5% · בכל השאר מטבעות. פרסים בכסף רק למחוברים, קופון אישי לשימוש אחד, תקף 7 ימים.</p>
-        <a class="guestspin" id="spinLogin" hidden>🔑 התחברו לחשבון BuyToday כדי לזכות גם בהנחות אמיתיות</a></div>
+        <p class="odds">הגלגל נותן מטבעות משחק בלבד. הנחות אמיתיות מקבלים על התמדה, בוודאות ולא במזל 👇</p></div>
+      <div class="loyal"><h3 class="progh">🎁 הטבות על התמדה</h3>
+        <div class="lrow" id="lrWelcome"><span>🎉</span><div><b>5% הנחה</b><small>מתנת הצטרפות, בכניסה הראשונה עם חשבון (עד ₪100)</small></div><i></i></div>
+        <div class="lrow" id="lrStreak"><span>🔥</span><div><b>₪20 הנחה על כל 7 ימים ברצף</b><small></small><div class="lvbar"><i></i></div></div></div>
+        <div class="lrow" id="lrDays"><span>📅</span><div><b>₪50 הנחה על 30 ימי כניסה</b><small></small><div class="lvbar"><i></i></div></div></div>
+        <div id="myCoupons"></div>
+        <a class="guestspin" id="spinLogin" hidden>🔑 התחברו לחשבון BuyToday כדי לקבל את ההטבות</a>
+        <p class="odds">קופון אישי לשימוש אחד, בתוקף 7 ימים ממועד קבלתו.</p></div>
       <div class="invite"><div><b>👯 הזמינו חבר לקניון</b><small>שיתוף פעם ביום = 30 מטבעות ו־20 נקודות</small></div><button class="btn1" id="inviteBtn">שיתוף</button></div>
       <h3 class="progh">הריקודים שלכם</h3><div class="dances" id="dances"></div>
       <h3 class="progh">פרסים לפי רמה</h3><ul class="rewards" id="rewards"></ul>
@@ -2576,10 +2586,12 @@ const DANCES=[{id:'wave',n:'נפנוף',ic:'👋',lvl:2},{id:'spin',n:'סיבו�
 /* the wheel's slices: coins wide, the real prizes thin and gold. The slices are a picture; the odds are
    the server's (lib/game-wheel.ts on the shop), shown under the wheel in plain numbers. A guest's wheel
    pays coins only, rolled here with the same weights. */
-const WHEEL=[{id:'c10',t:'10',s:'מטבעות'},{id:'p20',t:'₪20',s:'הנחה',gold:1},{id:'c5',t:'5',s:'מטבעות'},{id:'pct5',t:'5%',s:'הנחה',gold:1},{id:'c20',t:'20',s:'מטבעות'},{id:'p50',t:'₪50',s:'הנחה',gold:1},{id:'c15',t:'15',s:'מטבעות'},{id:'p20',t:'₪20',s:'הנחה',gold:1},{id:'c30',t:'30',s:'מטבעות'},{id:'c100',t:'100',s:'מטבעות'}];
-const WHEEL_COINS={c5:[5,.25],c10:[10,.3],c15:[15,.18],c20:[20,.13],c30:[30,.08],c100:[100,.022]};
+/* the wheel pays game coins only. Discounts worth shekels are never won by chance here: under the
+   Penal Law that is a lottery. They are loyalty rewards the shop grants for coming back (see /api/game/spin). */
+const WHEEL=[{id:'c10',t:'10'},{id:'c20',t:'20'},{id:'c5',t:'5'},{id:'c50',t:'50'},{id:'c15',t:'15'},{id:'c30',t:'30'},{id:'c10',t:'10'},{id:'c100',t:'100'}];
+const WHEEL_COINS={c5:[5,.25],c10:[10,.3],c15:[15,.18],c20:[20,.13],c30:[30,.08],c50:[50,.04],c100:[100,.02]};
 const SPIN_API=SITE+'/api/game/spin';
-function wheelGeom(){ const gold=12, n=WHEEL.length, ng=WHEEL.filter(w=>w.gold).length, coin=(360-gold*ng)/(n-ng); let a=-90-(WHEEL[0].gold?gold:coin)/2;
+function wheelGeom(){ const gold=12, n=WHEEL.length, ng=WHEEL.filter(w=>w.gold).length, coin=(360-gold*ng)/(n-ng||1); let a=-90-(WHEEL[0].gold?gold:coin)/2;
   return WHEEL.map(w=>{ const span=w.gold?gold:coin, g={a0:a,a1:a+span,c:a+span/2}; a+=span; return g; }); }
 const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
 const Prog={d:{xp:0,day:'',streak:0,visited:[],cartXp:0,spin:'',got:[]},danceUntil:0,dance:'',
@@ -2606,7 +2618,7 @@ function drawWheel(){ const c=$('#wheel'), g=c.getContext('2d'), R=c.width/2, G=
     g.fill(); g.strokeStyle='rgba(255,255,255,.7)'; g.lineWidth=2; g.stroke();
     g.save(); g.translate(R,R); g.rotate(rad(mid)+Math.PI/2); g.textAlign='center';
     if(w.gold){ g.fillStyle='#5a3a00'; g.font='900 26px Rubik,sans-serif'; g.save(); g.translate(0,-R+64); g.rotate(-Math.PI/2); g.fillText(w.t,0,9); g.restore(); }
-    else { g.fillStyle='#fff'; g.font='900 44px Rubik,sans-serif'; g.fillText(w.t,0,-R+74); g.font='700 22px Rubik,sans-serif'; g.fillText(w.s,0,-R+104); }
+    else { g.fillStyle='#fff'; g.font='900 44px Rubik,sans-serif'; g.fillText(w.t,0,-R+74); g.font='700 22px Rubik,sans-serif'; g.fillText('מטבעות',0,-R+104); }
     g.restore(); });
   g.beginPath(); g.arc(R,R,R-6,0,7); g.lineWidth=10; g.strokeStyle='#fff'; g.stroke(); g.beginPath(); g.arc(R,R,46,0,7); g.fillStyle='#fff'; g.fill(); g.fillStyle='#f55304'; g.font='900 26px Rubik,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BT',R,R); g.textBaseline='alphabetic'; }
 let wheelTurn=0;
@@ -2614,8 +2626,7 @@ function renderProg(){ const l=Prog.level(), x=Prog.d.xp, a=LEVELS[l-1], b=LEVEL
   $('#progTitle').textContent='רמה '+l; $('#lvNum').textContent=l; $('#lvCoins').textContent=Coins.n.toLocaleString('he-IL');
   $('#lvXp').textContent=b?`${x-a} / ${b-a} נקודות לרמה ${l+1}`:`${x} נקודות · הרמה הכי גבוהה`; $('#lvFill').style.width=(b?Math.min(100,(x-a)/(b-a)*100):100)+'%';
   $('#lvNext').textContent=b&&REWARDS[l+1]?'בפרס הבא: '+REWARDS[l+1].t:'';
-  $('#spinLogin').hidden=Acct.state==='in';
-  const cp=Prog.d.coupon; if(cp&&cp.endsAt&&new Date(cp.endsAt)>new Date()) showWin(cp); else $('#winCard').hidden=true;
+  renderLoyal();
   const spun=Prog.d.spin===today(); $('#spinBtn').disabled=spun; $('#spinBtn').textContent=spun?'חוזרים מחר לסיבוב הבא ⏰':'מסובבים!'; $('#spinSub').textContent=spun?'כבר סובבתם היום':'סיבוב אחד בחינם כל יום';
   const dz=$('#dances'); dz.innerHTML=''; DANCES.forEach(dn=>{ const bt=document.createElement('button'), ok=l>=dn.lvl; bt.disabled=!ok; bt.innerHTML=`<span>${ok?dn.ic:'🔒'}</span><small>${ok?dn.n:'רמה '+dn.lvl}</small>`; bt.onclick=()=>{ closeProg(); startDance(dn.id); }; dz.appendChild(bt); });
   const rw=$('#rewards'); rw.innerHTML=''; Object.keys(REWARDS).forEach(k=>{ const li=document.createElement('li'), got=l>=+k; li.className=got?'got':''; li.innerHTML=`<b>${k}</b><span></span><i>${got?'✓ שלכם':'רמה '+k}</i>`; li.querySelector('span').textContent=REWARDS[k].t; rw.appendChild(li); }); }
@@ -2626,30 +2637,40 @@ $('#inviteBtn').addEventListener('click',async()=>{ const ok=await shareMallDone
   if(Prog.d.shared===today()) return toast('תודה ששיתפתם! המטבעות על שיתוף ניתנים פעם ביום');
   Prog.d.shared=today(); Prog.save(); addCoins(30); Prog.add(20); toast('תודה ששיתפתם! +30 מטבעות 🎉','good'); renderProg(); });
 function spinTo(idx,done){ const G=wheelGeom(), target=((-90-G[idx].c)%360+360)%360, cur=((wheelTurn%360)+360)%360;
-  const span=WHEEL[idx].gold?12:(360-12*4)/6, jitter=(Math.random()-.5)*span*.5;
+  const span=G[idx].a1-G[idx].a0, jitter=(Math.random()-.5)*span*.5;
   wheelTurn+=360*5+((target-cur+360)%360)+jitter; $('#wheel').style.transform=`rotate(${wheelTurn}deg)`; Sound.sale(); buzz(20); setTimeout(done,3700); }
 function idxFor(id){ const all=WHEEL.map((w,i)=>w.id===id?i:-1).filter(i=>i>=0); return all.length?all[(Math.random()*all.length)|0]:0; }
-function showWin(cp){ if(!cp||!cp.code){ $('#winCard').hidden=true; return; } const end=new Date(cp.endsAt);
-  $('#winTitle').textContent='🎉 זכיתם ב־'+cp.label+'!'; $('#winCode').textContent=cp.code;
-  $('#winTerms').textContent=(cp.min?'בהזמנה מעל ₪'+cp.min+' · ':'')+'לשימוש אחד · תקף עד '+end.toLocaleDateString('he-IL'); $('#winCard').hidden=false; }
-$('#winCopy').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText($('#winCode').textContent); toast('הקוד הועתק','good'); }catch(e){ toast($('#winCode').textContent); } });
-$('#winApply').addEventListener('click',async()=>{ const code=$('#winCode').textContent;
-  const j=await scFetch({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'coupon',code})});
-  if(j){ scRefresh(true); toast(j.couponError?j.couponError:'הקופון הופעל בעגלה ✓',j.couponError?'bad':'good'); } else toast('לא הצלחנו להפעיל. אפשר להקליד את הקוד בקופה','bad'); });
+/* the loyalty card: the shop's count of this account's check-ins, and the coupons still usable */
+let Loyal=null;
+function renderLoyal(){ const L=Loyal, inA=Acct.state==='in';
+  $('#spinLogin').hidden=inA;
+  const w=$('#lrWelcome'); w.classList.toggle('done',!!(L&&L.welcomeGiven)); w.querySelector('i').textContent=L&&L.welcomeGiven?'✓ קיבלתם':'';
+  const st=L?L.streak:0, td=L?L.totalDays:0, k=st%7;
+  $('#lrStreak small').textContent=inA?(st?`${st} ימים ברצף · עוד ${7-k||7} לקופון הבא`:'מתחילים היום: סובבו את הגלגל'):'למחוברים בלבד'; $('#lrStreak .lvbar i').style.width=(inA?(k/7*100):0)+'%';
+  $('#lrDays small').textContent=inA?(td>=30?'✓ הושג':`${td} מתוך 30 ימים`):'למחוברים בלבד'; $('#lrDays .lvbar i').style.width=(inA?Math.min(100,td/30*100):0)+'%'; $('#lrDays').classList.toggle('done',td>=30);
+  const box=$('#myCoupons'); box.innerHTML='';
+  (L&&L.coupons||[]).forEach(cp=>{ const el=document.createElement('div'); el.className='wincard';
+    el.innerHTML='<b></b><div class="wcode"><span dir="ltr"></span><button class="cp">העתקה</button></div><small></small><button class="btn1 ap">הפעלה בעגלה</button>';
+    el.querySelector('b').textContent='🎁 '+cp.label; el.querySelector('span').textContent=cp.code;
+    el.querySelector('small').textContent=(cp.min?'בהזמנה מעל ₪'+cp.min+' · ':'')+'לשימוש אחד · בתוקף עד '+new Date(cp.endsAt).toLocaleDateString('he-IL');
+    el.querySelector('.cp').onclick=async()=>{ try{ await navigator.clipboard.writeText(cp.code); toast('הקוד הועתק','good'); }catch(e){ toast(cp.code); } };
+    el.querySelector('.ap').onclick=async()=>{ const j=await scFetch({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'coupon',code:cp.code})});
+      if(j){ scRefresh(true); toast(j.couponError?j.couponError:'הקופון הופעל בעגלה ✓',j.couponError?'bad':'good'); } else toast('לא הצלחנו להפעיל. אפשר להקליד את הקוד בקופה','bad'); };
+    box.appendChild(el); }); }
 $('#spinLogin').addEventListener('click',()=>{ location.href=LOGIN_URL; });
-async function spinSync(){ if(Acct.state!=='in') return; try{ const r=await fetch(SPIN_API,{credentials:'include',cache:'no-store'}); const j=await r.json();
-  if(j.today){ Prog.d.spin=today(); Prog.save(); if(j.today.prize==='coupon'){ Prog.d.coupon=j.today; Prog.save(); } if(!progEl.hidden) renderProg(); } }catch(e){} }
+async function spinSync(){ if(Acct.state!=='in'){ renderLoyal(); return; } try{ const r=await fetch(SPIN_API,{credentials:'include',cache:'no-store'}); const j=await r.json();
+  if(j.status){ Loyal=j.status; if(Loyal.checkedInToday){ Prog.d.spin=today(); Prog.save(); } } }catch(e){} renderLoyal(); if(!progEl.hidden) renderProg(); }
 $('#spinBtn').addEventListener('click',async()=>{ if(Prog.d.spin===today()) return; $('#spinBtn').disabled=true;
   if(Acct.state==='in'){
     let j=null; try{ const r=await fetch(SPIN_API,{method:'POST',credentials:'include',cache:'no-store'}); j=await r.json(); }catch(e){}
-    if(!j||!j.result){ $('#spinBtn').disabled=false; return toast('הגלגל לא זמין כרגע. נסו שוב עוד רגע','bad'); }
-    const res=j.result; Prog.d.spin=today(); Prog.save();
-    spinTo(idxFor(res.id),()=>{ Prog.add(10); Sound.cash(); buzz([30,40,30]);
-      if(res.prize==='coins'){ if(j.fresh) addCoins(res.coins); toast(`זכיתם ב־${res.coins} מטבעות! 🎉`,'good'); }
-      else { Prog.d.coupon=res; Prog.save(); showWin(res); toast('🎉 זכיתם ב־'+res.label+'!','good'); }
-      renderProg(); });
+    if(!j||!j.status){ $('#spinBtn').disabled=false; return toast('הגלגל לא זמין כרגע. נסו שוב עוד רגע','bad'); }
+    Prog.d.spin=today(); Prog.save(); Loyal=j.status;
+    const id=j.fresh?'c'+j.coins:'c10';
+    spinTo(idxFor(id),()=>{ Prog.add(10); Sound.cash(); buzz([30,40,30]);
+      if(j.fresh&&j.coins){ addCoins(j.coins); toast(`זכיתם ב־${j.coins} מטבעות! 🎉`,'good'); }
+      if(j.rewards&&j.rewards.length) setTimeout(()=>toast('🎁 קיבלתם '+j.rewards.map(r=>r.label).join(' + ')+'! הקוד מחכה לכם כאן','good'),1500);
+      renderLoyal(); renderProg(); });
     return; }
-  // guest: coins only, same weights
   const ids=Object.keys(WHEEL_COINS), tot=ids.reduce((a,k)=>a+WHEEL_COINS[k][1],0); let r=Math.random()*tot, id=ids[0]; for(const k of ids){ r-=WHEEL_COINS[k][1]; if(r<0){ id=k; break; } }
   Prog.d.spin=today(); Prog.save();
   spinTo(idxFor(id),()=>{ const n=WHEEL_COINS[id][0]; addCoins(n); Prog.add(10); Sound.cash(); buzz([30,40,30]); toast(`זכיתם ב־${n} מטבעות! 🎉`,'good'); renderProg(); }); });
