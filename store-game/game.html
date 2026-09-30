@@ -372,6 +372,7 @@
   .sum .r b{font-size:22px;font-weight:800;color:#fff;}
   .sum .btn1,.sum .btn2{height:46px;}
   .sum .btn2{background:rgba(255,255,255,.1);color:#fff;}
+  .sum .paynow{background:linear-gradient(180deg,#27b872,#1a9a5c);box-shadow:0 3px 0 #127146;font-size:16px;}
   .citem{display:grid;grid-template-columns:56px 1fr;gap:10px;padding:10px;border-radius:16px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .citem img,.citem .ph{width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f4f5f9;}
   .citem .ph{display:grid;place-items:center;font-size:10px;font-weight:700;color:#9aa0b4;}
@@ -2333,7 +2334,11 @@ function renderCart(){
   sum.innerHTML='<div class="r"><span>'+(its.length?its.length+' מוצרים בעגלה':'העגלה ריקה')+'</span><b class="num"></b></div>'+(saved?'<div class="r"><span>חוסכים במבצעים</span><span class="num" style="color:#43d18b;font-weight:700"></span></div>':'');
   sum.querySelector('b').textContent=shekel(total); if(saved) sum.querySelectorAll('.r')[1].lastChild.textContent=shekel(saved);
   if(CHECKOUT_URL && its.length){ const a=document.createElement('a'); a.className='btn1'; a.target='_blank'; a.rel='noopener'; a.href=utm(CHECKOUT_URL.replace('{items}',its.map(i=>encodeURIComponent(i.slug)).join(',')),'cart-panel'); a.textContent='לתשלום באתר · '+shekel(total); sum.appendChild(a); }
-  const go=document.createElement('button'); go.className=its.length?'btn1':'btn2'; go.textContent=its.length?'סע לקופות':'המשך לקנות'; go.addEventListener('click',()=>{ closeCart(); if(its.length) driveTo(deptGoal(DEPTS.find(d=>d.id==='checkout'))); }); sum.appendChild(go);
+  /* one way to pay: straight from the cart to the shop's checkout, over the mall. The walk to the
+     checkout counters and the receipt is still there for whoever goes that way, but nobody has to. */
+  const payNow=its.length&&CHECKOUT_URL;
+  const go=document.createElement('button'); go.className=its.length?'btn1 paynow':'btn2'; go.textContent=payNow?'לתשלום · '+shekel(cartTotal()):its.length?'סע לקופות':'המשך לקנות';
+  go.addEventListener('click',()=>{ closeCart(); if(payNow){ const u=buyUrl(its,'cart'); if(CO_INSIDE) openCheckout(u); else { handOff(u); open(u,IN_APP?'_self':'_blank'); } } else if(its.length) driveTo(deptGoal(DEPTS.find(d=>d.id==='checkout'))); }); sum.appendChild(go);
   const sh=document.createElement('button'); sh.className='btn2'; sh.textContent='שתפו את הקניון עם חברים'; sh.addEventListener('click',shareMall); sum.appendChild(sh);
   const me=document.createElement('button'); me.className='btn2'; me.textContent='עריכת הדמות שלי'; me.addEventListener('click',()=>{ closeCart(); openCreator(true); }); sum.appendChild(me);
   body.appendChild(sum);
