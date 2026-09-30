@@ -987,7 +987,9 @@ function buildShell(){
     plane(L,1.05,M.pane,cx,FH+.55,cz,r); const h=box(L,.08,.1,M.yellow,cx,FH+1.1,cz); h.rotation.y=r;
     for(let k=0;k<=L;k+=2){ const t=k/L; box(.07,1.1,.07,M.steel,x0+(x1-x0)*t,FH+.55,z0+(z1-z0)*t); }
     solid(1,cx,cz,Math.abs(x1-x0)+.25,Math.abs(z1-z0)+.25,'rail'); };
-  rail(VOID.minX,VOID.minZ,VOID.minX,VOID.maxZ); rail(VOID.maxX,VOID.minZ,VOID.maxX,VOID.maxZ); rail(VOID.minX,VOID.maxZ,VOID.maxX,VOID.maxZ);
+  rail(VOID.minX,VOID.minZ,VOID.minX,VOID.maxZ); rail(VOID.maxX,VOID.minZ,VOID.maxX,VOID.maxZ);
+  // the south rail stops where the two escalators arrive (x ±5)
+  rail(VOID.minX,VOID.maxZ,-5.9,VOID.maxZ); rail(-4.1,VOID.maxZ,4.1,VOID.maxZ); rail(5.9,VOID.maxZ,VOID.maxX,VOID.maxZ);
   rail(VOID.minX,VOID.minZ,SH.x0,VOID.minZ); rail(SH.x1,VOID.minZ,VOID.maxX,VOID.minZ);
   rail(SH.x0,VOID.minZ,SH.x0,SH.z0); rail(SH.x1,VOID.minZ,SH.x1,SH.z0);
   noSpawn[1].push({minX:VOID.minX-.5,maxX:VOID.maxX+.5,minZ:VOID.minZ-.5,maxZ:VOID.maxZ+.5});
@@ -997,6 +999,57 @@ function buildShell(){
   // atrium banners
   banner('מבצעים חמים','BuyToday',-7.3,9.8,5.2,Math.PI/2); banner('הדרך החכמה','BuyToday',7.3,9.8,5.2,-Math.PI/2);
 }
+
+/* ---------- escalators ----------
+   A pair in the atrium between the ground floor and floor 1: up on the east side, down on the west.
+   Walking onto the foot of one rides it, at an easy pace with nothing to press, and lets you off on
+   the other floor a step past the comb. The elevator is still there, and the only way to the roof
+   (it has no opening for stairs); the map's floor jump does all three. */
+const ESC_RISE=FH, ESC_RUN=10.4, ESC_Z0=-3.2, ESC_Z1=ESC_Z0+ESC_RUN;   // bottom at z -3.2, top on the floor-1 slab edge (z 7.2)
+const ESCS=[{x:5,up:true},{x:-5,up:false}];
+let escRide=null; const ESC_STEPS=[];
+function buildEscalators(){
+  const L=Math.hypot(ESC_RUN,ESC_RISE), ang=Math.atan2(ESC_RISE,ESC_RUN);
+  const stepTex=canvasTex(64,256,(g,W,H)=>{ g.fillStyle='#3b3f4c'; g.fillRect(0,0,W,H); for(let y=0;y<H;y+=16){ g.fillStyle='#565b6b'; g.fillRect(0,y,W,11); g.fillStyle='#ffd166'; g.fillRect(0,y+11,W,2); } });
+  ESCS.forEach(e=>{
+    const g=new THREE.Group(); scene.add(g);
+    const tex=stepTex.clone(); tex.needsUpdate=true; tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(1,L*1.6); ESC_STEPS.push({tex,up:e.up});
+    const tread=new THREE.Mesh(new THREE.PlaneGeometry(1.25,L),new THREE.MeshStandardMaterial({map:tex,roughness:.6,metalness:.3}));
+    tread.rotation.x=-Math.PI/2+ang; tread.position.set(e.x,ESC_RISE/2+.02,(ESC_Z0+ESC_Z1)/2); g.add(tread);
+    // truss under the steps, glass sides with a black handrail, and a lit comb at both ends
+    const truss=new THREE.Mesh(new THREE.BoxGeometry(1.7,.7,L),mat(0xc9ccd6,{roughness:.4,metalness:.5})); truss.rotation.x=-ang; truss.position.set(e.x,ESC_RISE/2-.38,(ESC_Z0+ESC_Z1)/2); g.add(truss);
+    [-1,1].forEach(sd=>{ const holder=new THREE.Group(); holder.position.set(e.x+sd*.72,ESC_RISE/2+.55,(ESC_Z0+ESC_Z1)/2); holder.rotation.x=-ang; g.add(holder);
+      const gl=new THREE.Mesh(new THREE.PlaneGeometry(L,.95),M.pane); gl.rotation.y=Math.PI/2; holder.add(gl);
+      const hr=new THREE.Mesh(new THREE.BoxGeometry(.09,.09,L+.4),mat(0x15171f,{roughness:.5})); hr.position.set(0,.5,0); holder.add(hr);
+      const ed=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,L),M.led); ed.position.set(0,-.46,0); holder.add(ed); });
+    [[0,ESC_Z0-.6],[ESC_RISE,ESC_Z1+.6]].forEach(([y,z])=>{ box(1.7,.04,1.2,M.steel,e.x,y+.02,z,null,false); box(1.3,.03,.08,e.up?M.glowGreen:M.ledPink,e.x,y+.05,z+(y?-.55:.55),null,false); });
+    // a sign at the foot, where you get on
+    const onZ=e.up?ESC_Z0-1.3:ESC_Z1+1.3, onY=e.up?0:FH;
+    const sg=new THREE.MeshBasicMaterial({map:canvasTex(256,96,(c,W,H)=>{ c.fillStyle=e.up?'#1f9d62':'#d6336c'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.textAlign='center'; c.direction='rtl'; c.font='800 34px Rubik,sans-serif'; c.fillText(e.up?'⬆ לקומה 1':'⬇ לקרקע',W/2,58); })});
+    [0,Math.PI].forEach(r=>plane(1.3,.5,sg,e.x,onY+2.35,onZ+(r?-.02:.02),r));
+    box(.06,2.2,.06,M.dark,e.x-.62,onY+1.1,onZ,null,false); box(.06,2.2,.06,M.dark,e.x+.62,onY+1.1,onZ,null,false);
+    // floor 0: nobody walks through the truss; the foot of the up escalator stays open
+    solidR(0,e.x-.95,e.x+.95,ESC_Z0+(e.up?0:-1.2),ESC_Z1+.2);
+    // floor 1: the gap in the rail leads onto the escalator only, never out over the atrium
+    solidR(1,e.x-.95,e.x+.95,ESC_Z1-3,ESC_Z1-.15);
+  });
+}
+/* walking onto the foot (the right floor, lined up) starts the ride */
+function escCheck(){ if(escRide||elev.rider||elev.moving) return;
+  const p=player.pos, f=player.floor;
+  // the trolley is pushed ahead, so the player stops about two metres short of the foot: that is the step on
+  const fw=Math.cos(player.yaw);
+  for(const e of ESCS){ if(Math.abs(p.x-e.x)>.75) continue;
+    if(e.up&&f===0&&fw>.5&&p.z>ESC_Z0-2.6&&p.z<ESC_Z0-.4){ escRide={e,t:0,from:0,to:1}; break; }
+    if(!e.up&&f===1&&fw<-.5&&p.z<ESC_Z1+2.6&&p.z>ESC_Z1+.4){ escRide={e,t:0,from:1,to:0}; break; } }
+  // the ride is watched from the atrium side: a camera behind the rider would be inside the escalator
+  if(escRide){ stopAuto(); player.vel.set(0,0,0); player.pos.x=escRide.e.x; player.yaw=escRide.e.up?0:Math.PI; camYaw=escRide.e.up?-Math.PI/2-.55:Math.PI/2-.55; buzz(10); } }
+function escTick(dt){ ESC_STEPS.forEach(s=>{ s.tex.offset.y+=(s.up?-1:1)*dt*.9; });
+  if(!escRide) return false; const r=escRide; r.t=Math.min(1,r.t+dt/4.2); const k=r.t;
+  const z=r.e.up?ESC_Z0+ESC_RUN*k:ESC_Z1-ESC_RUN*k, y=r.e.up?ESC_RISE*k:ESC_RISE*(1-k);
+  player.pos.set(r.e.x,y,z);
+  if(r.t>=1){ setFloor(r.to); player.pos.set(r.e.x,r.to*FH,r.e.up?ESC_Z1+1.5:ESC_Z0-1.7); escRide=null; toast(r.to?'הגעתם לקומה 1':'הגעתם לקומת הקרקע'); }
+  return true; }
 
 /* ---------- glass elevator ---------- */
 const elev={y:0,floor:0,moving:false,from:0,to:0,t:0,rider:false,door:[1,0,0],doorSolid:[],panels:[[],[],[]],cabin:null};
@@ -1659,7 +1712,7 @@ function buildKiosks(){
     solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
   });
 }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildEscalators(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -2766,6 +2819,8 @@ let frame=0, bubbleT=4, shopperLine=null;
 const SHOPPER_LINES=['יש לכם את זה בשחור?','רק מסתכל…','איפה המעלית?','זה במבצע?','וואו, איזה מסך','חיפשתי כבל HDMI'];
 
 function updatePlayer(dt){
+  if(escTick(dt)){ hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw; animGuy(hero,0,dt,true); return; }
+  escCheck();
   let ix=joy.x, iy=joy.y;
   if(keys.KeyA||keys.ArrowLeft) ix-=1; if(keys.KeyD||keys.ArrowRight) ix+=1; if(keys.KeyW||keys.ArrowUp) iy-=1; if(keys.KeyS||keys.ArrowDown) iy+=1;
   let mag=Math.hypot(ix,iy); if(mag>1){ ix/=mag; iy/=mag; mag=1; }
