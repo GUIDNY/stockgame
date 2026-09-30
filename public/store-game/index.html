@@ -372,6 +372,13 @@
   .sum .r b{font-size:22px;font-weight:800;color:#fff;}
   .sum .btn1,.sum .btn2{height:46px;}
   .sum .btn2{background:rgba(255,255,255,.1);color:#fff;}
+  .sum .cnote{display:block;margin:-2px 0 4px;font-size:11.5px;color:#aab0c6;}
+  .citem .qty{display:flex;align-items:center;gap:2px;border:1px solid #e3e6ee;border-radius:11px;overflow:hidden;background:#fff;}
+  .citem .qty button{width:38px;height:38px;font-size:17px;font-weight:800;color:#161a2b;background:#f1f3f8;}
+  .citem .qty button:disabled{opacity:.35;} .citem .qty span{min-width:28px;text-align:center;font-weight:800;color:#161a2b;}
+  .citem .lnk{height:38px;padding:0 14px;border-radius:11px;background:#f1f3f8;border:1px solid #e3e6ee;color:#2a3150;font-weight:800;font-size:13px;text-decoration:none;display:flex;align-items:center;}
+  #cartBody .citem .acts{display:flex;grid-template-columns:none;gap:8px;align-items:center;justify-content:space-between;}
+  #cartBody .citem .qty{flex:none;width:max-content;}
   .sum .paynow{background:linear-gradient(180deg,#27b872,#1a9a5c);box-shadow:0 3px 0 #127146;font-size:16px;}
   .citem{display:grid;grid-template-columns:56px 1fr;gap:10px;padding:10px;border-radius:16px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .citem img,.citem .ph{width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f4f5f9;}
@@ -1922,7 +1929,7 @@ function renderQuest(force){
   $('#mhSub').textContent=d?(FLOOR_SHORT[player.floor]+' · '+$('#nextMeta').textContent):'לחצו למפת הקניון';
 }
 function renderList(){ renderQuest(true); }
-function renderMoney(){ ui.money.textContent=shekel(cartTotal()); }
+function renderMoney(){ ui.money.textContent=shekel(SC.ok?SC.subtotal:cartTotal()); }
 
 function resetGame(){
   stopAuto(); G.paused=false; dirEl.hidden=true; cartEl.hidden=true;
@@ -1942,7 +1949,7 @@ function enterMall(){
   avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
   resetGame(); G.state='play'; ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
-  requestAnimationFrame(()=>{ joyHome(); joyTeach(); }); Prog.newDay();
+  requestAnimationFrame(()=>{ joyHome(); joyTeach(); }); Prog.newDay(); scLoad();
   if(coPending){ coPending=false; setTimeout(()=>openCheckout(utm(SITE+'/checkout','signin-return')),400); }
   const rs=loadResume();
   if(rs){ setFloor(rs.f); player.pos.set(clamp(rs.x,-BX+1,BX-1),rs.f*FH,clamp(rs.z,-BZ+1,BZ-1)); player.yaw=rs.yaw||0; camYaw=player.yaw+Math.PI;
@@ -2047,7 +2054,7 @@ async function acctLoad(){
       if(pr){ const a=unpackAv([pr.girl?1:0,pr.skin,pr.hair,pr.shirt,pr.pants,AV_BOTTOM.indexOf(pr.bottom),AV_EXTRA.indexOf(pr.extra)]);
         const keep=AV_EXTRA.indexOf(avatar.extra)>2?{extra:avatar.extra}:{};
         setAvatar(Object.assign({},a,{name:cleanName(pr.name)||avatar.name,merch:avatar.merch||'none'},keep)); saveAvatar(); Acct.saved=JSON.stringify(profileOf(avatar)); if(G.state!=='play') renderCreator(); }
-      else acctSave(); }
+      adoptProgress(j.progress); acctSave(); }
     else Acct.state='out'; }
   catch(e){ Acct.state='none'; }
   renderAcct();
@@ -2055,8 +2062,17 @@ async function acctLoad(){
   if(/[?&]signedin=1/.test(location.search)){ try{ history.replaceState(null,'',location.pathname); }catch(e){}
     if(Acct.state==='in') toast(Acct.first?`מחוברים, ${Acct.first}. הדמות נשמרת בחשבון`:'מחוברים. הדמות נשמרת בחשבון','good'); }
 }
-function acctSave(){ if(Acct.state!=='in') return; const pr=profileOf(avatar), k=JSON.stringify(pr); if(k===Acct.saved) return;
-  fetch(ACCT_API,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:pr})}).then(r=>{ if(r.ok) Acct.saved=k; }).catch(()=>{}); }
+/* the level, coins and wardrobe go to the account with the character, so they follow the player to
+   any phone or computer (a signed-in player only; a guest keeps them on this device) */
+function progressOf(){ const d=Prog.d; return {xp:d.xp,coins:Coins.n,owned:Coins.owned.slice(),got:d.got.slice(),streak:d.streak|0,day:d.day||'',spin:d.spin||'',shared:d.shared||''}; }
+function acctSave(){ if(Acct.state!=='in') return; const pr=profileOf(avatar), pg=progressOf(), k=JSON.stringify([pr,pg]); if(k===Acct.saved) return;
+  fetch(ACCT_API,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:pr,progress:pg})}).then(r=>{ if(r.ok) Acct.saved=k; }).catch(()=>{}); }
+let acctT=0; function acctSaveSoon(){ if(Acct.state!=='in') return; clearTimeout(acctT); acctT=setTimeout(acctSave,1500); }
+/* whichever has come further wins: the account's progress on a new device, this device's the first
+   time a player who has been playing as a guest signs in. Clothes owned on either are kept. */
+function adoptProgress(pg){ if(!pg||typeof pg!=='object'||!(pg.xp>=Prog.d.xp)) return;
+  Object.assign(Prog.d,{xp:pg.xp,got:pg.got||[],streak:pg.streak|0,day:pg.day||Prog.d.day,spin:pg.spin||'',shared:pg.shared||''}); Prog.save();
+  Coins.n=pg.coins|0; Coins.owned=[...new Set([...(pg.owned||[]),...Coins.owned])]; saveCoins(); renderCoins(); renderLv(); }
 
 /* ---------- input ---------- */
 const joy={x:0,y:0,id:null};
@@ -2120,6 +2136,7 @@ function doAction(){
   if(near.type==='item'){
     const it=near.it;
     it.taken=true; it.ring.visible=false; it.tag.visible=false; Prog.cart();
+    if(it.slug) scPost('add',it.slug).then(j=>{ if(j&&j.error==='unavailable') toast('המוצר אזל מהמלאי באתר','bad'); });
     const fm=it.model.clone(); const wp=new THREE.Vector3(); it.model.getWorldPosition(wp); fm.position.copy(wp); fm.scale.copy(it.model.scale); scene.add(fm);
     it.model.visible=false; flyers.push({m:fm,from:wp.clone(),t:0,it});
     Sound.pickup(); renderMoney(); renderList();
@@ -2131,7 +2148,8 @@ function doAction(){
   } else if(near.type==='kiosk'){
     openCatalog(near.d);
   } else if(near.type==='checkout'){
-    openReceipt();
+    if(SC.ok&&CO_INSIDE){ if(SC.count){ clearTrolley(); openCheckout(utm(SITE+'/checkout','counters')); } else toast('העגלה ריקה. בחרו מוצרים במחלקות','bad'); }
+    else openReceipt();
   }
 }
 function addToCart(it){
@@ -2324,37 +2342,50 @@ $('#catSearch').addEventListener('keyup',e=>e.stopPropagation());
 $('#catScroll').addEventListener('scroll',()=>{ const s=$('#catScroll'); if(catShown<catList.length&&s.scrollTop+s.clientHeight>s.scrollHeight-1200) catMore(); },{passive:true});
 const cartEl=$('#cartp');
 function cartItems(){ return CATALOG.filter(i=>i.taken); }
-function updateCartBadge(bump){ const n=cartItems().length; $('#cartCount').textContent=n?String(n):''; $('#actCount').textContent=n?String(n):''; if(bump){ const b=$('#cartBtn'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
+/* ---------- the cart is the shop's ----------
+   One cart: what the game shows and what the checkout charges are the same thing, the cart this
+   browser has on buytoday.co.il (the account's when signed in). /api/game/cart reads and changes it.
+   Picking a product up in the mall adds it there; the trolley is only the picture of it. If the shop
+   cannot be reached (the preview copy of the game, no connection) the game falls back to its own
+   list and hands it over at checkout, as before. */
+const CART_API=SITE+'/api/game/cart';
+const SC={ok:false,items:[],count:0,subtotal:0};
+async function scFetch(opt){ try{ const r=await fetch(CART_API,Object.assign({credentials:'include',cache:'no-store'},opt||{})); const j=await r.json(); if(!Array.isArray(j.items)) throw 0;
+  SC.ok=true; SC.items=j.items; SC.count=j.count|0; SC.subtotal=+j.subtotal||0; return j; }catch(e){ return null; } }
+function scRefresh(bump){ updateCartBadge(bump); renderMoney(); if(!cartEl.hidden) renderCart(); }
+/* the shop is the truth: a product the trolley still shows but the cart no longer has (removed at the
+   checkout, bought) goes back on its shelf */
+function scSyncShelves(){ if(!SC.ok) return; let ch=0; cartItems().forEach(it=>{ if(!SC.items.some(x=>x.slug===it.slug)){ it.taken=false; it.model.visible=true; it.tag.visible=true; it.ring.visible=it.wanted; ch++; } });
+  if(ch){ rebuildCart(); renderList(); saveResume(); } }
+function scLoad(){ return scFetch().then(j=>{ if(j) scSyncShelves(); scRefresh(); }); }
+function scPost(action,slug,qty){ return scFetch({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,slug,qty})}).then(j=>{ scRefresh(true); return j; }); }
+function clearTrolley(){ let ch=0; cartItems().forEach(it=>{ it.taken=false; it.model.visible=true; it.tag.visible=true; it.ring.visible=it.wanted; ch++; }); if(ch){ rebuildCart(); renderList(); saveResume(); } }
+function updateCartBadge(bump){ const n=SC.ok?SC.count:cartItems().length; $('#cartCount').textContent=n?String(n):''; $('#actCount').textContent=n?String(n):''; if(bump){ const b=$('#cartBtn'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
 function rebuildCart(){ while(cart.load.children.length) cart.load.remove(cart.load.children[0]); cart.count=0; cartItems().forEach(it=>{ if(!flyers.some(f=>f.it===it)) addToCart(it); }); }
-function returnItem(it){ if(!it.taken) return; it.taken=false; it.model.visible=true; it.ring.visible=it.wanted; rebuildCart(); renderMoney(); renderList(); updateCartBadge(); renderCart(); toast(it.name+' חזר למדף'); }
+function returnItem(it){ if(!it.taken) return; if(SC.ok&&it.slug) scPost('remove',it.slug); it.taken=false; it.model.visible=true; it.ring.visible=it.wanted; rebuildCart(); renderMoney(); renderList(); updateCartBadge(); renderCart(); toast(it.name+' חזר למדף'); }
 function renderCart(){
-  const body=$('#cartBody'); body.innerHTML=''; const its=cartItems(), total=its.reduce((a,b)=>a+b.price,0);
-  const saved=cartSaved();
+  const body=$('#cartBody'); body.innerHTML='';
+  const site=SC.ok, rows=site?SC.items:cartItems().map(it=>({slug:it.slug,title:it.full,brand:it.brand,image:it.img,price:it.price,qty:1,max:1,it}));
+  const count=site?SC.count:rows.length, total=site?SC.subtotal:cartTotal();
   const sum=document.createElement('div'); sum.className='sum';
-  sum.innerHTML='<div class="r"><span>'+(its.length?its.length+' מוצרים בעגלה':'העגלה ריקה')+'</span><b class="num"></b></div>'+(saved?'<div class="r"><span>חוסכים במבצעים</span><span class="num" style="color:#43d18b;font-weight:700"></span></div>':'');
-  sum.querySelector('b').textContent=shekel(total); if(saved) sum.querySelectorAll('.r')[1].lastChild.textContent=shekel(saved);
-  if(CHECKOUT_URL && its.length){ const a=document.createElement('a'); a.className='btn1'; a.target='_blank'; a.rel='noopener'; a.href=utm(CHECKOUT_URL.replace('{items}',its.map(i=>encodeURIComponent(i.slug)).join(',')),'cart-panel'); a.textContent='לתשלום באתר · '+shekel(total); sum.appendChild(a); }
-  /* one way to pay: straight from the cart to the shop's checkout, over the mall. The walk to the
-     checkout counters and the receipt is still there for whoever goes that way, but nobody has to. */
-  const payNow=its.length&&CHECKOUT_URL;
-  const go=document.createElement('button'); go.className=its.length?'btn1 paynow':'btn2'; go.textContent=payNow?'לתשלום · '+shekel(cartTotal()):its.length?'סע לקופות':'המשך לקנות';
-  go.addEventListener('click',()=>{ closeCart(); if(payNow){ const u=buyUrl(its,'cart'); if(CO_INSIDE) openCheckout(u); else { handOff(u); open(u,IN_APP?'_self':'_blank'); } } else if(its.length) driveTo(deptGoal(DEPTS.find(d=>d.id==='checkout'))); }); sum.appendChild(go);
-  const sh=document.createElement('button'); sh.className='btn2'; sh.textContent='שתפו את הקניון עם חברים'; sh.addEventListener('click',shareMall); sum.appendChild(sh);
-  const me=document.createElement('button'); me.className='btn2'; me.textContent='עריכת הדמות שלי'; me.addEventListener('click',()=>{ closeCart(); openCreator(true); }); sum.appendChild(me);
-  body.appendChild(sum);
-  if(its.length){ const h=document.createElement('div'); h.className='sect'; h.textContent='מה שבעגלה'; body.appendChild(h);
-    its.forEach(it=>{ const el=document.createElement('div'); el.className='citem';
-      el.innerHTML=(it.img?'<img alt="">':'<div class="ph"></div>')+'<div class="t"><small style="font-size:11px;color:#8a90a3;font-weight:700"></small><b dir="auto"></b><em class="num"></em></div><div class="acts"><a class="btn1" target="_blank" rel="noopener">לעמוד המוצר ↗</a><button>החזרה למדף</button></div>';
-      if(it.img) el.querySelector('img').src=it.img; else el.querySelector('.ph').textContent=it.brand||'BuyToday';
-      el.querySelector('small').textContent=it.brand||''; el.querySelector('b').textContent=it.full; el.querySelector('em').textContent=shekel(it.price);
-      if(it.old){ const s=document.createElement('s'); s.textContent=shekel(it.old); el.querySelector('em').appendChild(s); }
-      el.querySelector('a').href=utm(it.url,'cart-panel'); el.querySelector('.acts button').addEventListener('click',()=>returnItem(it)); body.appendChild(el); }); }
-  const h2=document.createElement('div'); h2.className='sect'; h2.textContent='כל הקטגוריות באתר'; body.appendChild(h2);
-  const grid=document.createElement('div'); grid.className='catgrid';
-  DEPTS.filter(d=>d.cat).forEach(d=>{ const a=document.createElement('a'); a.target='_blank'; a.rel='noopener'; a.href=utm(deptUrl(d),'cart-cat-'+d.id);
-    a.innerHTML='<span class="ico">'+svgI(ICONS[d.icon])+'</span><span></span>'; a.querySelector('.ico').style.setProperty('--c',d.color); a.lastChild.textContent=d.name; grid.appendChild(a); });
-  [['כל המבצעים ↗','/deals','deals',true],['האזור האישי ↗','/account','account'],['לאתר BuyToday ↗','/','home']].forEach(([t,p,k,wide])=>{ const a=document.createElement('a'); a.target='_blank'; a.rel='noopener'; a.href=utm(SITE+p,'cart-'+k); a.textContent=t; if(wide) a.className='wide'; else a.style.justifyContent='center'; grid.appendChild(a); });
-  body.appendChild(grid);
+  sum.innerHTML='<div class="r"><span></span><b class="num"></b></div>'; sum.querySelector('span').textContent=count?count+' מוצרים בעגלה':'העגלה ריקה'; sum.querySelector('b').textContent=shekel(total);
+  if(site) { const n=document.createElement('small'); n.className='cnote'; n.textContent='זו העגלה שלכם באתר BuyToday. מה שכאן הוא מה שמשלמים.'; sum.appendChild(n); }
+  // one button, one way to pay
+  const go=document.createElement('button'); go.className=count?'btn1 paynow':'btn2'; go.textContent=count?'לתשלום · '+shekel(total):'המשך לקנות';
+  go.addEventListener('click',()=>{ closeCart(); if(!count) return;
+    const u=site?utm(SITE+'/checkout','cart'):buyUrl(cartItems(),'cart'); if(site) clearTrolley();
+    if(CO_INSIDE) openCheckout(u); else { handOff(u); open(u,IN_APP?'_self':'_blank'); } });
+  sum.appendChild(go); body.appendChild(sum);
+  rows.forEach(r=>{ const el=document.createElement('div'); el.className='citem';
+    el.innerHTML=(r.image?'<img alt="">':'<div class="ph"></div>')+'<div class="t"><small style="font-size:11px;color:#8a90a3;font-weight:700"></small><b dir="auto"></b><em class="num"></em></div><div class="acts"><div class="qty"><button class="qm" aria-label="הפחתה"></button><span class="num"></span><button class="qp" aria-label="הוספה">+</button></div><a class="lnk" target="_blank" rel="noopener">פרטים</a></div>';
+    if(r.image) el.querySelector('img').src=r.image; else el.querySelector('.ph').textContent=r.brand||'BuyToday';
+    el.querySelector('small').textContent=r.brand||''; el.querySelector('b').textContent=r.title; el.querySelector('em').textContent=shekel(r.price*r.qty);
+    el.querySelector('.qty span').textContent=r.qty; const minus=el.querySelector('.qm'), plus=el.querySelector('.qp');
+    minus.textContent=r.qty>1?'−':'🗑'; plus.disabled=!site||r.qty>=r.max;
+    const local=r.it||CATALOG.find(i=>i.slug===r.slug&&i.taken);
+    minus.addEventListener('click',()=>{ if(site){ if(r.qty>1) scPost('set',r.slug,r.qty-1); else { scPost('remove',r.slug); if(local){ local.taken=false; local.model.visible=true; local.tag.visible=true; local.ring.visible=local.wanted; rebuildCart(); renderList(); saveResume(); } } } else if(local) returnItem(local); });
+    plus.addEventListener('click',()=>{ if(site) scPost('set',r.slug,r.qty+1); });
+    el.querySelector('.lnk').href=utm(SITE+'/product/'+r.slug,'cart-panel'); body.appendChild(el); });
 }
 
 /* ---------- product pages open over the game ----------
@@ -2387,7 +2418,8 @@ addEventListener('message',e=>{ if(e.origin!=='https://buytoday.co.il'&&e.origin
   if(d&&d.type==='bt-mall:added'){ toast((d.name?d.name+' · ':'')+'נוסף לעגלה באתר ✓','good'); buzz(20); Sound.cash(); }
   if(d&&d.type==='bt-mall:ready'&&e.source===coFrame.contentWindow) coLoad.hidden=true;
   else if(d&&d.type==='bt-mall:ready') pvLoad.hidden=true;
-  if(d&&d.type==='bt-mall:ordered') orderDone(d); });
+  if(d&&d.type==='bt-mall:ordered'){ orderDone(d); scLoad(); }
+  if(d&&d.type==='bt-mall:added') scLoad(); });
 
 /* The checkout inside the game. "קנה עכשיו" opens the shop's real checkout in a full-screen sheet
    over the mall, in a frame named "bt-mall-checkout": the shop keeps cart and checkout inside that
@@ -2423,7 +2455,7 @@ coFrame.addEventListener('load',()=>{ if(coFrame.src&&coFrame.src!=='about:blank
 function closeCheckout(){ if(coView.hidden) return; coView.hidden=true; coFrame.src='about:blank'; clearTimeout(coTimer);
   G.paused=!!(coPrev&&coPrev.paused&&(!dirEl.hidden||!cartEl.hidden||!catEl.hidden||!ui.end.hidden)); last=performance.now();
   if(Sound.music) Sound.music.volume=Sound.track%2===0&&Sound.track>0?.42:.6; }
-$('#coBack').addEventListener('click',closeCheckout);
+$('#coBack').addEventListener('click',()=>{ closeCheckout(); scLoad(); });
 // a paid order: the bar turns green, the receipt page stays in view, and a first-time thank-you in coins
 function orderDone(d){
   const no=String(d.orderNumber||'').slice(0,20); let first=true;
@@ -2454,7 +2486,7 @@ const COIN_URI='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcm
 const COIN=`<img class="coin" src="${COIN_URI}" alt="">`;
 const Coins={n:0,owned:[]};
 try{ Coins.n=Math.max(0,parseInt(localStorage.getItem('bt-coins')||'0',10)||0); Coins.owned=JSON.parse(localStorage.getItem('bt-owned')||'[]'); if(!Array.isArray(Coins.owned)) Coins.owned=[]; }catch(e){}
-function saveCoins(){ try{ localStorage.setItem('bt-coins',String(Coins.n)); localStorage.setItem('bt-owned',JSON.stringify(Coins.owned)); }catch(e){} }
+function saveCoins(){ try{ localStorage.setItem('bt-coins',String(Coins.n)); localStorage.setItem('bt-owned',JSON.stringify(Coins.owned)); }catch(e){} if(typeof acctSaveSoon==='function') acctSaveSoon(); }
 function renderCoins(bump){ $('#coinsN').textContent=Coins.n.toLocaleString('he-IL'); if(bump){ const b=$('#coins'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
 function addCoins(n){ if(n<=0) return; Coins.n+=n; saveCoins(); renderCoins(true); }
 
@@ -2470,7 +2502,7 @@ const WHEEL=[10,20,5,50,10,30,15,100];
 const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
 const Prog={d:{xp:0,day:'',streak:0,visited:[],cartXp:0,spin:'',got:[]},danceUntil:0,dance:'',
   load(){ try{ Object.assign(this.d,JSON.parse(localStorage.getItem('bt-prog')||'{}')); }catch(e){} },
-  save(){ try{ localStorage.setItem('bt-prog',JSON.stringify(this.d)); }catch(e){} },
+  save(){ try{ localStorage.setItem('bt-prog',JSON.stringify(this.d)); }catch(e){} acctSaveSoon(); },
   level(){ let l=1; for(let i=0;i<LEVELS.length;i++) if(this.d.xp>=LEVELS[i]) l=i+1; return l; },
   add(n,why){ if(n<=0) return; const before=this.level(); this.d.xp+=Math.round(n); this.save(); const after=this.level(); renderLv();
     if(after>before){ for(let l=before+1;l<=after;l++) this.grant(l); toast(`🎉 עליתם לרמה ${after}! ${REWARDS[after]?REWARDS[after].t:''}`,'good'); Sound.cash(); buzz([30,50,30]); } },
