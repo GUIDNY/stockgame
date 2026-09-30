@@ -1845,8 +1845,20 @@ function driveTo(goal){
   const sp=freeSpot(goal.f,goal.x,goal.z); if(!sp) return walkTo(goal);
   const w=$('#warp'); w.classList.add('on'); buzz(15);
   setTimeout(()=>{ setFloor(goal.f); player.pos.set(sp.x,goal.f*FH,sp.z); player.vel.set(0,0,0);
-    const dx=goal.x-sp.x, dz=goal.z-sp.z; if(Math.hypot(dx,dz)>.3) player.yaw=Math.atan2(dx,dz);
-    camYaw=player.yaw+Math.PI; hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
+    /* the camera goes where there is room behind the player (a camera against a shelf showed nothing
+       but a blurred figure), and the player faces what they came for: the product, or into the department */
+    const tx=goal.look?goal.look[0]:goal.x, tz=goal.look?goal.look[1]:goal.z, want=Math.hypot(tx-sp.x,tz-sp.z)>.3?Math.atan2(tx-sp.x,tz-sp.z):player.yaw;
+    let bestA=want+Math.PI, bestS=-1e9;
+    // room on the floor behind, and a clear line of sight to where the camera will hang (signs are not on the floor)
+    const eye=new THREE.Vector3(sp.x,goal.f*FH+1.2,sp.z), dir=new THREE.Vector3(), ray=new THREE.Raycaster(); ray.far=Math.hypot(7.6,3.7)+.8; ray.camera=camera;
+    const blockers=scene.children.filter(o=>o!==hero.g);   // not by .visible: the floor being jumped to is only switched on next frame
+    for(let k=0;k<16;k++){ const a=k*Math.PI/8; let run=0; while(run<7.6&&walkable(sp.x+Math.sin(a)*(run+.6),sp.z+Math.cos(a)*(run+.6),.3,goal.f)) run+=.4;
+      let sight=9; try{ const ok=h=>h.object.material&&!h.object.isSprite&&h.object.material!==M.pane&&h.object.material!==GLOW;
+        dir.set(Math.sin(a)*7.6,3.7,Math.cos(a)*7.6); const L=dir.length(); dir.normalize(); ray.set(eye,dir); let hit=ray.intersectObjects(blockers,true).find(ok); if(hit) sight=hit.distance;
+        // and back from the camera: a one-sided sign seen from behind is invisible to the first ray
+        const cam=eye.clone().addScaledVector(dir,L); ray.set(cam,dir.clone().negate()); hit=ray.intersectObjects(blockers,true).find(ok); if(hit&&hit.distance<L-.3) sight=Math.min(sight,L-hit.distance); }catch(e){}
+      const sc=Math.min(run,7.6)+Math.min(sight,9)*1.2+2.2*Math.cos(a-(want+Math.PI)); if(sc>bestS){ bestS=sc; bestA=a; } }
+    camYaw=bestA; player.yaw=bestA+Math.PI; hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
     camPos.set(player.pos.x+Math.sin(camYaw)*7.6,player.pos.y+4.9,player.pos.z+Math.cos(camYaw)*7.6);
     renderQuest(true); saveResume&&saveResume(); w.classList.remove('on'); if(goal.label) toast('הגעתם: '+goal.label,'good'); },170); }
 function planAuto(){ const f=player.floor, d=auto.goal;
@@ -1882,7 +1894,7 @@ function autoDir(dt){
   return null;
 }
 function itemGoal(it){ return {f:it.f,x:it.x,z:it.z,label:it.name}; }
-function deptGoal(d){ return {f:d.f,x:d.to[0],z:d.to[1],label:d.name}; }
+function deptGoal(d){ return {f:d.f,x:d.to[0],z:d.to[1],label:d.name,look:[(d.rect[0]+d.rect[1])/2,(d.rect[2]+d.rect[3])/2]}; }
 
 /* ---------- collisions ---------- */
 function pushOut(p,r,ox,oz,f){
