@@ -124,6 +124,8 @@
   #emoTray button:active,#emoBtn:active{transform:scale(.92);}
   .nametag{position:fixed;left:0;top:0;padding:2px 8px;border-radius:8px;background:rgba(15,20,44,.72);color:#fff;font-weight:700;font-size:12px;white-space:nowrap;pointer-events:none;}
   .bubble.emo{font-size:28px;padding:4px 8px;line-height:1;}
+  .bubble.emo.txt{font-size:14px;font-weight:800;padding:7px 11px;line-height:1.2;white-space:nowrap;}
+  #emoTray button.phrase{width:auto;flex:1 1 40%;height:38px;padding:0 10px;font-size:13px;font-weight:800;border-radius:11px;background:rgba(255,255,255,.1);color:#fff;white-space:nowrap;}
 
   #toast{position:fixed;left:50%;top:36%;transform:translate(-50%,6px);max-width:calc(100vw - 2*var(--g));padding:10px 16px;border-radius:14px;font-weight:700;font-size:14.5px;text-align:center;
     opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:6;}
@@ -219,6 +221,8 @@
   .wheelwrap{position:relative;width:min(280px,70vw);aspect-ratio:1;} .wheelwrap canvas{width:100%;height:100%;display:block;transition:transform 3.6s cubic-bezier(.12,.72,.16,1);}
   .wheelwrap .pin{position:absolute;left:50%;top:-6px;margin-left:-13px;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid #161a2b;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));}
   .spinbtn{width:100%;height:50px;font-size:16px;} .spinbtn:disabled{background:#c9cdd8;box-shadow:none;}
+  .invite{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:linear-gradient(90deg,#fff3ea,#ffe6d6);border:1px solid #ffd2b8;margin-bottom:14px;}
+  .invite div{flex:1;display:grid;gap:2px;} .invite b{font-size:14.5px;} .invite small{font-size:12px;color:#8a4a22;} .invite .btn1{flex:none;height:42px;padding:0 16px;}
   .progh{margin:4px 2px 8px;font-size:14px;color:#161a2b;}
   .dances{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
   .dances button{height:64px;border-radius:14px;background:#f1f3f8;border:1px solid #e3e6ee;display:grid;place-items:center;gap:1px;font-size:22px;padding:6px 4px;}
@@ -690,6 +694,7 @@
       <div class="spincard"><div class="spinhead"><b>🎡 הגלגל היומי</b><small id="spinSub">סיבוב אחד בחינם כל יום</small></div>
         <div class="wheelwrap"><canvas id="wheel" width="560" height="560"></canvas><i class="pin"></i></div>
         <button class="btn1 spinbtn" id="spinBtn">מסובבים!</button></div>
+      <div class="invite"><div><b>👯 הזמינו חבר לקניון</b><small>שיתוף פעם ביום = 30 מטבעות ו־20 נקודות</small></div><button class="btn1" id="inviteBtn">שיתוף</button></div>
       <h3 class="progh">הריקודים שלכם</h3><div class="dances" id="dances"></div>
       <h3 class="progh">פרסים לפי רמה</h3><ul class="rewards" id="rewards"></ul>
       <h3 class="progh">איך צוברים נקודות</h3>
@@ -2490,6 +2495,9 @@ function renderProg(){ const l=Prog.level(), x=Prog.d.xp, a=LEVELS[l-1], b=LEVEL
 function openProg(){ if(G.state!=='play') return; stopAuto(); G.paused=true; drawWheel(); renderProg(); progEl.hidden=false; }
 function closeProg(){ progEl.hidden=true; G.paused=false; last=performance.now(); }
 $('#progClose').addEventListener('click',closeProg);
+$('#inviteBtn').addEventListener('click',async()=>{ const ok=await shareMallDone(); if(!ok) return;
+  if(Prog.d.shared===today()) return toast('תודה ששיתפתם! המטבעות על שיתוף ניתנים פעם ביום');
+  Prog.d.shared=today(); Prog.save(); addCoins(30); Prog.add(20); toast('תודה ששיתפתם! +30 מטבעות 🎉','good'); renderProg(); });
 $('#spinBtn').addEventListener('click',()=>{ if(Prog.d.spin===today()) return; Prog.d.spin=today(); Prog.save(); $('#spinBtn').disabled=true;
   const i=(Math.random()*WHEEL.length)|0, seg=360/WHEEL.length; wheelTurn+=360*5+(360-((wheelTurn%360)))-i*seg+(Math.random()-.5)*seg*.6;
   $('#wheel').style.transform=`rotate(${wheelTurn}deg)`; Sound.sale(); buzz(20);
@@ -2678,10 +2686,11 @@ function mgLoop(now){
   MG.raf=requestAnimationFrame(mgLoop);
 }
 const SHARE_URL='https://play.buytoday.co.il/';
-async function shareMall(){
+async function shareMall(){ return shareMallDone(); }
+async function shareMallDone(){
   const data={title:'הקניון של BuyToday',text:'בואו לטייל איתי בקניון התלת־ממדי של BuyToday 🛒',url:SHARE_URL+'?utm_source=share&utm_medium=game'};
-  try{ if(navigator.share){ await navigator.share(data); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
-  try{ await navigator.clipboard.writeText(data.url); toast('הקישור הועתק. שלחו לחברים','good'); }catch(e){ toast(SHARE_URL); }
+  try{ if(navigator.share){ await navigator.share(data); return true; } }catch(e){ if(e&&e.name==='AbortError') return false; }
+  try{ await navigator.clipboard.writeText(data.url); toast('הקישור הועתק. שלחו לחברים','good'); return true; }catch(e){ toast(SHARE_URL); return false; }
 }
 function openCart(){ if(G.state!=='play') return; G.paused=true; renderCart(); cartEl.hidden=false; $('#cartScroll').scrollTop=0; }
 function closeCart(){ G.paused=false; cartEl.hidden=true; last=performance.now(); }
@@ -2847,7 +2856,10 @@ function updateArrow(t){ arrow.visible=false; return;
    Presence says who is in the room and how they look; broadcast carries where they are,
    about three times a second while they move and every twelve seconds while they stand.
    Rooms hold ROOM_CAP people each, so a phone never draws more than that. */
-const EMOJI=['👋','👍','🔥','😂','😍','🛒','💃'];
+/* 0-5 the emoji tray, 6 a dance, 7+ ready-made phrases: talking in the mall without free text, so
+   nothing anybody sends can be something a child should not read */
+const EMOJI=['👋','👍','🔥','😂','😍','🛒','💃','היי! 👋','בואו לכאן!','מצאתי מבצע 🔥','תודה!','כל הכבוד! 👏','נתראה בקופות 🛒'];
+const PHRASES=[7,8,9,10,11,12];
 const ROOM_CAP=12, ROOMS=8, SEND_EVERY=1/3, IDLE_EVERY=12, INTERP=420;
 const BAD_NAME=/(זונה|שרמוט|כוס|זין|מניאק|הומו|נאצי|fuck|shit|bitch|dick|cunt|porn|sex|nazi|hitler)/i;
 function cleanName(v){ v=String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,12); return BAD_NAME.test(v)?'':v; }
@@ -2913,7 +2925,7 @@ function netSnap(s){ if(!Array.isArray(s)||s.length<4||!s.every(Number.isFinite)
   return {t:performance.now(),x:clamp(s[0],-BX,BX),y:clamp(s[1],0,TOP*FH),z:clamp(s[2],-BZ,BZ),yaw:s[3]}; }
 function netMove(m){ const q=m&&Net.peers.get(m.i); if(!q) return; const s=netSnap(m.s); if(!s) return; q.snaps.push(s); if(q.snaps.length>8) q.snaps.shift(); }
 function netEmoIn(m){ const q=m&&Net.peers.get(m.i), now=performance.now(); if(!q||!Number.isInteger(m.e)||!EMOJI[m.e]||now-q.emoAt<800) return;
-  q.emoAt=now; q.emoUntil=now+2600; q.emo.textContent=EMOJI[m.e]; }
+  q.emoAt=now; q.emoUntil=now+2600; q.emo.textContent=EMOJI[m.e]; q.emo.classList.toggle('txt',m.e>6); }
 function netSend(){ const s=netState(); Net.sent=s; Net.sendT=SEND_EVERY; Net.idleT=0; Net.force=false;
   Net.ch.send({type:'broadcast',event:'m',payload:{i:Net.id,s}}); }
 function netTick(dt){
@@ -2941,9 +2953,10 @@ function netUpdate(dt,now){
 }
 function sendEmoji(i){ const now=performance.now(); if(!Net.ready||now-Net.emoAt<1200) return; Net.emoAt=now;
   Net.ch.send({type:'broadcast',event:'e',payload:{i:Net.id,e:i}});
-  if(!Net.selfEmo) Net.selfEmo={el:bubble('emo'),until:0}; Net.selfEmo.el.textContent=EMOJI[i]; Net.selfEmo.until=now+2600;
+  if(!Net.selfEmo) Net.selfEmo={el:bubble('emo'),until:0}; Net.selfEmo.el.textContent=EMOJI[i]; Net.selfEmo.el.classList.toggle('txt',i>6); Net.selfEmo.until=now+2600;
   emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); botsReact(); }
 EMOJI.slice(0,6).forEach((e,i)=>{ const b=document.createElement('button'); b.textContent=e; b.setAttribute('aria-label','שליחת '+e); b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
+PHRASES.forEach(i=>{ const b=document.createElement('button'); b.className='phrase'; b.textContent=EMOJI[i]; b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
 emoBtn.addEventListener('click',()=>{ emoTray.hidden=!emoTray.hidden; emoBtn.setAttribute('aria-expanded',String(!emoTray.hidden)); });
 
 /* ---------- shoppers with a cart and a name ----------
