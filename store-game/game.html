@@ -145,11 +145,25 @@
   #card s{font-size:12px;color:#8a90a3;}
   #card .note{font-size:10.5px;color:#8a90a3;}
   #card .dc{font-size:11px;font-weight:700;color:#fff;background:#e0342a;border-radius:6px;padding:1px 6px;}
-  #card .cb{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+  /* the card's actions: one big buy-now with the price, then cart and details as quiet icon tiles */
+  #card .cb{grid-column:1/-1;display:flex;gap:8px;margin-top:6px;}
+  #card .cbuy{flex:1;min-width:0;height:54px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 8px 0 16px;border-radius:15px;text-decoration:none;color:#fff;
+    background:linear-gradient(180deg,#27b872,#1a9a5c);box-shadow:0 3px 0 #127146,0 8px 18px rgba(31,157,98,.28);}
+  #card .cbuy[hidden]{display:none;}
+  #card .cbuy .l{display:grid;gap:1px;min-width:0;}
+  #card .cbuy b{font-size:16.5px;font-weight:900;letter-spacing:-.2px;line-height:1.15;}
+  #card .cbuy small{font-size:10.5px;font-weight:600;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #card .cbuy .p{flex:none;height:38px;padding:0 12px;border-radius:11px;background:rgba(255,255,255,.2);display:flex;align-items:center;font-size:15.5px;font-weight:900;font-variant-numeric:tabular-nums;}
+  #card .cbuy .p:empty{display:none;}
+  #card .cbtn{flex:none;width:62px;height:54px;border-radius:15px;background:#f1f3f8;color:#2a3150;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;font-size:11.5px;font-weight:800;border:1px solid #e3e6ee;}
+  #card .cbtn svg{width:21px;height:21px;}
+  #card .cbtn:hover{background:#e8ebf3;}
+  #card .cbuy:active,#card .cbtn:active{transform:translateY(2px);box-shadow:none;}
+  /* without a buy-now (no checkout configured) the two tiles share the row */
+  #card .cbuy[hidden]~.cbtn{flex:1;flex-direction:row;gap:6px;font-size:14px;height:46px;}
   .btn1,.btn2{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:12px;font-weight:700;font-size:14.5px;text-decoration:none;}
   .btn1{background:var(--brand);color:#fff;box-shadow:0 3px 0 var(--brand-deep);}
   .btn2{background:#eef0f5;color:#161a2b;}
-  #card .buy{grid-column:1/-1;background:#1f9d62;box-shadow:0 3px 0 #136b41;font-size:15.5px;} #card .buy[hidden]{display:none;}
   .btn1:active,.btn2:active{transform:translateY(2px);box-shadow:none;}
 
   #joyzone{position:fixed;left:0;bottom:0;width:50vw;height:40vh;touch-action:none;z-index:1;}
@@ -461,8 +475,7 @@
     #card .row{margin-top:2px;}
     #card .pr{font-size:24px;font-weight:900;letter-spacing:-.3px;}
     #card .note{display:none;}
-    #card .cb{order:3;margin-top:8px;grid-template-columns:1.25fr 1fr;}
-    #card #cardLink{order:1;} #card #cardAdd{order:2;} #card #cardBuy{order:3;height:48px;}
+    #card .cb{order:3;margin-top:10px;}
     .hud.card-open #act,.hud.card-open #hint{visibility:hidden;}
     .hud.card-open #joyzone{bottom:var(--cardH,0px);height:26vh;}
   }
@@ -471,13 +484,13 @@
     :root{--m-top:calc(var(--st) + 60px);}
     #card{padding-top:16px;} #card img,#card .ph{width:76px;height:76px;} #card .nm{font-size:15px;} #card .pr{font-size:21px;}
   }
-  /* short phones: the three card buttons share one row, buy-now first, so the sheet stays low */
+  /* short phones: a slimmer row so the sheet stays low */
   @media (max-width:700px) and (max-height:700px){
-    #card .cb{grid-template-columns:1.15fr 1fr 1fr;gap:6px;}
-    #card .cb .btn1,#card .cb .btn2{height:44px;font-size:13px;padding:0 4px;white-space:nowrap;letter-spacing:-.2px;}
-    #card #cardBuy{order:0;grid-column:auto;height:44px;font-size:13.5px;}
-    #card .cb:has(#cardBuy[hidden]){grid-template-columns:1.25fr 1fr;}
+    #card .cb{margin-top:8px;gap:6px;}
+    #card .cbuy{height:48px;} #card .cbuy small{display:none;} #card .cbuy .p{height:34px;}
+    #card .cbtn{width:54px;height:48px;font-size:10.5px;} #card .cbtn svg{width:19px;height:19px;}
   }
+  @media (max-width:350px){ #card .cbuy{padding-inline-start:12px;} #card .cbuy b{font-size:15px;} #card .cbuy .p{padding:0 9px;font-size:14px;} #card .cbtn{width:50px;} }
   @media (max-width:340px){
     .mh-logo{padding:0 8px;font-size:12px;}
     #card{grid-template-columns:minmax(0,1fr) 76px;} #card img,#card .ph{width:76px;height:76px;}
@@ -528,9 +541,9 @@
       <div class="note">המחיר הסופי כפי שמופיע באתר</div>
     </div>
     <div class="cb">
-      <button class="btn2" id="cardAdd">הוספה לעגלה</button>
-      <a class="btn1" id="cardLink" target="_blank" rel="noopener">לעמוד המוצר ↗</a>
-      <a class="btn1 buy" id="cardBuy" target="_blank" rel="noopener" hidden>קנה עכשיו ⚡</a>
+      <a class="cbuy" id="cardBuy" target="_blank" rel="noopener" hidden><span class="l"><b>קנה עכשיו</b><small>תשלום מאובטח ומהיר</small></span><span class="p" id="cardBuyP"></span></a>
+      <button class="cbtn" id="cardAdd" aria-label="הוספה לעגלה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg><span>לעגלה</span></button>
+      <a class="cbtn" id="cardLink" target="_blank" rel="noopener" aria-label="לעמוד המוצר"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>פרטים</span></a>
     </div>
   </div>
   <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div></div></div>
@@ -2281,11 +2294,12 @@ addEventListener('message',e=>{ if(e.origin!=='https://buytoday.co.il'&&e.origin
    over the mall, in a frame named "bt-mall-checkout": the shop keeps cart and checkout inside that
    frame (the product sheet sends them out to the whole window), Pelecard's card form runs in it, and
    the confirmation page lands in it and tells the game the order is paid. "חזרה לקניון" closes it.
-   Until it is switched on for everyone it is opt-in: ?beta=checkout turns it on for this browser,
-   ?beta=off turns it back off; without it, the button opens the checkout in a tab as before. */
+   On for everyone. ?beta=off turns it off for this browser (the button then opens the checkout in a
+   tab), ?beta=checkout turns it back on. */
 const coView=$('#coview'), coFrame=$('#coFrame'), coLoad=$('#coLoad'); let coPrev=null, coTimer=null;
 let CO_INSIDE=false;
-try{ const b=new URLSearchParams(location.search).get('beta'); if(b==='checkout') localStorage.setItem('bt-co-inside','1'); if(b==='off') localStorage.removeItem('bt-co-inside'); CO_INSIDE=localStorage.getItem('bt-co-inside')==='1'; }catch(e){}
+CO_INSIDE=true;
+try{ const b=new URLSearchParams(location.search).get('beta'); if(b==='checkout') localStorage.removeItem('bt-co-off'); if(b==='off') localStorage.setItem('bt-co-off','1'); CO_INSIDE=localStorage.getItem('bt-co-off')!=='1'; }catch(e){}
 const CO_LOADING='<span>פותחים את הקופה…</span><div class="bar"><i></i></div>';
 function isCheckoutUrl(u){ try{ const x=new URL(u,location.href); return x.hostname.endsWith('buytoday.co.il')&&/^\/(api\/game\/buy|checkout|cart)(\/|$)/.test(x.pathname); }catch(e){ return false; } }
 function openCheckout(url){
@@ -2620,7 +2634,7 @@ function syncCardSpace(){ requestAnimationFrame(()=>{ const open=!ui.card.hidden
 function fillCard(it){
   if(it.img) $('#cardImg').src=it.img; $('#cardImg').hidden=!it.img; $('#cardPh').hidden=!!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
   $('#cardPrice').textContent=shekel(it.price); $('#cardOld').textContent=it.old?shekel(it.old):''; $('#cardDisc').textContent=it.old?`-${it.disc}%`:''; $('#cardDisc').hidden=!it.old;
-  $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardAdd').textContent='הוספה לעגלה';
+  $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardBuyP').textContent=shekel(it.price);
   $('#cardBuy').hidden=!CHECKOUT_URL||!it.slug; if(!$('#cardBuy').hidden) $('#cardBuy').href=buyUrl([it],'buy-now');
   const sp=specOf(it); $('#cardSpec').textContent=sp; $('#cardSpec').hidden=!sp;
 }
