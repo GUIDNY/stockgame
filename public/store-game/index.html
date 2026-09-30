@@ -220,7 +220,14 @@
   .spinhead{width:100%;display:flex;justify-content:space-between;align-items:baseline;gap:8px;} .spinhead b{font-size:16px;} .spinhead small{color:#6b7289;font-size:12px;}
   .wheelwrap{position:relative;width:min(280px,70vw);aspect-ratio:1;} .wheelwrap canvas{width:100%;height:100%;display:block;transition:transform 3.6s cubic-bezier(.12,.72,.16,1);}
   .wheelwrap .pin{position:absolute;left:50%;top:-6px;margin-left:-13px;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid #161a2b;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));}
-  .spinbtn{width:100%;height:50px;font-size:16px;} .spinbtn:disabled{background:#c9cdd8;box-shadow:none;}
+  .spinbtn{width:100%;height:50px;font-size:16px;}
+  .odds{margin:0;font-size:11.5px;line-height:1.5;color:#6b7289;text-align:center;}
+  .guestspin{display:block;width:100%;padding:10px 12px;border-radius:12px;background:#fff7ec;border:1px solid #ffd9a8;color:#8a4a22;font-size:13px;font-weight:800;text-align:center;text-decoration:none;}
+  .guestspin[hidden],.wincard[hidden]{display:none;}
+  .wincard{width:100%;display:grid;gap:8px;padding:14px;border-radius:16px;background:linear-gradient(180deg,#fff6d8,#ffe9a8);border:1px solid #f2c94c;text-align:center;}
+  .wincard b{font-size:18px;color:#7a4b00;} .wincard small{font-size:12px;color:#7a5a1a;}
+  .wcode{display:flex;align-items:center;justify-content:center;gap:8px;} .wcode span{font:900 18px ui-monospace,monospace;letter-spacing:1px;background:#fff;border:2px dashed #e0a100;border-radius:10px;padding:6px 12px;color:#161a2b;}
+  .wcode button{height:36px;padding:0 12px;border-radius:10px;background:#161a2b;color:#fff;font-weight:800;font-size:13px;} .spinbtn:disabled{background:#c9cdd8;box-shadow:none;}
   .invite{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:linear-gradient(90deg,#fff3ea,#ffe6d6);border:1px solid #ffd2b8;margin-bottom:14px;}
   .invite div{flex:1;display:grid;gap:2px;} .invite b{font-size:14.5px;} .invite small{font-size:12px;color:#8a4a22;} .invite .btn1{flex:none;height:42px;padding:0 16px;}
   .progh{margin:4px 2px 8px;font-size:14px;color:#161a2b;}
@@ -701,7 +708,10 @@
         <div class="lvcoins"><span>המטבעות שלכם</span><b id="lvCoins">0</b></div></div>
       <div class="spincard"><div class="spinhead"><b>🎡 הגלגל היומי</b><small id="spinSub">סיבוב אחד בחינם כל יום</small></div>
         <div class="wheelwrap"><canvas id="wheel" width="560" height="560"></canvas><i class="pin"></i></div>
-        <button class="btn1 spinbtn" id="spinBtn">מסובבים!</button></div>
+        <button class="btn1 spinbtn" id="spinBtn">מסובבים!</button>
+        <div class="wincard" id="winCard" hidden><b id="winTitle"></b><div class="wcode"><span id="winCode" dir="ltr"></span><button id="winCopy">העתקה</button></div><small id="winTerms"></small><button class="btn1" id="winApply">הפעלה בעגלה</button></div>
+        <p class="odds" id="spinOdds">סיכויים בכל סיבוב: ₪50 הנחה 0.3% · ₪20 הנחה 2% · 5% הנחה 1.5% · בכל השאר מטבעות. פרסים בכסף רק למחוברים, קופון אישי לשימוש אחד, תקף 7 ימים.</p>
+        <a class="guestspin" id="spinLogin" hidden>🔑 התחברו לחשבון BuyToday כדי לזכות גם בהנחות אמיתיות</a></div>
       <div class="invite"><div><b>👯 הזמינו חבר לקניון</b><small>שיתוף פעם ביום = 30 מטבעות ו־20 נקודות</small></div><button class="btn1" id="inviteBtn">שיתוף</button></div>
       <h3 class="progh">הריקודים שלכם</h3><div class="dances" id="dances"></div>
       <h3 class="progh">פרסים לפי רמה</h3><ul class="rewards" id="rewards"></ul>
@@ -2563,7 +2573,14 @@ function addCoins(n){ if(n<=0) return; Coins.n+=n; saveCoins(); renderCoins(true
 const LEVELS=[0,50,150,300,500,800,1200,1800,2600,3600];
 const REWARDS={2:{t:'ריקוד: נפנוף',dance:'wave'},3:{t:'50 מטבעות',coins:50},4:{t:'ריקוד: סיבוב',dance:'spin'},5:{t:'חולצת VIP סגולה (בחנות בגג)'},6:{t:'100 מטבעות',coins:100},7:{t:'ריקוד: קפיצות',dance:'jump'},8:{t:'חולצת יהלום (בחנות בגג)'},9:{t:'200 מטבעות',coins:200},10:{t:'500 מטבעות · אגדת הקניון',coins:500}};
 const DANCES=[{id:'wave',n:'נפנוף',ic:'👋',lvl:2},{id:'spin',n:'סיבוב',ic:'🌀',lvl:4},{id:'jump',n:'קפיצות',ic:'🕺',lvl:7}];
-const WHEEL=[10,20,5,50,10,30,15,100];
+/* the wheel's slices: coins wide, the real prizes thin and gold. The slices are a picture; the odds are
+   the server's (lib/game-wheel.ts on the shop), shown under the wheel in plain numbers. A guest's wheel
+   pays coins only, rolled here with the same weights. */
+const WHEEL=[{id:'c10',t:'10',s:'מטבעות'},{id:'p20',t:'₪20',s:'הנחה',gold:1},{id:'c5',t:'5',s:'מטבעות'},{id:'pct5',t:'5%',s:'הנחה',gold:1},{id:'c20',t:'20',s:'מטבעות'},{id:'p50',t:'₪50',s:'הנחה',gold:1},{id:'c15',t:'15',s:'מטבעות'},{id:'p20',t:'₪20',s:'הנחה',gold:1},{id:'c30',t:'30',s:'מטבעות'},{id:'c100',t:'100',s:'מטבעות'}];
+const WHEEL_COINS={c5:[5,.25],c10:[10,.3],c15:[15,.18],c20:[20,.13],c30:[30,.08],c100:[100,.022]};
+const SPIN_API=SITE+'/api/game/spin';
+function wheelGeom(){ const gold=12, n=WHEEL.length, ng=WHEEL.filter(w=>w.gold).length, coin=(360-gold*ng)/(n-ng); let a=-90-(WHEEL[0].gold?gold:coin)/2;
+  return WHEEL.map(w=>{ const span=w.gold?gold:coin, g={a0:a,a1:a+span,c:a+span/2}; a+=span; return g; }); }
 const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
 const Prog={d:{xp:0,day:'',streak:0,visited:[],cartXp:0,spin:'',got:[]},danceUntil:0,dance:'',
   load(){ try{ Object.assign(this.d,JSON.parse(localStorage.getItem('bt-prog')||'{}')); }catch(e){} },
@@ -2581,29 +2598,61 @@ const Prog={d:{xp:0,day:'',streak:0,visited:[],cartXp:0,spin:'',got:[]},danceUnt
 Prog.load();
 function renderLv(){ const l=Prog.level(); $('#coinsLv').textContent=l; if(!progEl.hidden) renderProg(); }
 const progEl=$('#progp');
-function drawWheel(){ const c=$('#wheel'), g=c.getContext('2d'), R=c.width/2, n=WHEEL.length, cols=['#f55304','#22305f','#44e092','#ffb400','#7a4fd0','#e63946','#2aa7c9','#161a2b'];
-  g.clearRect(0,0,c.width,c.height);
-  for(let i=0;i<n;i++){ const a0=-Math.PI/2+i*2*Math.PI/n-Math.PI/n, a1=a0+2*Math.PI/n; g.beginPath(); g.moveTo(R,R); g.arc(R,R,R-6,a0,a1); g.closePath(); g.fillStyle=cols[i%cols.length]; g.fill();
-    g.save(); g.translate(R,R); g.rotate(a0+Math.PI/n+Math.PI/2); g.fillStyle='#fff'; g.font='900 44px Rubik,sans-serif'; g.textAlign='center'; g.fillText(WHEEL[i],0,-R+74); g.font='700 22px Rubik,sans-serif'; g.fillText('מטבעות',0,-R+104); g.restore(); }
-  g.beginPath(); g.arc(R,R,R-6,0,7); g.lineWidth=10; g.strokeStyle='#fff'; g.stroke(); g.beginPath(); g.arc(R,R,46,0,7); g.fillStyle='#fff'; g.fill(); g.fillStyle='#f55304'; g.font='900 26px Rubik,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BT',R,R); }
+function drawWheel(){ const c=$('#wheel'), g=c.getContext('2d'), R=c.width/2, G=wheelGeom(), cols=['#f55304','#22305f','#44e092','#7a4fd0','#2aa7c9','#e63946'];
+  g.clearRect(0,0,c.width,c.height); let ci=0; const rad=d=>d*Math.PI/180;
+  WHEEL.forEach((w,i)=>{ const {a0,a1,c:mid}=G[i]; g.beginPath(); g.moveTo(R,R); g.arc(R,R,R-6,rad(a0),rad(a1)); g.closePath();
+    if(w.gold){ const gr=g.createLinearGradient(R+Math.cos(rad(mid))*R*.2,R+Math.sin(rad(mid))*R*.2,R+Math.cos(rad(mid))*R,R+Math.sin(rad(mid))*R); gr.addColorStop(0,'#b8860b'); gr.addColorStop(.5,'#ffd700'); gr.addColorStop(1,'#fff3b0'); g.fillStyle=gr; }
+    else g.fillStyle=cols[ci++%cols.length];
+    g.fill(); g.strokeStyle='rgba(255,255,255,.7)'; g.lineWidth=2; g.stroke();
+    g.save(); g.translate(R,R); g.rotate(rad(mid)+Math.PI/2); g.textAlign='center';
+    if(w.gold){ g.fillStyle='#5a3a00'; g.font='900 26px Rubik,sans-serif'; g.save(); g.translate(0,-R+64); g.rotate(-Math.PI/2); g.fillText(w.t,0,9); g.restore(); }
+    else { g.fillStyle='#fff'; g.font='900 44px Rubik,sans-serif'; g.fillText(w.t,0,-R+74); g.font='700 22px Rubik,sans-serif'; g.fillText(w.s,0,-R+104); }
+    g.restore(); });
+  g.beginPath(); g.arc(R,R,R-6,0,7); g.lineWidth=10; g.strokeStyle='#fff'; g.stroke(); g.beginPath(); g.arc(R,R,46,0,7); g.fillStyle='#fff'; g.fill(); g.fillStyle='#f55304'; g.font='900 26px Rubik,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BT',R,R); g.textBaseline='alphabetic'; }
 let wheelTurn=0;
 function renderProg(){ const l=Prog.level(), x=Prog.d.xp, a=LEVELS[l-1], b=LEVELS[l]||null;
   $('#progTitle').textContent='רמה '+l; $('#lvNum').textContent=l; $('#lvCoins').textContent=Coins.n.toLocaleString('he-IL');
   $('#lvXp').textContent=b?`${x-a} / ${b-a} נקודות לרמה ${l+1}`:`${x} נקודות · הרמה הכי גבוהה`; $('#lvFill').style.width=(b?Math.min(100,(x-a)/(b-a)*100):100)+'%';
   $('#lvNext').textContent=b&&REWARDS[l+1]?'בפרס הבא: '+REWARDS[l+1].t:'';
+  $('#spinLogin').hidden=Acct.state==='in';
+  const cp=Prog.d.coupon; if(cp&&cp.endsAt&&new Date(cp.endsAt)>new Date()) showWin(cp); else $('#winCard').hidden=true;
   const spun=Prog.d.spin===today(); $('#spinBtn').disabled=spun; $('#spinBtn').textContent=spun?'חוזרים מחר לסיבוב הבא ⏰':'מסובבים!'; $('#spinSub').textContent=spun?'כבר סובבתם היום':'סיבוב אחד בחינם כל יום';
   const dz=$('#dances'); dz.innerHTML=''; DANCES.forEach(dn=>{ const bt=document.createElement('button'), ok=l>=dn.lvl; bt.disabled=!ok; bt.innerHTML=`<span>${ok?dn.ic:'🔒'}</span><small>${ok?dn.n:'רמה '+dn.lvl}</small>`; bt.onclick=()=>{ closeProg(); startDance(dn.id); }; dz.appendChild(bt); });
   const rw=$('#rewards'); rw.innerHTML=''; Object.keys(REWARDS).forEach(k=>{ const li=document.createElement('li'), got=l>=+k; li.className=got?'got':''; li.innerHTML=`<b>${k}</b><span></span><i>${got?'✓ שלכם':'רמה '+k}</i>`; li.querySelector('span').textContent=REWARDS[k].t; rw.appendChild(li); }); }
-function openProg(){ if(G.state!=='play') return; stopAuto(); G.paused=true; drawWheel(); renderProg(); progEl.hidden=false; }
+function openProg(){ if(G.state!=='play') return; spinSync(); stopAuto(); G.paused=true; drawWheel(); renderProg(); progEl.hidden=false; }
 function closeProg(){ progEl.hidden=true; G.paused=false; last=performance.now(); }
 $('#progClose').addEventListener('click',closeProg);
 $('#inviteBtn').addEventListener('click',async()=>{ const ok=await shareMallDone(); if(!ok) return;
   if(Prog.d.shared===today()) return toast('תודה ששיתפתם! המטבעות על שיתוף ניתנים פעם ביום');
   Prog.d.shared=today(); Prog.save(); addCoins(30); Prog.add(20); toast('תודה ששיתפתם! +30 מטבעות 🎉','good'); renderProg(); });
-$('#spinBtn').addEventListener('click',()=>{ if(Prog.d.spin===today()) return; Prog.d.spin=today(); Prog.save(); $('#spinBtn').disabled=true;
-  const i=(Math.random()*WHEEL.length)|0, seg=360/WHEEL.length; wheelTurn+=360*5+(360-((wheelTurn%360)))-i*seg+(Math.random()-.5)*seg*.6;
-  $('#wheel').style.transform=`rotate(${wheelTurn}deg)`; Sound.sale(); buzz(20);
-  setTimeout(()=>{ addCoins(WHEEL[i]); Prog.add(10); Sound.cash(); buzz([30,40,30]); toast(`זכיתם ב־${WHEEL[i]} מטבעות! 🎉`,'good'); renderProg(); },3700); });
+function spinTo(idx,done){ const G=wheelGeom(), target=((-90-G[idx].c)%360+360)%360, cur=((wheelTurn%360)+360)%360;
+  const span=WHEEL[idx].gold?12:(360-12*4)/6, jitter=(Math.random()-.5)*span*.5;
+  wheelTurn+=360*5+((target-cur+360)%360)+jitter; $('#wheel').style.transform=`rotate(${wheelTurn}deg)`; Sound.sale(); buzz(20); setTimeout(done,3700); }
+function idxFor(id){ const all=WHEEL.map((w,i)=>w.id===id?i:-1).filter(i=>i>=0); return all.length?all[(Math.random()*all.length)|0]:0; }
+function showWin(cp){ if(!cp||!cp.code){ $('#winCard').hidden=true; return; } const end=new Date(cp.endsAt);
+  $('#winTitle').textContent='🎉 זכיתם ב־'+cp.label+'!'; $('#winCode').textContent=cp.code;
+  $('#winTerms').textContent=(cp.min?'בהזמנה מעל ₪'+cp.min+' · ':'')+'לשימוש אחד · תקף עד '+end.toLocaleDateString('he-IL'); $('#winCard').hidden=false; }
+$('#winCopy').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText($('#winCode').textContent); toast('הקוד הועתק','good'); }catch(e){ toast($('#winCode').textContent); } });
+$('#winApply').addEventListener('click',async()=>{ const code=$('#winCode').textContent;
+  const j=await scFetch({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'coupon',code})});
+  if(j){ scRefresh(true); toast(j.couponError?j.couponError:'הקופון הופעל בעגלה ✓',j.couponError?'bad':'good'); } else toast('לא הצלחנו להפעיל. אפשר להקליד את הקוד בקופה','bad'); });
+$('#spinLogin').addEventListener('click',()=>{ location.href=LOGIN_URL; });
+async function spinSync(){ if(Acct.state!=='in') return; try{ const r=await fetch(SPIN_API,{credentials:'include',cache:'no-store'}); const j=await r.json();
+  if(j.today){ Prog.d.spin=today(); Prog.save(); if(j.today.prize==='coupon'){ Prog.d.coupon=j.today; Prog.save(); } if(!progEl.hidden) renderProg(); } }catch(e){} }
+$('#spinBtn').addEventListener('click',async()=>{ if(Prog.d.spin===today()) return; $('#spinBtn').disabled=true;
+  if(Acct.state==='in'){
+    let j=null; try{ const r=await fetch(SPIN_API,{method:'POST',credentials:'include',cache:'no-store'}); j=await r.json(); }catch(e){}
+    if(!j||!j.result){ $('#spinBtn').disabled=false; return toast('הגלגל לא זמין כרגע. נסו שוב עוד רגע','bad'); }
+    const res=j.result; Prog.d.spin=today(); Prog.save();
+    spinTo(idxFor(res.id),()=>{ Prog.add(10); Sound.cash(); buzz([30,40,30]);
+      if(res.prize==='coins'){ if(j.fresh) addCoins(res.coins); toast(`זכיתם ב־${res.coins} מטבעות! 🎉`,'good'); }
+      else { Prog.d.coupon=res; Prog.save(); showWin(res); toast('🎉 זכיתם ב־'+res.label+'!','good'); }
+      renderProg(); });
+    return; }
+  // guest: coins only, same weights
+  const ids=Object.keys(WHEEL_COINS), tot=ids.reduce((a,k)=>a+WHEEL_COINS[k][1],0); let r=Math.random()*tot, id=ids[0]; for(const k of ids){ r-=WHEEL_COINS[k][1]; if(r<0){ id=k; break; } }
+  Prog.d.spin=today(); Prog.save();
+  spinTo(idxFor(id),()=>{ const n=WHEEL_COINS[id][0]; addCoins(n); Prog.add(10); Sound.cash(); buzz([30,40,30]); toast(`זכיתם ב־${n} מטבעות! 🎉`,'good'); renderProg(); }); });
 /* dances: the player's own figure, for three seconds; other players see a 💃 over the head */
 function startDance(id){ Prog.dance=id; Prog.danceUntil=performance.now()+3000; buzz(15);
   if(ONLINE&&Net.ready){ try{ Net.ch.send({type:'broadcast',event:'e',payload:{i:Net.id,e:6}}); }catch(e){} } }
