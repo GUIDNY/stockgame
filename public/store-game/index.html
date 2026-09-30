@@ -242,7 +242,7 @@
   .rewards{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px;}
   .rewards li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;background:#f5f6fa;font-size:13.5px;font-weight:700;color:#2a3150;}
   .rewards li b{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#e3e6ee;font-size:13px;}
-  .rewards li.got{background:#e8f8ef;color:#136b41;} .rewards li.got b{background:#44e092;color:#fff;}
+  .rewards li.got{background:#e8f8ef;color:#136b41;} .rewards li.cur{outline:2px solid #1f9d62;} .rewards li.got b{background:#44e092;color:#fff;}
   .rewards li span{flex:1;} .rewards li i{font-style:normal;font-size:12px;color:#6b7289;} .rewards li.got i{color:#1f9d62;}
   .howxp{margin:0 0 8px;padding:0;list-style:none;display:grid;gap:6px;font-size:13px;color:#4a5068;} .howxp b{display:inline-block;min-width:44px;color:#1f9d62;}
   #coins .lv{position:absolute;top:-6px;left:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#f55304;color:#fff;font-size:10.5px;font-weight:900;display:grid;place-items:center;box-shadow:0 0 0 2px #10142c;}
@@ -706,7 +706,7 @@
 
 <div class="screen dir" id="progp" hidden>
   <div class="dpanel" role="dialog" aria-modal="true" aria-labelledby="progTitle">
-    <div class="dtop"><div class="dhead"><div><small>BuyToday · ההתקדמות שלכם</small><h2 id="progTitle">רמה 1</h2></div>
+    <div class="dtop"><div class="dhead"><div><small>BuyToday · מועדון הלקוחות</small><h2 id="progTitle">רמה 1</h2></div>
       <button id="progClose" aria-label="סגירה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div></div>
     <div class="dscroll">
       <div class="lvcard"><div class="lvrow"><b id="lvNum">1</b><div class="lvinfo"><span id="lvXp"></span><div class="lvbar"><i id="lvFill"></i></div><small id="lvNext"></small></div></div>
@@ -723,10 +723,9 @@
         <a class="guestspin" id="spinLogin" hidden>🔑 התחברו לחשבון BuyToday כדי לקבל את ההטבות</a>
         <p class="odds">קופון אישי לשימוש אחד, בתוקף 7 ימים ממועד קבלתו.</p></div>
       <div class="invite"><div><b>👯 הזמינו חבר לקניון</b><small>שיתוף פעם ביום = 30 מטבעות</small></div><button class="btn1" id="inviteBtn">שיתוף</button></div>
-      <h3 class="progh">הריקודים שלכם</h3><div class="dances" id="dances"></div>
-      <h3 class="progh">פרסים לפי רמה</h3><ul class="rewards" id="rewards"></ul>
+      <h3 class="progh">ההטבות לפי רמה</h3><ul class="rewards" id="rewards"></ul>
       <h3 class="progh">איך עולים ברמה</h3>
-      <ul class="howxp"><li>עולים ברמה <b>רק מקניות</b> ב־BuyToday, לפי סך מה שקניתם (הזמנות ששולמו).</li><li><b>רמה 2</b> בקנייה הראשונה, ואז: ₪500 · ₪1,000 · ₪2,000 · ₪3,500 · ₪5,000 · ₪8,000 · ₪12,000 · ₪20,000.</li><li>במשחק עצמו צוברים <b>מטבעות</b>: כניסה יומית, הגלגל, הארקייד והזמנת חברים.</li></ul>
+      <ul class="howxp"><li>עולים ברמה <b>רק מקניות</b> ב־BuyToday, לפי סך מה שקניתם (הזמנות ששולמו).</li><li><b>רמה 2</b> בקנייה הראשונה, ואז: ₪500 · ₪1,000 · ₪2,000 · ₪3,500 · ₪5,000 · ₪8,000 · ₪12,000 · ₪20,000.</li><li>הקאשבק מגיע אחרי כל הזמנה ששולמה, כקוד זיכוי אישי לקנייה הבאה (בתוקף 90 יום). מתנות הרמה בתוקף 30 יום.</li><li>במשחק עצמו צוברים <b>מטבעות</b> לחנות הבגדים שבגג: כניסה יומית, הגלגל, הארקייד והזמנת חברים.</li></ul>
     </div>
   </div>
 </div>
@@ -2591,10 +2590,12 @@ function addCoins(n){ if(n<=0) return; Coins.n+=n; saveCoins(); renderCoins(true
 let PL={level:1,spent:0,orders:0,thresholds:[0,1,500,1000,2000,3500,5000,8000,12000,20000]};
 const LEVELS=PL.thresholds;
 function setPurchases(p){ if(!p||!Number.isInteger(p.level)) return; const before=PL.level; PL=Object.assign({},PL,p);
-  if(PL.level>before){ for(let l=2;l<=PL.level;l++) Prog.grant(l); if(before>1||Prog.d.seenLv) toast(`🎉 עליתם לרמה ${PL.level}! ${REWARDS[PL.level]?REWARDS[PL.level].t:''}`,'good'); }
+  if(PL.level>before){ for(let l=2;l<=PL.level;l++) Prog.grant(l); if(before>1||Prog.d.seenLv) toast(`עליתם לרמה ${PL.level} במועדון: ${REWARDS[PL.level]?REWARDS[PL.level].t:''}`,'good'); }
   Prog.d.seenLv=PL.level; Prog.save(); renderLv(); }
-const REWARDS={2:{t:'ריקוד: נפנוף',dance:'wave'},3:{t:'50 מטבעות',coins:50},4:{t:'ריקוד: סיבוב',dance:'spin'},5:{t:'חולצת VIP סגולה (בחנות בגג)'},6:{t:'100 מטבעות',coins:100},7:{t:'ריקוד: קפיצות',dance:'jump'},8:{t:'חולצת יהלום (בחנות בגג)'},9:{t:'200 מטבעות',coins:200},10:{t:'500 מטבעות · אגדת הקניון',coins:500}};
-const DANCES=[{id:'wave',n:'נפנוף',ic:'👋',lvl:2},{id:'spin',n:'סיבוב',ic:'🌀',lvl:4},{id:'jump',n:'קפיצות',ic:'🕺',lvl:7}];
+/* the club's benefits by level, as the shop grants them (lib/game-levels.ts on the site): cashback on every
+   paid order, and a one-time gift at some levels. Shown here; issued only by the shop. */
+const TIER_TXT={2:[1],3:[1.5,20,200],4:[2],5:[2.5,50,400],6:[3],7:[3.5,100,700],8:[4],9:[4.5],10:[5,250,1500]};
+const REWARDS={}; Object.keys(TIER_TXT).forEach(k=>{ const [cb,g,m]=TIER_TXT[k]; REWARDS[k]={t:`${cb}% קאשבק על כל קנייה`+(g?` + ₪${g} מתנה`:''),cb,gift:g,min:m}; });
 /* the wheel's slices: coins wide, the real prizes thin and gold. The slices are a picture; the odds are
    the server's (lib/game-wheel.ts on the shop), shown under the wheel in plain numbers. A guest's wheel
    pays coins only, rolled here with the same weights. */
@@ -2611,7 +2612,7 @@ const Prog={d:{xp:0,day:'',streak:0,visited:[],cartXp:0,spin:'',got:[]},danceUnt
   save(){ try{ localStorage.setItem('bt-prog',JSON.stringify(this.d)); }catch(e){} acctSaveSoon(); },
   level(){ return PL.level; },
   add(){ /* activity no longer moves a level: levels are purchases (setPurchases) */ },
-  grant(l){ if(this.d.got.includes(l)) return; this.d.got.push(l); const r=REWARDS[l]; if(r&&r.coins) addCoins(r.coins); this.save(); },
+  grant(l){ if(this.d.got.includes(l)) return; this.d.got.push(l); this.save(); },
   newDay(){ const t=today(); if(this.d.day===t) return; const y=new Date(Date.now()-864e5), yk=y.getFullYear()+'-'+(y.getMonth()+1)+'-'+y.getDate();
     this.d.streak=this.d.day===yk?this.d.streak+1:1; this.d.day=t; this.d.visited=[]; this.d.cartXp=0; this.save();
     const bonus=10+Math.min(this.d.streak-1,6)*5; addCoins(bonus);
@@ -2637,11 +2638,11 @@ function renderProg(){ const l=Prog.level(), x=PL.spent, a=LEVELS[l-1], b=LEVELS
   $('#progTitle').textContent='רמה '+l; $('#lvNum').textContent=l; $('#lvCoins').textContent=Coins.n.toLocaleString('he-IL');
   $('#lvXp').textContent=!inA?'התחברו לחשבון כדי שהקניות יעלו אתכם ברמה':b==null?'הרמה הכי גבוהה 👑':l===1?'רמה 2 בקנייה הראשונה שלכם':`₪${(x-a).toLocaleString('he-IL')} מתוך ₪${(b-a).toLocaleString('he-IL')} לרמה ${l+1}`;
   $('#lvFill').style.width=(!inA?0:b==null?100:l===1?0:Math.min(100,(x-a)/(b-a)*100))+'%';
-  $('#lvNext').textContent=b!=null&&REWARDS[l+1]?'בפרס הבא: '+REWARDS[l+1].t:'';
+  $('#lvNext').textContent=b!=null&&REWARDS[l+1]?'ברמה '+(l+1)+': '+REWARDS[l+1].t:'';
+  $('#progTitle').textContent='רמה '+l+(REWARDS[l]?' · '+REWARDS[l].cb+'% קאשבק':'');
   renderLoyal();
   const spun=Prog.d.spin===today(); $('#spinBtn').disabled=spun; $('#spinBtn').textContent=spun?'חוזרים מחר לסיבוב הבא ⏰':'מסובבים!'; $('#spinSub').textContent=spun?'כבר סובבתם היום':'סיבוב אחד בחינם כל יום';
-  const dz=$('#dances'); dz.innerHTML=''; DANCES.forEach(dn=>{ const bt=document.createElement('button'), ok=l>=dn.lvl; bt.disabled=!ok; bt.innerHTML=`<span>${ok?dn.ic:'🔒'}</span><small>${ok?dn.n:'רמה '+dn.lvl}</small>`; bt.onclick=()=>{ closeProg(); startDance(dn.id); }; dz.appendChild(bt); });
-  const rw=$('#rewards'); rw.innerHTML=''; Object.keys(REWARDS).forEach(k=>{ const li=document.createElement('li'), got=l>=+k; li.className=got?'got':''; li.innerHTML=`<b>${k}</b><span></span><i>${got?'✓ שלכם':'רמה '+k}</i>`; li.querySelector('span').textContent=REWARDS[k].t; rw.appendChild(li); }); }
+  const rw=$('#rewards'); rw.innerHTML=''; Object.keys(REWARDS).forEach(k=>{ const li=document.createElement('li'), got=l>=+k, sp=LEVELS[k-1]; li.className=(got?'got':'')+(l==+k?' cur':''); li.innerHTML=`<b>${k}</b><span></span><i>${l==+k?'הרמה שלכם':got?'✓':sp===1?'קנייה ראשונה':'₪'+sp.toLocaleString('he-IL')}</i>`; li.querySelector('span').textContent=REWARDS[k].t; rw.appendChild(li); }); }
 function openProg(){ if(G.state!=='play') return; spinSync(); stopAuto(); G.paused=true; drawWheel(); renderProg(); progEl.hidden=false; }
 function closeProg(){ progEl.hidden=true; G.paused=false; last=performance.now(); }
 $('#progClose').addEventListener('click',closeProg);
@@ -2686,13 +2687,6 @@ $('#spinBtn').addEventListener('click',async()=>{ if(Prog.d.spin===today()) retu
   const ids=Object.keys(WHEEL_COINS), tot=ids.reduce((a,k)=>a+WHEEL_COINS[k][1],0); let r=Math.random()*tot, id=ids[0]; for(const k of ids){ r-=WHEEL_COINS[k][1]; if(r<0){ id=k; break; } }
   Prog.d.spin=today(); Prog.save();
   spinTo(idxFor(id),()=>{ const n=WHEEL_COINS[id][0]; addCoins(n); Sound.cash(); buzz([30,40,30]); toast(`זכיתם ב־${n} מטבעות! 🎉`,'good'); renderProg(); }); });
-/* dances: the player's own figure, for three seconds; other players see a 💃 over the head */
-function startDance(id){ Prog.dance=id; Prog.danceUntil=performance.now()+3000; buzz(15);
-  if(ONLINE&&Net.ready){ try{ Net.ch.send({type:'broadcast',event:'e',payload:{i:Net.id,e:6}}); }catch(e){} } }
-function danceTick(now){ if(!hero) return; if(now>Prog.danceUntil){ if(Prog.dance){ hero.arms[0].rotation.z=hero.arms[1].rotation.z=0; Prog.dance=''; } return; } const t=(Prog.danceUntil-now)/1000, k=now/1000;
-  if(Prog.dance==='wave'){ hero.arms[0].rotation.x=-2.6; hero.arms[0].rotation.z=Math.sin(k*12)*.5; hero.arms[1].rotation.x=-2.6; hero.arms[1].rotation.z=-Math.sin(k*12)*.5; }
-  else if(Prog.dance==='spin'){ hero.g.rotation.y=player.yaw+k*11; hero.arms[0].rotation.x=hero.arms[1].rotation.x=-1.4; }
-  else if(Prog.dance==='jump'){ hero.g.position.y=player.pos.y+Math.abs(Math.sin(k*9))*.45; hero.arms[0].rotation.x=hero.arms[1].rotation.x=-2.8+Math.sin(k*9)*.3; } }
 renderLv();
 $('#coinsIc').innerHTML=COIN; renderCoins();
 $('#coins').addEventListener('click',()=>openProg());
@@ -2705,8 +2699,6 @@ const SHOP=[
   {id:'beanie',slot:'extra',name:'כובע גרב BuyToday',desc:'כתום עם פונפון',price:50,icon:'🧢'},
   {id:'shades',slot:'extra',name:'משקפי שמש',desc:'לגג בלילה. למה לא',price:70,icon:'🕶️'},
   {id:'headphones',slot:'extra',name:'אוזניות',desc:'לשמוע את Bouncy Mall',price:120,icon:'🎧'},
-  {id:'vip',slot:'merch',name:'חולצת VIP',desc:'סגולה, רק לרמה 5 ומעלה',price:0,lvl:5,icon:'💜'},
-  {id:'diamond',slot:'merch',name:'חולצת יהלום',desc:'מבריקה. רק לרמה 8 ומעלה',price:0,lvl:8,icon:'💎'},
   {id:'crown',slot:'extra',name:'כתר',desc:'מלך הקניון',price:300,icon:'👑'},
 ];
 const shopEl=$('#shopp');
@@ -3249,7 +3241,6 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false);
   }
   updateNPCs(dt,t); netUpdate(dt,now); botsUpdate(dt,now);
-  danceTick(now);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }
