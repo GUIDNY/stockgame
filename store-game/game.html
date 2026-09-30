@@ -2302,8 +2302,17 @@ CO_INSIDE=true;
 try{ const b=new URLSearchParams(location.search).get('beta'); if(b==='checkout') localStorage.removeItem('bt-co-off'); if(b==='off') localStorage.setItem('bt-co-off','1'); CO_INSIDE=localStorage.getItem('bt-co-off')!=='1'; }catch(e){}
 const CO_LOADING='<span>פותחים את הקופה…</span><div class="bar"><i></i></div>';
 function isCheckoutUrl(u){ try{ const x=new URL(u,location.href); return x.hostname.endsWith('buytoday.co.il')&&/^\/(api\/game\/buy|checkout|cart)(\/|$)/.test(x.pathname); }catch(e){ return false; } }
+/* What goes to the shop's checkout leaves the game's basket: it is in the real cart now, and the
+   real cart is where it is changed or removed. Left in the game too, the next trip through the
+   receipt sent it again, and a speaker removed at checkout came straight back. */
+function handOff(url){ let slugs=[];
+  try{ slugs=(new URL(url,location.href).searchParams.get('items')||'').split(',').filter(Boolean); }catch(e){}
+  let moved=0; slugs.forEach(sl=>{ const it=CATALOG.find(i=>i.slug===sl&&i.taken); if(it){ it.taken=false; it.model.visible=true; it.tag.visible=true; it.ring.visible=it.wanted; moved++; } });
+  if(moved){ rebuildCart(); renderMoney(); renderList(); updateCartBadge(); renderCart(); saveResume(); }
+  return moved; }
 function openCheckout(url){
   if(!coView.hidden) return;
+  if(handOff(url)>1) setTimeout(()=>toast('המוצרים עברו לעגלה באתר','good'),600);
   coPrev={paused:G.paused}; stopAuto(); G.paused=true; closeProduct();
   coView.classList.remove('done'); $('#coTitle').innerHTML='<b>🔒</b> הקופה · תשלום מאובטח';
   coLoad.innerHTML=CO_LOADING; coLoad.hidden=false; $('#coOpen').href=url; $('#coOpen').hidden=false;
