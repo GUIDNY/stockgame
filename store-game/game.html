@@ -2464,7 +2464,7 @@ function renderCart(){
     if(CO_INSIDE) openCheckout(u); else { handOff(u); open(u,IN_APP?'_self':'_blank'); } });
   sum.appendChild(go); body.appendChild(sum);
   rows.forEach(r=>{ const el=document.createElement('div'); el.className='citem';
-    el.innerHTML=(r.image?'<img alt="">':'<div class="ph"></div>')+'<div class="t"><small style="font-size:11px;color:#8a90a3;font-weight:700"></small><b dir="auto"></b><em class="num"></em></div><div class="acts"><div class="qty"><button class="qm" aria-label="הפחתה"></button><span class="num"></span><button class="qp" aria-label="הוספה">+</button></div><a class="lnk" target="_blank" rel="noopener">פרטים</a></div>';
+    el.innerHTML=(r.image?'<img alt="" referrerpolicy="no-referrer">':'<div class="ph"></div>')+'<div class="t"><small style="font-size:11px;color:#8a90a3;font-weight:700"></small><b dir="auto"></b><em class="num"></em></div><div class="acts"><div class="qty"><button class="qm" aria-label="הפחתה"></button><span class="num"></span><button class="qp" aria-label="הוספה">+</button></div><a class="lnk" target="_blank" rel="noopener">פרטים</a></div>';
     if(r.image) el.querySelector('img').src=r.image; else el.querySelector('.ph').textContent=r.brand||'BuyToday';
     el.querySelector('small').textContent=r.brand||''; el.querySelector('b').textContent=r.title; el.querySelector('em').textContent=shekel(r.price*r.qty);
     el.querySelector('.qty span').textContent=r.qty; const minus=el.querySelector('.qm'), plus=el.querySelector('.qp');

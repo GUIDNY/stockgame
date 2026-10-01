@@ -29,18 +29,26 @@ OUT = ROOT.parent / 'public' / 'store-game'
 SITE = 'https://buytoday.co.il'
 UA = {'User-Agent': 'BuyToday-StoreGame-Builder/2.0'}
 
-# Which 3D model stands on the pedestal: first matching word in the product name wins.
+# Which 3D model stands on the pedestal: the word that comes FIRST in the product name wins
+# (the product type leads the name; a later word like "מסך" in a fridge's features must not),
+# and at the same spot the longer phrase wins ("מקרן חום" is a heater, "מקרן" a projector).
 KIND_WORDS = [
     ('מייבש כביסה', 'washer'), ('מייבש שיער', 'hairdryer'), ('תנור חימום', 'heater'), ('מפזר חום', 'heater'),
+    ('מקרן חום', 'heater'), ('מקרן חימום', 'heater'), ('קמין', 'heater'), ('קרש גיהוץ', 'iron'), ('טאבון', 'toasteroven'), ('מעשנה', 'grill'),
+    ('בידורית', 'speaker'), ('סאב', 'speaker'), ('וופר', 'speaker'), ('ברד', 'blender'), ('מיקסר', 'processor'), ('טרימר', 'shaver'),
+    ('מזגנית', 'heater'), ('גיהוץ', 'iron'), ('תנור לאמבטיה', 'heater'), ('תנור אינפרא', 'heater'),
     ('מקרן', 'tv'), ('טלוויזיה', 'tv'), ('מסך', 'tv'), ('מתקן', 'tv'),
     ('רסיבר', 'receiver'), ('מגבר', 'receiver'), ('רמקול', 'speaker'), ('מקרן קול', 'speaker'), ('סאונד', 'speaker'), ('כבל', 'receiver'),
     ('קומקום', 'kettle'), ('אספרסו', 'coffee'), ('קפה', 'coffee'), ('בלנדר', 'blender'), ('מעבד', 'processor'), ('מסחטת', 'blender'),
     ('אייר פרייר', 'airfryer'), ('טיגון', 'airfryer'), ('גריל', 'grill'), ('טוסטר', 'toasteroven'), ('מטחנת', 'processor'),
     ('מיקרוגל', 'microwave'), ('כיריים', 'cooktop'), ('קולט', 'hood'), ('תנור', 'oven'),
     ('מקרר', 'fridge'), ('מקפיא', 'fridge'), ('יין', 'fridge'), ('כביסה', 'washer'), ('מדיח', 'washer'), ('מייבש', 'washer'),
-    ('שואב', 'stickvac'), ('מגהץ', 'iron'), ('מזגן', 'ac'), ('מאוורר', 'fan'), ('רדיאטור', 'heater'), ('תאורת', 'heater'), ('קטלן', 'fan'),
+    ('שואב', 'stickvac'), ('מגהץ', 'iron'), ('מזגן', 'ac'), ('מאוורר', 'fan'), ('רדיאטור', 'heater'), ('קטלן', 'fan'),
     ('פן', 'hairdryer'), ('מחליק', 'hairdryer'), ('גילוח', 'shaver'), ('תספורת', 'shaver'), ('ברז', 'fridge'), ('בר מים', 'fridge'),
 ]
+# Accessories are sold on the site, but on a showroom pedestal a speaker stand would stand there as a speaker.
+ACCESSORY_WORDS = ('אביזר', 'סטנד', 'חצובה', 'מעמד', 'מתקן תלייה', 'זרוע', 'כיסוי', 'מתאם', 'נוזל', 'מסנן', 'פילטר', 'שלט רחוק', 'כבל')
+
 ZONE_KIND = {'deal': 'processor', 'tv': 'tv', 'audio': 'speaker', 'kitchen': 'processor', 'ovens': 'oven', 'care': 'shaver', 'fridge': 'fridge',
              'laundry': 'washer', 'home': 'stickvac', 'ac': 'ac', 'heat': 'heater'}
 
@@ -69,10 +77,13 @@ def cards(page):
                'price': int(price.group(1).replace(',', '')), 'old': int(old.group(1).replace(',', '')) if old else None,
                'disc': int(disc.group(1)) if disc else 0, 'image': html.unescape(img.group(1)) if img else '', 'soldOut': 'אזל' in c}
 
+def base_name(name):
+    """The name without its colour tail ("... - לבן"), so two colours of one product count once."""
+    return re.sub(r'\s+[-–—]\s+[^-–—]*$', '', name).strip()
+
 def kind_of(name, zone):
-    for word, kind in KIND_WORDS:
-        if word in name: return kind
-    return ZONE_KIND.get(zone, 'microwave')
+    hits = [(name.find(w), -len(w), k) for w, k in KIND_WORDS if w in name]
+    return min(hits)[2] if hits else ZONE_KIND.get(zone, 'microwave')
 
 def short_of(name, brand):
     words = name.replace('–', ' ').replace('—', ' ').split()
@@ -153,28 +164,37 @@ def main():
     write(data, cfg)
 
 def collect(cfg, seen):
+    """The showroom: the first products of each category that are in stock AND whose photo
+    really downloads (some suppliers block servers, and a pedestal without a photo looks broken)."""
     per = cfg.get('per_category', 7)
     items, cats = [], []
     for cat in cfg['categories']:
-        try:
-            page = get(SITE + cat.get('path', f"/category/{cat['slug']}"))
-        except Exception as e:
-            print(f"  skip category {cat['slug']}: {e}", file=sys.stderr); continue
-        cats.append({'slug': cat['slug'], 'zone': cat['zone'], 'name': cat['name']})
-        got, want = 0, cat.get('count', per)
-        for c in cards(page):
+        base = SITE + cat.get('path', f"/category/{cat['slug']}")
+        got, want, skipped = 0, cat.get('count', per), 0
+        for n in range(1, 6):
             if got >= want: break
-            if c['soldOut'] or c['slug'] in seen: continue
-            img = ''
-            if c['image']:
-                try: img = thumb(c['image'])
-                except Exception as e: print(f"  photo failed for {c['slug']}: {e}", file=sys.stderr)
-            seen.add(c['slug']); got += 1
-            items.append({'slug': c['slug'], 'url': f"{SITE}/product/{c['slug']}", 'cat': cat['slug'], 'kind': kind_of(c['name'], cat['zone']),
-                          'short': short_of(c['name'], c['brand']), 'name': c['name'], 'brand': c['brand'], 'price': c['price'],
-                          'old': c['old'] if c['old'] and c['old'] > c['price'] else None, 'disc': c['disc'] if c['old'] else 0, 'img': img})
-            time.sleep(.15)
-        print(f"  {cat['name']:<24} {got} מוצרים")
+            try:
+                page = get(base + (f'?page={n}' if n > 1 else ''))
+            except Exception as e:
+                print(f"  skip {cat['slug']} page {n}: {e}", file=sys.stderr); break
+            if n == 1: cats.append({'slug': cat['slug'], 'zone': cat['zone'], 'name': cat['name']})
+            for c in cards(page):
+                if got >= want: break
+                if c['soldOut'] or c['slug'] in seen or not c['image']: continue
+                if base_name(c['name']) in {base_name(i['name']) for i in items} or any(w in c['name'] for w in ACCESSORY_WORDS) \
+                        or not any(w in c['name'] for w, _ in KIND_WORDS):
+                    skipped += 1; print(f"  no 3D model fits {c['slug']}: {c['name'][:50]}", file=sys.stderr); continue
+                src = SITE + c['image'] if c['image'].startswith('/') else c['image']
+                try: img = thumb(src)
+                except Exception as e:
+                    skipped += 1; print(f"  no photo for {c['slug']}: {e}", file=sys.stderr); continue
+                seen.add(c['slug']); got += 1
+                items.append({'slug': c['slug'], 'url': f"{SITE}/product/{c['slug']}", 'cat': cat['slug'], 'kind': kind_of(c['name'], cat['zone']),
+                              'short': short_of(c['name'], c['brand']), 'name': c['name'], 'brand': c['brand'], 'price': c['price'],
+                              'old': c['old'] if c['old'] and c['old'] > c['price'] else None, 'disc': c['disc'] if c['old'] else 0, 'img': img})
+                time.sleep(.15)
+            if f'page={n + 1}' not in page: break
+        print(f"  {cat['name']:<24} {got} מוצרים" + (f" (דילגתי על {skipped}: בלי תמונה, אביזר, כפול או בלי דגם תלת־ממד מתאים)" if skipped else ''))
     return {'updated': datetime.date.today().isoformat(), 'cats': cats, 'items': items}
 
 def write(data, cfg):
