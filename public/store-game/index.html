@@ -1006,9 +1006,7 @@ function buildShell(){
     plane(L,1.05,M.pane,cx,FH+.55,cz,r); const h=box(L,.08,.1,M.yellow,cx,FH+1.1,cz); h.rotation.y=r;
     for(let k=0;k<=L;k+=2){ const t=k/L; box(.07,1.1,.07,M.steel,x0+(x1-x0)*t,FH+.55,z0+(z1-z0)*t); }
     solid(1,cx,cz,Math.abs(x1-x0)+.25,Math.abs(z1-z0)+.25,'rail'); };
-  rail(VOID.minX,VOID.minZ,VOID.minX,VOID.maxZ); rail(VOID.maxX,VOID.minZ,VOID.maxX,VOID.maxZ);
-  // the south rail stops where the two escalators arrive (x ±5)
-  rail(VOID.minX,VOID.maxZ,-5.9,VOID.maxZ); rail(-4.1,VOID.maxZ,4.1,VOID.maxZ); rail(5.9,VOID.maxZ,VOID.maxX,VOID.maxZ);
+  rail(VOID.minX,VOID.minZ,VOID.minX,VOID.maxZ); rail(VOID.maxX,VOID.minZ,VOID.maxX,VOID.maxZ); rail(VOID.minX,VOID.maxZ,VOID.maxX,VOID.maxZ);
   rail(VOID.minX,VOID.minZ,SH.x0,VOID.minZ); rail(SH.x1,VOID.minZ,VOID.maxX,VOID.minZ);
   rail(SH.x0,VOID.minZ,SH.x0,SH.z0); rail(SH.x1,VOID.minZ,SH.x1,SH.z0);
   noSpawn[1].push({minX:VOID.minX-.5,maxX:VOID.maxX+.5,minZ:VOID.minZ-.5,maxZ:VOID.maxZ+.5});
@@ -1018,57 +1016,6 @@ function buildShell(){
   // atrium banners
   banner('מבצעים חמים','BuyToday',-7.3,9.8,5.2,Math.PI/2); banner('הדרך החכמה','BuyToday',7.3,9.8,5.2,-Math.PI/2);
 }
-
-/* ---------- escalators ----------
-   A pair in the atrium between the ground floor and floor 1: up on the east side, down on the west.
-   Walking onto the foot of one rides it, at an easy pace with nothing to press, and lets you off on
-   the other floor a step past the comb. The elevator is still there, and the only way to the roof
-   (it has no opening for stairs); the map's floor jump does all three. */
-const ESC_RISE=FH, ESC_RUN=10.4, ESC_Z0=-3.2, ESC_Z1=ESC_Z0+ESC_RUN;   // bottom at z -3.2, top on the floor-1 slab edge (z 7.2)
-const ESCS=[{x:5,up:true},{x:-5,up:false}];
-let escRide=null; const ESC_STEPS=[];
-function buildEscalators(){
-  const L=Math.hypot(ESC_RUN,ESC_RISE), ang=Math.atan2(ESC_RISE,ESC_RUN);
-  const stepTex=canvasTex(64,256,(g,W,H)=>{ g.fillStyle='#3b3f4c'; g.fillRect(0,0,W,H); for(let y=0;y<H;y+=16){ g.fillStyle='#565b6b'; g.fillRect(0,y,W,11); g.fillStyle='#ffd166'; g.fillRect(0,y+11,W,2); } });
-  ESCS.forEach(e=>{
-    const g=new THREE.Group(); scene.add(g);
-    const tex=stepTex.clone(); tex.needsUpdate=true; tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(1,L*1.6); ESC_STEPS.push({tex,up:e.up});
-    const tread=new THREE.Mesh(new THREE.PlaneGeometry(1.25,L),new THREE.MeshStandardMaterial({map:tex,roughness:.6,metalness:.3}));
-    tread.rotation.x=-Math.PI/2+ang; tread.position.set(e.x,ESC_RISE/2+.02,(ESC_Z0+ESC_Z1)/2); g.add(tread);
-    // truss under the steps, glass sides with a black handrail, and a lit comb at both ends
-    const truss=new THREE.Mesh(new THREE.BoxGeometry(1.7,.7,L),mat(0xc9ccd6,{roughness:.4,metalness:.5})); truss.rotation.x=-ang; truss.position.set(e.x,ESC_RISE/2-.38,(ESC_Z0+ESC_Z1)/2); g.add(truss);
-    [-1,1].forEach(sd=>{ const holder=new THREE.Group(); holder.position.set(e.x+sd*.72,ESC_RISE/2+.55,(ESC_Z0+ESC_Z1)/2); holder.rotation.x=-ang; g.add(holder);
-      const gl=new THREE.Mesh(new THREE.PlaneGeometry(L,.95),M.pane); gl.rotation.y=Math.PI/2; holder.add(gl);
-      const hr=new THREE.Mesh(new THREE.BoxGeometry(.09,.09,L+.4),mat(0x15171f,{roughness:.5})); hr.position.set(0,.5,0); holder.add(hr);
-      const ed=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,L),M.led); ed.position.set(0,-.46,0); holder.add(ed); });
-    [[0,ESC_Z0-.6],[ESC_RISE,ESC_Z1+.6]].forEach(([y,z])=>{ box(1.7,.04,1.2,M.steel,e.x,y+.02,z,null,false); box(1.3,.03,.08,e.up?M.glowGreen:M.ledPink,e.x,y+.05,z+(y?-.55:.55),null,false); });
-    // a sign at the foot, where you get on
-    const onZ=e.up?ESC_Z0-1.3:ESC_Z1+1.3, onY=e.up?0:FH;
-    const sg=new THREE.MeshBasicMaterial({map:canvasTex(256,96,(c,W,H)=>{ c.fillStyle=e.up?'#1f9d62':'#d6336c'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.textAlign='center'; c.direction='rtl'; c.font='800 34px Rubik,sans-serif'; c.fillText(e.up?'⬆ לקומה 1':'⬇ לקרקע',W/2,58); })});
-    [0,Math.PI].forEach(r=>plane(1.3,.5,sg,e.x,onY+2.35,onZ+(r?-.02:.02),r));
-    box(.06,2.2,.06,M.dark,e.x-.62,onY+1.1,onZ,null,false); box(.06,2.2,.06,M.dark,e.x+.62,onY+1.1,onZ,null,false);
-    // floor 0: nobody walks through the truss; the foot of the up escalator stays open
-    solidR(0,e.x-.95,e.x+.95,ESC_Z0+(e.up?0:-1.2),ESC_Z1+.2);
-    // floor 1: the gap in the rail leads onto the escalator only, never out over the atrium
-    solidR(1,e.x-.95,e.x+.95,ESC_Z1-3,ESC_Z1-.15);
-  });
-}
-/* walking onto the foot (the right floor, lined up) starts the ride */
-function escCheck(){ if(escRide||elev.rider||elev.moving) return;
-  const p=player.pos, f=player.floor;
-  // the trolley is pushed ahead, so the player stops about two metres short of the foot: that is the step on
-  const fw=Math.cos(player.yaw);
-  for(const e of ESCS){ if(Math.abs(p.x-e.x)>.75) continue;
-    if(e.up&&f===0&&fw>.5&&p.z>ESC_Z0-2.6&&p.z<ESC_Z0-.4){ escRide={e,t:0,from:0,to:1}; break; }
-    if(!e.up&&f===1&&fw<-.5&&p.z<ESC_Z1+2.6&&p.z>ESC_Z1+.4){ escRide={e,t:0,from:1,to:0}; break; } }
-  // the ride is watched from the atrium side: a camera behind the rider would be inside the escalator
-  if(escRide){ stopAuto(); player.vel.set(0,0,0); player.pos.x=escRide.e.x; player.yaw=escRide.e.up?0:Math.PI; camYaw=escRide.e.up?-Math.PI/2-.55:Math.PI/2-.55; buzz(10); } }
-function escTick(dt){ ESC_STEPS.forEach(s=>{ s.tex.offset.y+=(s.up?-1:1)*dt*.9; });
-  if(!escRide) return false; const r=escRide; r.t=Math.min(1,r.t+dt/4.2); const k=r.t;
-  const z=r.e.up?ESC_Z0+ESC_RUN*k:ESC_Z1-ESC_RUN*k, y=r.e.up?ESC_RISE*k:ESC_RISE*(1-k);
-  player.pos.set(r.e.x,y,z);
-  if(r.t>=1){ setFloor(r.to); player.pos.set(r.e.x,r.to*FH,r.e.up?ESC_Z1+1.5:ESC_Z0-1.7); escRide=null; toast(r.to?'הגעתם לקומה 1':'הגעתם לקומת הקרקע'); }
-  return true; }
 
 /* ---------- glass elevator ---------- */
 const elev={y:0,floor:0,moving:false,from:0,to:0,t:0,rider:false,door:[1,0,0],doorSolid:[],panels:[[],[],[]],cabin:null};
@@ -1255,7 +1202,7 @@ function buildUpper(){
   solidR(1,BX-1.2,BX,.2,12.3);
   neon('מיזוג אוויר',16,Y+4.4,12.6,0,5,true,'מזגנים עיליים · אינוורטר');
   // --- heating & ventilation (front) ---
-  floorPlane(-BX,BX,13.5,BZ,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#3a2418','#452c1e'),roughness:1})),null,3);
+  floorPlane(-BX,BX,13.5,BZ,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#f1e3d3','#e8d6c2'),roughness:.9})),null,3);
   box(48,.06,.06,M.led,0,Y+.03,13.5,null,false);
   for(let x=-18;x<=18;x+=4.5){ if(Math.abs(x)<3) continue; place(mkHeater(),x,Y,BZ-.8,Math.PI,1.3); }
   solidR(1,-19,19,BZ-1.3,BZ);
@@ -1384,29 +1331,38 @@ function tagTexture(it){
   if(!it.tagCanvas){ it.tagCanvas=document.createElement('canvas'); it.tagCanvas.width=400; it.tagCanvas.height=156; it.tagTex=new THREE.CanvasTexture(it.tagCanvas); it.tagTex.encoding=THREE.sRGBEncoding; }
   if(PHONE.matches) return tagTexturePhone(it);
   const g=it.tagCanvas.getContext('2d'), W=400, H=156; g.clearRect(0,0,W,H);
-  const bg=it.wanted?'#f55304':'#ffffff', ink=it.wanted?'#ffffff':'#171a26';
-  g.fillStyle=bg; rrect(g,6,6,W-12,H-28,26); g.fill();
-  g.beginPath(); g.moveTo(W/2-13,H-23); g.lineTo(W/2,H-5); g.lineTo(W/2+13,H-23); g.fill();
-  g.direction='rtl'; g.textAlign='right'; g.textBaseline='middle'; g.fillStyle=ink; g.font='bold 31px Rubik, sans-serif';
-  let name=it.name; while(g.measureText(name).width>W-48 && name.length>4) name=name.slice(0,-2)+'…';
-  g.fillText(name,W-24,44);
-  g.direction='ltr'; g.textAlign='right'; g.font='38px "Secular One", sans-serif'; g.fillStyle=it.wanted?'#fff':'#171a26';
-  const price='₪'+it.price.toLocaleString('he-IL'); g.fillText(price,W-24,94);
-  let x=W-24-g.measureText(price).width-14;
-  if(it.old){ g.font='26px Rubik, sans-serif'; g.fillStyle=it.wanted?'rgba(255,255,255,.75)':'#8a90a3'; const o='₪'+it.old.toLocaleString('he-IL'); g.fillText(o,x,97); const ow=g.measureText(o).width; g.fillRect(x-ow,95,ow,2.5); x-=ow+14;
-    g.fillStyle=it.wanted?'#fff':'#e0342a'; const d='-'+it.disc+'%'; g.font='bold 24px Rubik, sans-serif'; const dw=g.measureText(d).width+16; rrect(g,x-dw,78,dw,34,8); g.fill(); g.fillStyle=it.wanted?'#f55304':'#fff'; g.textAlign='center'; g.fillText(d,x-dw/2,96); }
+  const bg=it.wanted?'#f55304':'rgba(255,255,255,.97)', ink=it.wanted?'#ffffff':'#171a26';
+  g.shadowColor='rgba(8,11,28,.3)'; g.shadowBlur=14; g.shadowOffsetY=4;
+  g.fillStyle=bg; rrect(g,10,8,W-20,H-36,24); g.fill(); g.shadowColor='transparent';
+  g.beginPath(); g.moveTo(W/2-12,H-29); g.lineTo(W/2,H-12); g.lineTo(W/2+12,H-29); g.fill();
+  if(!it.wanted){ g.fillStyle='#f55304'; rrect(g,W-18,30,5,H-80,3); g.fill(); }
+  g.direction='rtl'; g.textAlign='right'; g.textBaseline='middle'; g.fillStyle=ink; g.font='700 29px Rubik, sans-serif';
+  let name=it.name; while(g.measureText(name).width>W-62 && name.length>4) name=name.slice(0,-2)+'…';
+  g.fillText(name,W-32,42);
+  g.direction='ltr'; g.textAlign='right'; g.font='800 38px Rubik, sans-serif'; g.fillStyle=it.wanted?'#fff':'#171a26';
+  const price='₪'+it.price.toLocaleString('he-IL'); g.fillText(price,W-32,88);
+  let x=W-32-g.measureText(price).width-14;
+  if(it.old){ g.font='26px Rubik, sans-serif'; g.fillStyle=it.wanted?'rgba(255,255,255,.75)':'#8a90a3'; const o='₪'+it.old.toLocaleString('he-IL'); g.fillText(o,x,90); const ow=g.measureText(o).width; g.fillRect(x-ow,88,ow,2.5); x-=ow+14;
+    g.fillStyle=it.wanted?'#fff':'#e0342a'; const d='-'+it.disc+'%'; g.font='bold 24px Rubik, sans-serif'; const dw=g.measureText(d).width+16; rrect(g,x-dw,72,dw,34,9); g.fill(); g.fillStyle=it.wanted?'#f55304':'#fff'; g.textAlign='center'; g.fillText(d,x-dw/2,90); }
   it.tagTex.needsUpdate=true;
 }
 
 
 const ringGeo=new THREE.RingGeometry(.85,1.05,40);
 function buildItems(){
-  const pedW=mat(0xf6f7f9,{roughness:.4}), pg=new THREE.PlaneGeometry(.74,.74);
+  // a showroom plinth: navy foot with a lit toe, a white body with the product photo framed on every side,
+  // and a dark glass top on a thin orange light line
+  const pedW=mat(0xf7f8fa,{roughness:.35}), pedTop=mat(0x1b2131,{roughness:.22,metalness:.4}), frameM=new THREE.MeshBasicMaterial({color:0x232a3c});
+  const pg=new THREE.PlaneGeometry(.66,.5), fg=new THREE.PlaneGeometry(.74,.58);
   CATALOG.forEach(it=>{
     const base=it.f*FH+it.y, P=STATIC[it.f];
-    box(1,.8,1,pedW,it.x,base+.4,it.z,P); box(1.08,.05,1.08,M.yellow,it.x,base+.82,it.z,P); box(1.02,.08,1.02,M.navy,it.x,base+.04,it.z,P);
-    if(it.img){ const tx=new THREE.TextureLoader().load(it.img); tx.encoding=THREE.sRGBEncoding; const pm=new THREE.MeshBasicMaterial({map:tx});
-      for(let k=0;k<4;k++){ const a=k*Math.PI/2, ph=new THREE.Mesh(pg,pm); ph.position.set(it.x+Math.sin(a)*.505,base+.42,it.z+Math.cos(a)*.505); ph.rotation.y=a; P.add(ph); } }
+    box(1.1,.08,1.1,M.navy,it.x,base+.04,it.z,P); box(1.12,.018,1.12,M.led,it.x,base+.088,it.z,P,false);
+    box(.96,.7,.96,pedW,it.x,base+.43,it.z,P);
+    box(1.02,.02,1.02,M.led,it.x,base+.775,it.z,P,false); box(1.1,.06,1.1,pedTop,it.x,base+.815,it.z,P);
+    if(it.img){ const tx=new THREE.TextureLoader().load(it.img); tx.encoding=THREE.sRGBEncoding; tx.repeat.set(1,.76); tx.offset.set(0,.12); const pm=new THREE.MeshBasicMaterial({map:tx});
+      for(let k=0;k<4;k++){ const a=k*Math.PI/2, sx=Math.sin(a), sz=Math.cos(a);
+        const fr=new THREE.Mesh(fg,frameM); fr.position.set(it.x+sx*.482,base+.45,it.z+sz*.482); fr.rotation.y=a; P.add(fr);
+        const ph=new THREE.Mesh(pg,pm); ph.position.set(it.x+sx*.486,base+.45,it.z+sz*.486); ph.rotation.y=a; P.add(ph); } }
     solid(it.f,it.x,it.z,1.15,1.15,'ped');
     const g=new THREE.Group(); g.position.set(it.x,base,it.z); scene.add(g);
     const m=flatten(it.mk()); m.scale.setScalar(it.sc); m.position.y=.845; g.add(m); g.updateMatrixWorld(true);
@@ -1731,7 +1687,7 @@ function buildKiosks(){
     solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
   });
 }
-buildShell(); buildElevator(); buildEscalators(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -2905,8 +2861,6 @@ let frame=0, bubbleT=4, shopperLine=null;
 const SHOPPER_LINES=['יש לכם את זה בשחור?','רק מסתכל…','איפה המעלית?','זה במבצע?','וואו, איזה מסך','חיפשתי כבל HDMI'];
 
 function updatePlayer(dt){
-  if(escTick(dt)){ hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw; animGuy(hero,0,dt,true); return; }
-  escCheck();
   let ix=joy.x, iy=joy.y;
   if(keys.KeyA||keys.ArrowLeft) ix-=1; if(keys.KeyD||keys.ArrowRight) ix+=1; if(keys.KeyW||keys.ArrowUp) iy-=1; if(keys.KeyS||keys.ArrowDown) iy+=1;
   let mag=Math.hypot(ix,iy); if(mag>1){ ix/=mag; iy/=mag; mag=1; }
@@ -3217,7 +3171,8 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
   if(frame%10===0){ const menu=G.state!=='play', ph=PHONE.matches;
     CATALOG.forEach(it=>{ it.dist=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); const near=menu||(it.f===player.floor&&it.dist<24); it.tag.visible=!it.taken&&near&&!ph; it.near=near; });
     // on a phone the labels would bury the scene: the six closest, and nothing further than 13 m
-    if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); } }
+    if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
+    const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
