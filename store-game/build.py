@@ -22,7 +22,7 @@ Outputs: public/store-game/index.html (deploy anywhere) and store-game/dist/game
 Requires: Pillow (pip install pillow)
 """
 import base64, datetime, html, io, json, pathlib, re, sys, time, urllib.request
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = pathlib.Path(__file__).resolve().parent
 OUT = ROOT.parent / 'public' / 'store-game'
@@ -93,13 +93,37 @@ def short_of(name, brand):
     out = ' '.join(x for x in (typ, latin_brand or brand, extra) if x)
     return out[:28].strip()
 
-def thumb(url):
-    im = Image.open(io.BytesIO(get(url, binary=True))).convert('RGBA')
+def thumb(url, raw=None):
+    im = Image.open(io.BytesIO(raw or get(url, binary=True))).convert('RGBA')
     im.thumbnail((200, 200))
     bg = Image.new('RGB', (224, 224), 'white')
     bg.paste(im, ((224 - im.width) // 2, (224 - im.height) // 2), im)
     buf = io.BytesIO(); bg.save(buf, 'JPEG', quality=70, optimize=True)
     return 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
+
+def cutout(raw):
+    """The product on its own: the photo's plain white backdrop cut away, so the real product can stand on
+    its pedestal instead of a look-alike model. None when it cannot be cut cleanly (a photo in a room, a
+    grey studio backdrop, a product touching every edge); that product keeps its 3D model."""
+    im = Image.open(io.BytesIO(raw)).convert('RGBA')
+    bg = Image.new('RGBA', im.size, (255, 255, 255, 255)); bg.alpha_composite(im); im = bg.convert('RGB')
+    im.thumbnail((240, 240))
+    W, H = im.size; px = im.load()
+    border = [px[x, 0] for x in range(W)] + [px[x, H - 1] for x in range(W)] + [px[0, y] for y in range(H)] + [px[W - 1, y] for y in range(H)]
+    if sum(1 for p in border if min(p) >= 232) / len(border) < .9: return None
+    seed = px[0, 0] if min(px[0, 0]) >= 232 else (255, 255, 255)
+    pad = Image.new('RGB', (W + 4, H + 4), seed); pad.paste(im, (2, 2))
+    ImageDraw.floodfill(pad, (0, 0), (255, 0, 255), thresh=26)
+    mask = Image.new('L', pad.size, 255); mp = mask.load(); pp = pad.load()
+    for y in range(pad.size[1]):
+        for x in range(pad.size[0]):
+            if pp[x, y] == (255, 0, 255): mp[x, y] = 0
+    mask = mask.crop((2, 2, W + 2, H + 2)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(.8))
+    bb = mask.point(lambda v: 255 if v > 40 else 0).getbbox()
+    if not bb or (bb[2] - bb[0] >= W - 2 and bb[3] - bb[1] >= H - 2): return None
+    out = im.convert('RGBA'); out.putalpha(mask); out = out.crop(bb)
+    buf = io.BytesIO(); out.save(buf, 'WEBP', quality=78, method=6)
+    return 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode(), round(out.width / out.height, 3)
 
 def crawl_catalog(cfg):
     """Every product of every category, all pages, text only."""
@@ -185,13 +209,16 @@ def collect(cfg, seen):
                         or not any(w in c['name'] for w, _ in KIND_WORDS):
                     skipped += 1; print(f"  no 3D model fits {c['slug']}: {c['name'][:50]}", file=sys.stderr); continue
                 src = SITE + c['image'] if c['image'].startswith('/') else c['image']
-                try: img = thumb(src)
+                try: raw = get(src, binary=True); img = thumb(src, raw)
                 except Exception as e:
                     skipped += 1; print(f"  no photo for {c['slug']}: {e}", file=sys.stderr); continue
+                try: cut = cutout(raw)
+                except Exception as e: cut = None; print(f"  no cut-out for {c['slug']}: {e}", file=sys.stderr)
                 seen.add(c['slug']); got += 1
                 items.append({'slug': c['slug'], 'url': f"{SITE}/product/{c['slug']}", 'cat': cat['slug'], 'kind': kind_of(c['name'], cat['zone']),
                               'short': short_of(c['name'], c['brand']), 'name': c['name'], 'brand': c['brand'], 'price': c['price'],
-                              'old': c['old'] if c['old'] and c['old'] > c['price'] else None, 'disc': c['disc'] if c['old'] else 0, 'img': img})
+                              'old': c['old'] if c['old'] and c['old'] > c['price'] else None, 'disc': c['disc'] if c['old'] else 0, 'img': img,
+                              **({'cut': cut[0], 'ca': cut[1]} if cut else {})})
                 time.sleep(.15)
             if f'page={n + 1}' not in page: break
         print(f"  {cat['name']:<24} {got} מוצרים" + (f" (דילגתי על {skipped}: בלי תמונה, אביזר, כפול או בלי דגם תלת־ממד מתאים)" if skipped else ''))

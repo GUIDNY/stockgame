@@ -136,8 +136,8 @@
   #hint{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px;border-radius:14px;width:auto;max-width:calc(100vw - 2*var(--g));white-space:nowrap;pointer-events:none;}
   #hint b{font-size:15px;} #hint span{font-size:13px;color:var(--ink-dim);}
   #hint.warn span{color:#ffb4aa;}
-  #card{background:#fff;color:#161a2b;border-radius:18px;padding:10px;display:grid;grid-template-columns:76px 1fr;gap:6px 12px;box-shadow:0 18px 40px rgba(0,0,0,.4);}
-  #card img,#card .ph{width:76px;height:76px;border-radius:12px;object-fit:contain;background:#f5f6f8;}
+  #card{background:#fff;color:#161a2b;border-radius:18px;padding:10px;display:grid;grid-template-columns:104px 1fr;gap:6px 14px;box-shadow:0 18px 40px rgba(0,0,0,.4);}
+  #card img,#card .ph{width:104px;height:104px;border-radius:14px;object-fit:contain;background:#f5f6f8;padding:6px;box-sizing:border-box;}
   #card .ph{display:grid;place-items:center;color:#9aa0b4;font-size:11px;font-weight:700;}
   #card .ci{min-width:0;display:grid;align-content:center;gap:2px;}
   #card .b{font-size:11px;font-weight:700;letter-spacing:.6px;color:#8a90a3;display:flex;gap:6px;align-items:center;}
@@ -1365,7 +1365,18 @@ function buildItems(){
         const ph=new THREE.Mesh(pg,pm); ph.position.set(it.x+sx*.486,base+.45,it.z+sz*.486); ph.rotation.y=a; P.add(ph); } }
     solid(it.f,it.x,it.z,1.15,1.15,'ped');
     const g=new THREE.Group(); g.position.set(it.x,base,it.z); scene.add(g);
-    const m=flatten(it.mk()); m.scale.setScalar(it.sc); m.position.y=.845; g.add(m); g.updateMatrixWorld(true);
+    let m=flatten(it.mk()); m.scale.setScalar(it.sc); m.position.y=.845; it.solid=m;
+    // the real product: its photo, backdrop cut away by the build, standing on the plinth at the size its
+    // kind would have, and turned to whoever looks at it. Products whose photo cannot be cut keep the model.
+    if(it.cut){ m.updateMatrixWorld(true); const sz=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
+      const H=Math.max(.42,Math.min(sz.y*1.12,Math.max(sz.x,sz.z)*1.35/it.ca)), Wd=H*it.ca;
+      const tx=new THREE.TextureLoader().load(it.cut); tx.encoding=THREE.sRGBEncoding; tx.anisotropy=4;
+      const c=new THREE.Group(); c.position.y=.85; c.userData.face=true;
+      const pl=new THREE.Mesh(new THREE.PlaneGeometry(Wd,H),new THREE.MeshBasicMaterial({map:tx,transparent:true,alphaTest:.08,side:THREE.DoubleSide,color:0xf4f4f4}));
+      pl.position.y=H/2+.005; c.add(pl);
+      const sh=new THREE.Mesh(blobGeo,BLOB); sh.rotation.x=-Math.PI/2; sh.scale.set(Math.min(1,Wd*.8),.45,1); sh.position.y=.004; sh.renderOrder=1; c.add(sh);
+      m=c; }
+    g.add(m); g.updateMatrixWorld(true);
     const top=new THREE.Box3().setFromObject(m).max.y-base;
     const ring=new THREE.Mesh(ringGeo,new THREE.MeshBasicMaterial({color:BRAND,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));
     ring.rotation.x=-Math.PI/2; ring.position.y=.015; g.add(ring);
@@ -2196,7 +2207,7 @@ function doAction(){
   }
 }
 function addToCart(it){
-  const m=it.model.clone(); m.rotation.set(0,0,0);
+  const m=(it.solid||it.model).clone(); m.rotation.set(0,0,0);
   const size=new THREE.Vector3(); new THREE.Box3().setFromObject(m).getSize(size);
   m.scale.setScalar(.42/Math.max(size.x,size.y,size.z)*m.scale.x);
   const i=cart.count++; const slot=i%4, layer=(i/4)|0;
@@ -2930,7 +2941,7 @@ function specOf(it){ const n=it.full||'', out=[];
   return out.slice(0,3).join(' • '); }
 function syncCardSpace(){ requestAnimationFrame(()=>{ const open=!ui.card.hidden&&PHONE.matches; ui.hud.classList.toggle('card-open',open); ui.hud.style.setProperty('--cardH',open?ui.card.offsetHeight+'px':'0px'); joyHome(); }); }
 function fillCard(it){
-  if(it.img) $('#cardImg').src=it.img; $('#cardImg').hidden=!it.img; $('#cardPh').hidden=!!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
+  if(it.img) $('#cardImg').src=it.cut||it.img; $('#cardImg').hidden=!it.img; $('#cardPh').hidden=!!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
   $('#cardPrice').textContent=shekel(it.price); $('#cardOld').textContent=it.old?shekel(it.old):''; $('#cardDisc').textContent=it.old?`-${it.disc}%`:''; $('#cardDisc').hidden=!it.old;
   $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardBuyP').textContent=shekel(it.price);
   $('#cardBuy').hidden=!CHECKOUT_URL||!it.slug; if(!$('#cardBuy').hidden) $('#cardBuy').href=buyUrl([it],'buy-now');
@@ -3173,7 +3184,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     // on a phone the labels would bury the scene: the six closest, and nothing further than 13 m
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
-  CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
+  CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=it.model.userData.face?Math.atan2(camera.position.x-it.x,camera.position.z-it.z):Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
   AD.update(dt);
