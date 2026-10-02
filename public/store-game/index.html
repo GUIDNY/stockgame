@@ -855,9 +855,12 @@ const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 180);
 
 /* ---------- helpers ---------- */
 /* The follow camera: close behind the shopper and a little above the head, looking at chest height a step
-   ahead, so the mall is seen at a person's eye line rather than from a level editor. Position and aim are
-   damped separately (the aim a touch faster), which keeps turns smooth without lagging behind the walk. */
-const CAM={dist:5.8,h:2.85,lookH:1.4,ahead:1.8,posRate:5,lookRate:8};
+   ahead, so the mall is seen at a person's eye line rather than from a level editor. It moves WITH the
+   shopper (a camera that trails the walk makes the figure drift on screen and the controls feel loose);
+   only the turn round the shopper is smoothed (yawRate), and the light position/aim damping that is left
+   just rounds off a jump or a pull-in. */
+const CAM={dist:5.8,h:2.85,lookH:1.4,ahead:1.8,posRate:16,lookRate:20,yawRate:7,follow:2.6};
+let camYawSm=null;   // the smoothed turn; null snaps it to camYaw (after a jump)
 const camBlocks=[];   // hanging screens the camera must not end up inside: {o:Object3D, r, hy}
 const STATIC = [new THREE.Group(), new THREE.Group(), new THREE.Group()];   // baked into few meshes per floor
 scene.add(STATIC[0], STATIC[1], STATIC[2]);
@@ -1074,15 +1077,11 @@ function buildShell(){
   [-21,-7,7,21].forEach(z=>{ plane(12,3.2,nm,-BX+.05,9,z,Math.PI/2); plane(12,3.2,nm,BX-.05,9,z,-Math.PI/2);  });
   [-BX+.12,BX-.12].forEach(x=>[-21,-7,7,21].forEach(z=>{ for(let k=-6;k<=6;k+=3) box(.1,3.3,.1,M.navyDeep,x,9,z+k,null,false); box(.1,.1,12,M.navyDeep,x,10.6,z,null,false); box(.1,.1,12,M.navyDeep,x,7.4,z,null,false); }));
   // ceilings and light panels
-  /* ceilings: a coffer of shallow white beams every six metres, and in each bay a long line of light, so the
-     ceiling leads the eye down the aisles like a real mall's */
+  /* ceilings: long lines of warm light down the aisles, like a real mall's */
   const pg=new THREE.PlaneGeometry(.26,5.2);
   const inVoid=(x,z,m)=>x>VOID.minX-m&&x<VOID.maxX+m&&z>VOID.minZ-m&&z<VOID.maxZ+m;
   for(let x=-21;x<=21;x+=6) for(let z=-27;z<=27;z+=6){ if(inVoid(x,z,1.5)) continue;
     [[FH-.31,STATIC[0]],[11.98,STATIC[1]]].forEach(([y,P])=>{ const p=new THREE.Mesh(pg,M.ledWarm); p.rotation.x=Math.PI/2; p.position.set(x,y,z); P.add(p); }); }
-  [[FH-.3,0],[12,1]].forEach(([y,f])=>{ const P=STATIC[f];
-    for(let x=-18;x<=18;x+=6){ if(Math.abs(x)<VOID.maxX+.5) { box(.22,.22,BZ-VOID.maxZ,M.fascia,x,y-.11,(BZ+VOID.maxZ)/2,P,false); box(.22,.22,BZ-VOID.maxZ,M.fascia,x,y-.11,-(BZ+VOID.maxZ)/2,P,false); } else box(.22,.22,2*BZ,M.fascia,x,y-.11,0,P,false); }
-    for(let z=-24;z<=24;z+=6){ if(Math.abs(z)<VOID.maxZ+.5){ box(BX-VOID.maxX,.22,.22,M.fascia,(BX+VOID.maxX)/2,y-.11,z,P,false); box(BX-VOID.maxX,.22,.22,M.fascia,-(BX+VOID.maxX)/2,y-.11,z,P,false); } else box(2*BX,.22,.22,M.fascia,0,y-.11,z,P,false); } });
   const roof=mat(0xf0f1f4,{roughness:.9});
   [[-BX,VOID.minX,-BZ,BZ],[VOID.maxX,BX,-BZ,BZ],[VOID.minX,VOID.maxX,-BZ,VOID.minZ],[VOID.minX,VOID.maxX,VOID.maxZ,BZ]].forEach(([x0,x1,z0,z1])=>ceilPlane(x0,x1,z0,z1,12,roof));
   const sky=canvasTex(256,256,(g,W,H)=>{ const gr=g.createRadialGradient(W/2,H/2,10,W/2,H/2,W*.75); gr.addColorStop(0,'#f4f8fc'); gr.addColorStop(1,'#bcd8f0'); g.fillStyle=gr; g.fillRect(0,0,W,H);
@@ -1098,10 +1097,6 @@ function buildShell(){
   box(.05,.04,14,M.ledWarm,VOID.minX+.06,FH-.55,0,null,false); box(.05,.04,14,M.ledWarm,VOID.maxX-.06,FH-.55,0,null,false);
   box(16,.04,.05,M.ledWarm,0,FH-.55,VOID.maxZ-.06,null,false); box(6.4,.04,.05,M.ledWarm,-4.8,FH-.55,VOID.minZ+.06,null,false); box(6.4,.04,.05,M.ledWarm,4.8,FH-.55,VOID.minZ+.06,null,false);
   box(.03,.03,14,M.yellow,VOID.minX-.09,FH-.06,0,null,false); box(.03,.03,14,M.yellow,VOID.maxX+.09,FH-.06,0,null,false); box(16,.03,.03,M.yellow,0,FH-.06,VOID.maxZ+.09,null,false);
-  // round columns at the corners of the atrium, on both floors, holding the balcony
-  [[-8.6,-7.4],[8.6,-7.4],[-8.6,7.4],[8.6,7.4]].forEach(([x,z])=>[0,1].forEach(f=>{ const y=f*FH, P=STATIC[f];
-    cyl(.34,.34,FH-.3,M.column,x,y+FH/2-.15,z,P,20); cyl(.4,.4,.14,M.navyDeep,x,y+.07,z,P,20); cyl(.36,.36,.03,M.yellow,x,y+1.2,z,P,20); cyl(.62,.34,.4,M.column,x,y+FH-.5,z,P,20);
-    solid(f,x,z,.85,.85,'col'); }));
   SG=STATIC[1];
   const rail=(x0,z0,x1,z1)=>{ const L=Math.hypot(x1-x0,z1-z0), cx=(x0+x1)/2, cz=(z0+z1)/2, r=Math.atan2(x1-x0,z1-z0)+Math.PI/2;
     plane(L,1.05,M.pane,cx,FH+.55,cz,r); const h=box(L,.07,.12,M.rail,cx,FH+1.1,cz); h.rotation.y=r;
@@ -1191,12 +1186,10 @@ function buildGround(){
   sofa(-19,0,-26,Math.PI,0x2f3547); sofa(-13,0,-26,Math.PI,0x2f3547); solid(0,-19,-26,3.4,1.2); solid(0,-13,-26,3.4,1.2);
   box(1.6,.35,.8,M.wood,-16,.18,-27.7); solid(0,-16,-27.7,1.7,.9);
   [-15,-11].forEach(z=>{ box(1,.5,2.6,M.dark,-BX+.8,.25,z); box(1.02,.04,2.62,M.led,-BX+.8,.52,z,null,false); place(mkTV(),-BX+.9,.5,z,Math.PI/2,1.9); solid(0,-BX+.8,z,1.2,2.8); });
-  neon('טלוויזיות ומולטימדיה',-16,4.5,-9.3,0,6.8,true,'מסכים · מקרנים · מתקני תלייה');
   // --- stereo & home theatre (left, front) ---
   floorPlane(-BX,-8.5,-9,13,.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#3a3d4a','#434757'),roughness:1})),null,3);
   [-6,-1.5,3,7.5].forEach(z=>{ [-1,1].forEach(s=>{ const t=mkSpeakerTower(); place(t,-BX+.7,0,z+s*1.1,Math.PI/2,2.1); }); box(.9,.5,1.1,M.dark,-BX+.8,.25,z); place(mkReceiver(),-BX+.8,.5,z,Math.PI/2,1.1); solidR(0,-BX,-BX+1.5,z-1.6,z+1.6); });
   sofa(-16.5,0,11.6,0,0x4a3b5c,3.6); solid(0,-16.5,11.6,3.8,1.2);
-  neon('סטריאו וקולנוע ביתי',-16,4.5,13.5,0,6.8,true,'רמקולים · רסיברים · מגברים');
   // --- small kitchen appliances (right, back) ---
   floorPlane(8.5,BX,-BZ,-9,.01,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.55})),null,3);
   box(10,1.05,1.2,M.navyDeep,16,.53,-BZ+1); box(10.2,.06,1.35,M.quartz,16,1.08,-BZ+1); box(9.8,.03,.02,M.ledWarm,16,.06,-BZ+1.61,null,false); box(9.8,.03,.02,M.ledWarm,16,1.02,-BZ+1.68,null,false); solid(0,16,-BZ+1,10.4,1.5);
@@ -1211,7 +1204,6 @@ function buildGround(){
   place(mkBlender(),13.2,.99,-18,.4,1.1); place(mkKettle(),18.6,.99,-18.2,.4,1.1);
   for(let z=-28;z<=-10.5;z+=2.2){ box(1.2,2.5,2.1,M.white,BX-.75,1.25,z); box(.03,.35,.05,M.yellow,BX-1.36,1.9,z+.7,null,false); }
   solidR(0,BX-1.4,BX,-29.2,-9.3);
-  neon('מוצרי חשמל למטבח',16,4.5,-9.3,0,6.8,true,'קפה · בלנדרים · אייר פרייר');
   // --- ovens & cooktops (right, front) ---
   floorPlane(8.5,BX,-9,13,.01,new THREE.MeshStandardMaterial(overlay({map:tileTex('#b9b4ad','#c3beb7','#ccc8c1'),roughness:.35})),null,2);
   for(let z=-7.5;z<=10.5;z+=2.25){ box(1.2,2.6,2.15,M.white,BX-.75,1.3,z); box(.02,.62,1.6,M.glass,BX-1.36,1.55,z,null,false); box(.02,.62,1.6,M.glass,BX-1.36,.8,z,null,false);
@@ -1219,7 +1211,6 @@ function buildGround(){
   solidR(0,BX-1.4,BX,-8.7,11.7);
   box(1.4,.92,18,M.white,10.2,.46,2); box(1.5,.06,18.2,M.quartz,10.2,.95,2); box(.02,.03,17.6,M.ledWarm,9.49,.06,2,null,false); box(.02,.03,17.6,M.ledWarm,10.91,.06,2,null,false); solidR(0,9.4,11,-7.2,11.2);
   for(let z=-5.5;z<=9.5;z+=3){ place(mkCooktop(),10.2,.98,z,Math.PI/2,1.2); }
-  neon('תנורים וכיריים',16,4.5,13.5,0,6.8,true,'תנורים בנויים · כיריים · מיקרוגלים');
   // --- hot deals (back centre) ---
   cyl(1.75,1.9,.3,M.navy,0,.15,-19,null,40); const ring=new THREE.Mesh(new THREE.TorusGeometry(1.76,.05,8,48),M.led); ring.rotation.x=Math.PI/2; ring.position.set(0,.3,-19); SG.add(ring);
   solid(0,0,-19,3.5,3.5);
@@ -1248,14 +1239,12 @@ function buildGround(){
     g.g.position.set(cx+1.25,0,24.6); g.g.rotation.y=-Math.PI/2; scene.add(g.g); solid(0,cx+1.25,24.6,.8,.8); cashiers.push(g);
   });
   floorPlane(-21,-9,20.9,21.15,.013,mat(BRAND,overlay()));
-  neon('קופות',-15,4.3,20.8,0,3.6,true);
   // --- personal care (front right) ---
   floorPlane(8.5,BX,14,BZ-.3,.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#ece2dc','#e4d8d1'),roughness:.9})),null,3);
   box(1,.9,13,M.white,BX-.6,.45,23); box(1.1,.05,13.2,M.quartz,BX-.6,.92,23); box(.02,.03,12.6,M.ledWarm,BX-1.11,.06,23,null,false); solidR(0,BX-1.2,BX,16.3,29.7);
   for(let z=17.5;z<=28.5;z+=2.75){ plane(1.7,1.4,mat(0xdfe8f2,{roughness:.05,metalness:.8}),BX-.08,2.1,z,-Math.PI/2);
     for(let k=-2;k<=2;k++){ const b=new THREE.Mesh(new THREE.SphereGeometry(.05,8,6),M.glowWhite); b.position.set(BX-.12,2.95,z+k*.35); SG.add(b); }
     place(mkHairDryer(),BX-.6,.95,z-.4,-Math.PI/2,1); }
-  neon('טיפוח אישי',16,4.3,14.4,0,5,true,'גילוח · שיער · תספורת');
 }
 const COUNTERS=[-19,-15,-11];
 const cashiers=[];
@@ -1275,14 +1264,12 @@ function buildUpper(){
   solidR(1,-22.6,-9.1,-BZ,-BZ+1.4);
   for(let x=-20.5;x<=-10;x+=1.3){ [-1,1].forEach(s=>place(mkFridge(),x,Y,-16+s*.57,s>0?0:Math.PI,1.9)); }
   solidR(1,-21.3,-9.2,-17.2,-14.8);
-  neon('מקררים וקירור',-16,Y+4.4,-9.3,0,6.8,true,'מקררים · מקפיאים · מקררי יין');
   // --- laundry & dishwashers (left, front) ---
   floorPlane(-BX,-8.5,-9,13,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dcdee6','#d2d5de'),roughness:.9})),null,3);
   for(let z=-7.5,i=0;z<=11.5;z+=1.2,i++){ [0,1.08].forEach(h=>{ const m=(i+h)%3===2?M.dark:M.white; box(1.05,1.05,1.1,m,-BX+.7,Y+.525+h,z);
       const d=new THREE.Mesh(new THREE.CircleGeometry(.3,24),mat(0x2a4a7a,{roughness:.1,metalness:.3})); d.position.set(-BX+1.26,Y+.5+h,z); d.rotation.y=Math.PI/2; SG.add(d);
       const r=new THREE.Mesh(new THREE.TorusGeometry(.31,.04,8,24),M.steel); r.position.set(-BX+1.27,Y+.5+h,z); r.rotation.y=Math.PI/2; SG.add(r); }); }
   solidR(1,-BX,-BX+1.4,-8.3,12.3);
-  neon('כביסה, ייבוש ומדיחים',-16,Y+4.4,12.6,0,6.8,true,'מכונות כביסה · מייבשים · מדיחים');
   // --- home appliances (right, back) ---
   floorPlane(8.5,BX,-BZ,-1,Y+.01,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.55})),null,3);
   const ax0=12, ax1=20, az0=-30, az1=-25;
@@ -1293,14 +1280,12 @@ function buildUpper(){
   box(.3,3.4,24,M.navyDeep,BX-.3,Y+2.1,-16); box(.04,.05,24,M.yellow,BX-.48,Y+3.75,-16,null,false); box(.04,.04,23.6,M.ledWarm,BX-.48,Y+.42,-16,null,false);
   for(let z=-26;z<=-6;z+=3) place(mkStickVac(),BX-.75,Y+.9,z,-Math.PI/2,1.2);
   solidR(1,BX-1.2,BX,-28.5,-3.5);
-  neon('מוצרי חשמל לבית',16,Y+4.4,-1.4,0,6.2,true,'שואבים · מגהצים · ניקיון');
   // --- air conditioning (right, middle) ---
   floorPlane(8.5,BX,-1,13,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dfe5ea','#d5dce2'),roughness:.9})),null,3);
   for(let z=1;z<=11.5;z+=3.5){ box(.3,.42,1.7,M.white,BX-.18,Y+3.5,z); box(.02,.06,1.5,M.dark,BX-.34,Y+3.33,z,null,false); box(.02,.03,.12,M.ledCyan,BX-.34,Y+3.62,z+.6,null,false);
     box(.9,.85,1.2,mat(0xe8eaee),BX-.65,Y+.43,z); const fg=new THREE.Mesh(new THREE.CircleGeometry(.32,24),M.dark); fg.position.set(BX-1.11,Y+.45,z); fg.rotation.y=-Math.PI/2; SG.add(fg);
     for(let k=-2;k<=2;k++) box(.01,.6,.02,M.steel,BX-1.12,Y+.45,z+k*.12,null,false); }
   solidR(1,BX-1.2,BX,.2,12.3);
-  neon('מיזוג אוויר',16,Y+4.4,12.6,0,5,true,'מזגנים עיליים · אינוורטר');
   // --- heating & ventilation (front) ---
   floorPlane(-BX,BX,13.5,BZ,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#f1e3d3','#e8d6c2'),roughness:.9})),null,3);
   box(48,.02,.18,M.navyDeep,0,Y+.012,13.5,null,false);
@@ -1325,11 +1310,15 @@ const robots=[];
    across the top with the store's own sign, a warm light line under the fascia washing the entrance, and a
    navy threshold in the floor. Nothing closes: it is a frame you walk through, so the paths, the shelves and
    the products are exactly where they were. */
+const PILLARS=[];
 function storefront(d){
   const [x0,x1,z0,z1]=d.rect, f=d.f, Y=f*FH, P=STATIC[f];
   const left=x1<=-8, ex=left?x1:x0, face=left?Math.PI/2:-Math.PI/2, out=left?1:-1;
   const za=z0+.35, zb=z1-.35, L=zb-za, zc=(za+zb)/2, top=Y+FH-.95;
-  [za,zb].forEach(z=>{ box(.5,FH-.95,.5,M.navyDeep,ex,Y+(FH-.95)/2,z,P); box(.04,FH-1.6,.06,M.ledWarm,ex+out*.26,Y+(FH-1.25)/2+.2,z,P,false); solid(f,ex,z,.65,.65,'front'); });
+  [z0,z1].forEach(zr=>{ const z=clamp(zr,-BZ+.3,BZ-.3);
+    if(PILLARS.some(q=>q.f===f&&q.ex===ex&&Math.abs(q.z-z)<1.5)) return; PILLARS.push({f,ex,z});
+    if(f===1&&Math.abs(z)<VOID.maxZ+1.5) return;   // the walk along the balcony railing stays wide open
+    box(.34,FH-.95,.34,M.navyDeep,ex,Y+(FH-.95)/2,z,P); solid(f,ex,z,.42,.42,'front'); });
   box(.36,.78,L+.5,M.fascia,ex,top+.39,zc,P,false);
   box(.38,.06,L+.5,M.navyDeep,ex,top,zc,P,false);
   box(.04,.03,L,M.ledWarm,ex+out*.2,top-.05,zc,P,false);
@@ -1983,16 +1972,16 @@ function driveTo(goal){
        but a blurred figure), and the player faces what they came for: the product, or into the department */
     const tx=goal.look?goal.look[0]:goal.x, tz=goal.look?goal.look[1]:goal.z, want=Math.hypot(tx-sp.x,tz-sp.z)>.3?Math.atan2(tx-sp.x,tz-sp.z):player.yaw;
     let bestA=want+Math.PI, bestS=-1e9;
-    // room on the floor behind, and a clear line of sight to where the camera will hang (signs are not on the floor)
-    const eye=new THREE.Vector3(sp.x,goal.f*FH+1.2,sp.z), dir=new THREE.Vector3(), ray=new THREE.Raycaster(); ray.far=Math.hypot(CAM.dist,CAM.h-1.2)+.8; ray.camera=camera;
-    const blockers=scene.children.filter(o=>o!==hero.g);   // not by .visible: the floor being jumped to is only switched on next frame
-    for(let k=0;k<16;k++){ const a=k*Math.PI/8; let run=0; while(run<CAM.dist&&walkable(sp.x+Math.sin(a)*(run+.6),sp.z+Math.cos(a)*(run+.6),.3,goal.f)) run+=.4;
-      let sight=9; try{ const ok=h=>h.object.material&&!h.object.isSprite&&h.object.material!==M.pane&&h.object.material!==GLOW;
-        dir.set(Math.sin(a)*CAM.dist,CAM.h-1.2,Math.cos(a)*CAM.dist); const L=dir.length(); dir.normalize(); ray.set(eye,dir); let hit=ray.intersectObjects(blockers,true).find(ok); if(hit) sight=hit.distance;
-        // and back from the camera: a one-sided sign seen from behind is invisible to the first ray
-        const cam=eye.clone().addScaledVector(dir,L); ray.set(cam,dir.clone().negate()); hit=ray.intersectObjects(blockers,true).find(ok); if(hit&&hit.distance<L-.3) sight=Math.min(sight,L-hit.distance); }catch(e){}
-      const sc=Math.min(run,CAM.dist)+Math.min(sight,9)*1.2+2.2*Math.cos(a-(want+Math.PI)); if(sc>bestS){ bestS=sc; bestA=a; } }
-    camYaw=bestA; player.yaw=bestA+Math.PI; hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
+    /* where the camera hangs: the direction with the most open floor behind the player (the walk grid
+       already knows every shelf, counter and pillar), clear of the hanging screens, and close to facing
+       what they came for. Pure arithmetic on the collision boxes: the old version cast 32 rays through
+       the whole scene, which froze a phone for a good part of a second on every jump. */
+    for(let k=0;k<16;k++){ const a=k*Math.PI/8, sx=Math.sin(a), sz=Math.cos(a); let run=0;
+      while(run<CAM.dist+1&&walkable(sp.x+sx*(run+.6),sp.z+sz*(run+.6),.35,goal.f)) run+=.4;
+      const cx=sp.x+sx*CAM.dist, cz=sp.z+sz*CAM.dist, cyy=goal.f*FH+CAM.h;
+      const blocked=camBlocks.some(b=>Math.hypot(cx-b.o.position.x,cz-b.o.position.z)<b.r&&Math.abs(cyy-b.o.position.y)<b.hy);
+      const sc=Math.min(run,CAM.dist+1)*1.6+2.2*Math.cos(a-(want+Math.PI))-(blocked?6:0); if(sc>bestS){ bestS=sc; bestA=a; } }
+    camYaw=bestA; camYawSm=null; player.yaw=bestA+Math.PI; hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
     camPos.set(player.pos.x+Math.sin(camYaw)*CAM.dist,player.pos.y+CAM.h,player.pos.z+Math.cos(camYaw)*CAM.dist); lookSm.set(player.pos.x,player.pos.y+CAM.lookH,player.pos.z);
     renderQuest(true); saveResume&&saveResume(); w.classList.remove('on'); if(goal.label) toast('הגעתם: '+goal.label,'good'); },170); }
 function planAuto(){ const f=player.floor, d=auto.goal;
@@ -2137,7 +2126,7 @@ function resetGame(){
   flyers.forEach(f=>scene.remove(f.m)); flyers.length=0;
   G.wanted=[]; G.t=0;
   elev.y=0; elev.floor=0; elev.moving=false; elev.rider=false;
-  player.pos.set(ONLINE?rand(-3.5,3.5):0,0,ONLINE?rand(27,29):28.5); player.vel.set(0,0,0); player.yaw=Math.PI; setFloor(0); camYaw=0;
+  player.pos.set(ONLINE?rand(-3.5,3.5):0,0,ONLINE?rand(27,29):28.5); player.vel.set(0,0,0); player.yaw=Math.PI; setFloor(0); camYaw=0; camYawSm=null;
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
   renderList(); renderMoney(); updateCartBadge(); shownCard=null; ui.card.hidden=true;
 }
@@ -2151,7 +2140,7 @@ function enterMall(){
   requestAnimationFrame(()=>{ joyHome(); joyTeach(); }); Prog.newDay(); scLoad();
   if(coPending){ coPending=false; setTimeout(()=>openCheckout(utm(SITE+'/checkout','signin-return')),400); }
   const rs=loadResume();
-  if(rs){ setFloor(rs.f); player.pos.set(clamp(rs.x,-BX+1,BX-1),rs.f*FH,clamp(rs.z,-BZ+1,BZ-1)); player.yaw=rs.yaw||0; camYaw=player.yaw+Math.PI;
+  if(rs){ setFloor(rs.f); player.pos.set(clamp(rs.x,-BX+1,BX-1),rs.f*FH,clamp(rs.z,-BZ+1,BZ-1)); player.yaw=rs.yaw||0; camYaw=player.yaw+Math.PI; camYawSm=null;
     // never back inside the lift shaft: the cabin may be on another floor by now
     if(player.pos.x>SH.x0-.4&&player.pos.x<SH.x1+.4&&player.pos.z>SH.z0-.4&&player.pos.z<SH.z1+.4){ player.pos.x=0; player.pos.z=rs.f===0?SH.z1+1.8:SH.z0-1.8; }
     for(let k=0;k<3;k++) pushOut(player.pos,.5,0,0,rs.f);
@@ -3042,18 +3031,20 @@ function updatePlayer(dt){
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
   animGuy(hero,speed,dt,true);
   dragT-=dt;
-  if(dragT<=0 && fwd>.2 && speed>.5) camYaw=lerpAngle(camYaw,player.yaw+Math.PI,1-Math.exp(-dt*1.5*fwd));
+  if(dragT<=0 && fwd>.2 && speed>.5) camYaw=lerpAngle(camYaw,player.yaw+Math.PI,1-Math.exp(-dt*CAM.follow*fwd));
 }
 function updateCamera(dt,menu){
   if(menu){ const p=hero.g.position, fx=Math.sin(player.yaw), fz=Math.cos(player.yaw); tmp.set(p.x+fx*6.8,p.y+1.35,p.z+fz*6.8); look.set(p.x,p.y-.05,p.z); }
   else {
+    if(camYawSm===null) camYawSm=camYaw; camYawSm=lerpAngle(camYawSm,camYaw,1-Math.exp(-dt*CAM.yawRate));
+    const yw=camYawSm, sy=Math.sin(yw), cy0=Math.cos(yw);
     let dist=CAM.dist; const h=CAM.h, base=player.pos.y;
     // pull the camera in rather than letting it sit inside a hanging screen
-    for(;dist>2.2;dist-=.3){ const cx=player.pos.x+Math.sin(camYaw)*dist, cz=player.pos.z+Math.cos(camYaw)*dist, cy=base+h*(.55+.45*dist/CAM.dist);
+    for(;dist>2.2;dist-=.3){ const cx=player.pos.x+sy*dist, cz=player.pos.z+cy0*dist, cy=base+h*(.55+.45*dist/CAM.dist);
       if(!camBlocks.some(b=>Math.hypot(cx-b.o.position.x,cz-b.o.position.z)<b.r && Math.abs(cy-b.o.position.y)<b.hy)) break; }
-    tmp.set(player.pos.x+Math.sin(camYaw)*dist, base+h*(.55+.45*dist/CAM.dist), player.pos.z+Math.cos(camYaw)*dist);
+    tmp.set(player.pos.x+sy*dist, base+h*(.55+.45*dist/CAM.dist), player.pos.z+cy0*dist);
     tmp.x=clamp(tmp.x,-BX+.7,BX-.7); tmp.z=clamp(tmp.z,-BZ+.7,BZ-.4);
-    look.set(player.pos.x-Math.sin(camYaw)*CAM.ahead,base+CAM.lookH,player.pos.z-Math.cos(camYaw)*CAM.ahead);
+    look.set(player.pos.x-sy*CAM.ahead,base+CAM.lookH,player.pos.z-cy0*CAM.ahead);
   }
   camPos.lerp(tmp,1-Math.exp(-dt*(menu?1.5:CAM.posRate)));
   lookSm.lerp(look,1-Math.exp(-dt*(menu?3:CAM.lookRate)));
@@ -3359,7 +3350,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }
-function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.fov=w<h?62:50; camera.updateProjectionMatrix(); joyHome(); }
+function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.fov=w<h?62:50; CAM.dist=w<h?6.7:5.8; CAM.h=w<h?3.2:2.85;   /* a tall phone screen needs a little more room round the figure */ camera.updateProjectionMatrix(); joyHome(); }
 addEventListener('resize',onResize); onResize();
 function applyTagMode(){ const ph=PHONE.matches; CATALOG.forEach(it=>{ tagTexture(it); if(it.tag){ it.tag.scale.set(ph?1.25:2.05,ph?.49:.8,1); it.tag.position.y=(it.tag.userData.top||1)+(ph?.42:.62); } }); }
 applyTagMode();
