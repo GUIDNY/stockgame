@@ -2407,7 +2407,8 @@ function moveJoy(e){ let dx=e.clientX-joyC.x, dy=e.clientY-joyC.y; const R=PHONE
 let camYaw=0, dragT=0; const drag={id:null,x:0,x0:0,y0:0,t0:0,moved:0};
 canvas.addEventListener('pointerdown',e=>{ if(drag.id!==null) return; drag.id=e.pointerId; drag.x=drag.x0=e.clientX; drag.y0=e.clientY; drag.t0=performance.now(); drag.moved=0; try{canvas.setPointerCapture(e.pointerId);}catch(_){} });
 canvas.addEventListener('pointermove',e=>{ if(e.pointerId!==drag.id) return; drag.moved=Math.max(drag.moved,Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)); if(drag.moved<8) return; camYaw-=(e.clientX-drag.x)*.0075; drag.x=e.clientX; dragT=1.4; });
-const endDrag=e=>{ if(e.pointerId!==drag.id) return; drag.id=null; if(e.type==='pointerup'&&drag.moved<8&&performance.now()-drag.t0<400) tapWorld(e.clientX,e.clientY); };
+const endDrag=e=>{ if(e.pointerId!==drag.id) return; drag.id=null; // tap-to-walk on a computer only: on a phone a tap meant to look around or to reach a button sent the shopper off somewhere
+  if(e.type==='pointerup'&&e.pointerType==='mouse'&&drag.moved<8&&performance.now()-drag.t0<400) tapWorld(e.clientX,e.clientY); };
 /* One hand: a tap on the floor walks there, a tap on a product walks up to it. */
 const tapRay=new THREE.Raycaster(), tapV=new THREE.Vector2();
 let tapMark=null;
