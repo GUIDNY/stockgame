@@ -476,6 +476,39 @@
      ===================================================================== */
   .mhead{display:none;}
   #actCount{display:none;}
+  /* ---------- Alfred: the shop's own assistant, in person ---------- */
+  #helpBtn{position:fixed;right:var(--g);bottom:calc(var(--sb) + 112px);height:44px;padding:0 12px 0 6px;border-radius:22px;display:flex;align-items:center;gap:7px;font-weight:800;font-size:14px;color:#fff;z-index:3;}
+  #helpBtn img{width:32px;height:32px;border-radius:50%;background:#fff;object-fit:cover;box-shadow:0 0 0 2px var(--brand);}
+  #helpBtn:active{transform:scale(.95);}
+  .alfp{height:min(88vh,720px);}
+  .alfh{display:flex;align-items:center;gap:10px;}
+  .alfh img{width:46px;height:46px;border-radius:50%;object-fit:cover;background:#eef0f5;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);}
+  .alfh .live{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#1f9d62;}
+  .alfh .live i{width:7px;height:7px;border-radius:50%;background:#1f9d62;}
+  .alfmsgs{flex:1;overflow-y:auto;touch-action:pan-y;padding:14px 14px 6px;display:flex;flex-direction:column;gap:10px;}
+  .am{max-width:86%;padding:10px 13px;border-radius:16px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+  .am.m{align-self:flex-start;background:#fff;color:#161a2b;border-bottom-right-radius:5px;box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .am.u{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-left-radius:5px;}
+  .am.err{background:#fde8e6;color:#8c1822;}
+  .adots{align-self:flex-start;display:flex;gap:4px;padding:12px 14px;border-radius:16px;background:#fff;}
+  .adots i{width:7px;height:7px;border-radius:50%;background:#aab1c8;animation:adot 1s infinite ease-in-out;} .adots i:nth-child(2){animation-delay:.15s} .adots i:nth-child(3){animation-delay:.3s}
+  @keyframes adot{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+  .apcs{align-self:stretch;display:grid;gap:8px;}
+  .apc{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;align-items:center;padding:8px;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .apc img,.apc .ph{width:56px;height:56px;border-radius:10px;object-fit:contain;background:#f4f5f8;}
+  .apc b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;font-weight:700;line-height:1.35;}
+  .apc em{font-style:normal;font-weight:800;font-size:14px;}
+  .apc .ab{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;}
+  .apc .ab button{height:30px;padding:0 10px;border-radius:9px;font-size:12.5px;font-weight:800;background:#eef0f5;color:#161a2b;}
+  .apc .ab button.go{background:var(--brand);color:#fff;}
+  .alfsug{display:flex;gap:6px;overflow-x:auto;padding:4px 14px 8px;scrollbar-width:none;}
+  .alfsug button{flex:none;height:34px;padding:0 12px;border-radius:17px;background:#fff;border:1px solid #e3e6ee;font-size:13px;font-weight:700;color:#2a3150;white-space:nowrap;}
+  .alfin{display:flex;gap:8px;padding:10px 12px calc(var(--sb) + 12px);background:#fff;border-top:1px solid #e6e8ef;}
+  .alfin input{flex:1;min-width:0;height:44px;padding:0 14px;border-radius:22px;border:0;background:#eef0f5;font-size:15px;color:#161a2b;outline:none;}
+  .alfin button{flex:none;width:44px;height:44px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;}
+  .alfin button:disabled{opacity:.5;}
+  .alfin button svg{width:20px;height:20px;transform:scaleX(-1);}
+  @media (max-width:700px){ #helpBtn{bottom:calc(var(--sb) + 96px);height:40px;font-size:13px;} #helpBtn img{width:28px;height:28px;} .hud.card-open #helpBtn{bottom:calc(var(--cardH,0px) + 12px);z-index:6;} }
   /* ---------- redesign, phase 1: a quieter HUD on a computer ----------
      Every control is still here and works the same; they are just smaller, share one radius and one soft
      shadow, and sit closer to the edges, so most of the screen is the mall. (Phones keep the layer below.) */
@@ -624,6 +657,7 @@
   <button id="emoBtn" class="glass" hidden aria-label="שליחת אימוג'י" aria-expanded="false">😀</button>
   <div id="emoTray" class="glass" hidden></div>
   <button id="coins" class="glass" aria-label="הרמה והמטבעות שלי"><span aria-hidden="true" id="coinsIc"></span><b class="num" id="coinsN">0</b><span class="lv" id="coinsLv">1</span></button>
+  <button id="helpBtn" class="glass" aria-label="עזרה: אלפרד, הנציג של BuyToday"><img id="helpAv" alt=""><span>עזרה</span></button>
   <div id="toast" class="glass" role="status" aria-live="polite"></div>
   <div id="hint" class="sheet glass" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
   <div id="card" class="sheet" hidden>
@@ -683,6 +717,19 @@
         <div class="legend"><span><i style="background:#2f7de1"></i>אתם כאן</span><span><i style="background:#fff;border:2px solid #8a90a3"></i>מוצר</span><span><i style="background:#161a2b"></i>מעלית</span></div></div>
       <div id="depts"></div>
     </div>
+  </div>
+</div>
+
+<div class="screen dir" id="alf" hidden>
+  <div class="dpanel alfp" role="dialog" aria-modal="true" aria-labelledby="alfTitle">
+    <div class="dtop">
+      <div class="dhead"><div class="alfh"><img id="alfAv" alt=""><div><small>נציג BuyToday · <span class="live"><i></i>מחובר</span></small><h2 id="alfTitle">אלפרד</h2></div></div>
+        <button id="alfClose" aria-label="סגירת הצ'אט"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    </div>
+    <div class="alfmsgs" id="alfMsgs" aria-live="polite"></div>
+    <div class="alfsug" id="alfSug"></div>
+    <form class="alfin" id="alfForm"><input id="alfInput" type="text" placeholder="שאלו את אלפרד…" autocomplete="off" enterkeyhint="send" maxlength="1000" aria-label="ההודעה לאלפרד">
+      <button type="submit" id="alfSend" aria-label="שליחה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button></form>
   </div>
 </div>
 
@@ -2323,6 +2370,8 @@ function doAction(){
     openGame(near.gs);
   } else if(near.type==='shop'){
     openShop();
+  } else if(near.type==='alfred'){
+    openAlfred();
   } else if(near.type==='kiosk'){
     openCatalog(near.d);
   } else if(near.type==='checkout'){
@@ -2358,6 +2407,7 @@ const ICONS={
   grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   up:'<path d="M12 19V5M5 12l7-7 7 7"/>', down:'<path d="M12 5v14M19 12l-7 7-7-7"/>', bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>',
   shirt:'<path d="M8 3 4 6l2 4 2-1v12h8V9l2 1 2-4-4-3c-.5 1.5-2 2.5-4 2.5S8.5 4.5 8 3z"/>',
   ext:'<path d="M7 17 17 7M8 7h9v9"/>',
   home:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 9h14M8 5v2M8 12v3"/>',
@@ -2964,6 +3014,136 @@ function closeCart(){ G.paused=false; cartEl.hidden=true; last=performance.now()
 $('#cartBtn').addEventListener('click',openCart); $('#cartClose').addEventListener('click',closeCart);
 cartEl.addEventListener('click',e=>{ if(e.target===cartEl) closeCart(); });
 
+/* ---------- Alfred: the shop's assistant, standing in the mall ----------
+   The same Alfred as the chat on buytoday.co.il: this talks to the same endpoint (/api/alfred-chat), so the
+   persona, the shipping and warranty answers an admin edits, and the live product search are one brain in
+   both places. The mall adds only where the customer is (the department's name) and the product they are
+   standing next to, so "is this one any good?" means this one.
+   He works behind the BuyToday Hub desk in the lobby; "עזרה" brings him to wherever the player is, and he
+   goes back to the desk a while after the conversation, or when the player walks off. */
+const ALF={el:$('#alf'), msgs:[], busy:false, npc:null, mode:'home', t:0, from:new THREE.Vector3(), to:new THREE.Vector3(), leave:0, pin:null, openOnArrive:false,
+  home:{f:0,x:0,z:19.85,yaw:0}, api:(location.origin===SITE?'':SITE)+'/api/alfred-chat'};
+const ALF_GREETING='היי, אני אלפרד 👋 אותו אלפרד מהאתר, עכשיו גם כאן בקניון. אפשר לשאול אותי על כל מוצר, מחיר, משלוח או אחריות.';
+const ALF_SUGGEST=['אני מחפש מקרר','מכונת כביסה עד 2500 ₪','מה זמן המשלוח?','מה כוללת האחריות?'];
+$('#helpAv').src=ASSET+'alfred-face.webp'; $('#alfAv').src=ASSET+'alfred-face.webp';
+try{ const v=JSON.parse(sessionStorage.getItem('bt-alf')||'null'); if(Array.isArray(v)) ALF.msgs=v.slice(-30); }catch(e){}
+if(!ALF.msgs.length) ALF.msgs=[{role:'model',text:ALF_GREETING}];
+const alfSave=()=>{ try{ sessionStorage.setItem('bt-alf',JSON.stringify(ALF.msgs.slice(-30))); }catch(e){} };
+
+function buildAlfred(){
+  const a=mkGuy({skin:0xf3cfab,hair:0x5a3a22,shirt:0x17191f,pants:0x2b2f3a,extra:'glasses',logo:true,logoBack:true,wordmark:'wordmark-white'});
+  // the magnifying glass he holds up in his own pictures
+  const mgl=new THREE.Group(); const blk=mat(0x15171c,{roughness:.4});
+  const hd=new THREE.Mesh(new THREE.CylinderGeometry(.025,.03,.24,8),blk); hd.position.y=-.12; mgl.add(hd);
+  const rg=new THREE.Mesh(new THREE.TorusGeometry(.11,.022,8,24),blk); rg.position.y=.11; mgl.add(rg);
+  const ln=new THREE.Mesh(new THREE.CircleGeometry(.1,24),new THREE.MeshStandardMaterial({color:0xcfe9ff,transparent:true,opacity:.55,roughness:.05,metalness:.2,side:THREE.DoubleSide})); ln.position.y=.11; mgl.add(ln);
+  mgl.position.set(0,-.78,.06); a.arms[0].add(mgl);
+  // a name over his head, and a speech bubble that says what he is for
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:canvasTex(512,128,(g,W,H)=>{ g.fillStyle='rgba(22,26,43,.88)'; rrect(g,8,16,W-16,H-32,44); g.fill(); g.fillStyle='#f55304'; g.beginPath(); g.arc(58,H/2,13,0,7); g.fill();
+    g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff'; g.font='700 46px Rubik, sans-serif'; g.fillText('אלפרד · נציג מכירות',W/2+16,H/2+2); }),transparent:true,depthWrite:false}));
+  tag.scale.set(1.9,.47,1); tag.position.y=2.45; a.g.add(tag);
+  const bub=new THREE.Sprite(new THREE.SpriteMaterial({map:canvasTex(512,160,(g,W,H)=>{ g.fillStyle='#ffffff'; rrect(g,8,8,W-16,H-46,40); g.fill(); g.beginPath(); g.moveTo(W/2-18,H-40); g.lineTo(W/2,H-12); g.lineTo(W/2+18,H-40); g.fill();
+    g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#161a2b'; g.font='800 44px Rubik, sans-serif'; g.fillText('צריכים עזרה? 💬',W/2,(H-38)/2+6); }),transparent:true,depthWrite:false}));
+  bub.scale.set(1.75,.55,1); bub.position.y=3.0; a.g.add(bub);
+  a.tag=tag; a.bub=bub; a.f=0;
+  a.g.position.set(ALF.home.x,0,ALF.home.z); a.g.rotation.y=ALF.home.yaw; scene.add(a.g);
+  a.g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  ALF.npc=a;
+}
+function alfNear(p,cx,cz){ const a=ALF.npc; if(!a||a.f!==player.floor||ALF.mode==='coming'||ALF.mode==='going') return false;
+  const q=a.g.position, home=ALF.mode==='home';
+  return Math.hypot(q.x-p.x,q.z-p.z)<(home?4.6:2.6)||Math.hypot(q.x-cx,q.z-cz)<(home?3.3:2); }
+function alfTick(dt,t){ const a=ALF.npc; if(!a) return; const q=a.g.position;
+  if(ALF.mode==='coming'||ALF.mode==='going'){
+    ALF.t=Math.min(1,ALF.t+dt/(ALF.mode==='coming'?1.25:1)); const e=1-Math.pow(1-ALF.t,2);
+    q.lerpVectors(ALF.from,ALF.to,e); a.g.rotation.y=Math.atan2(ALF.to.x-ALF.from.x,ALF.to.z-ALF.from.z); animGuy(a,ALF.t<1?3.2:0,dt,false);
+    if(ALF.t>=1){ if(ALF.mode==='going'){ alfPlace(ALF.home.f,ALF.home.x,ALF.home.z,ALF.home.yaw); ALF.mode='home'; }
+      else { ALF.mode='with'; ALF.leave=25; a.g.rotation.y=Math.atan2(player.pos.x-q.x,player.pos.z-q.z); if(ALF.openOnArrive){ ALF.openOnArrive=false; openAlfred(); } } }
+  } else {
+    animGuy(a,0,dt,false);
+    const d=a.f===player.floor?Math.hypot(player.pos.x-q.x,player.pos.z-q.z):99;
+    if(d<7){ const want=Math.atan2(player.pos.x-q.x,player.pos.z-q.z); a.g.rotation.y=lerpAngle(a.g.rotation.y,want,1-Math.exp(-dt*4)); }
+    else if(ALF.mode==='home') a.g.rotation.y=lerpAngle(a.g.rotation.y,ALF.home.yaw,1-Math.exp(-dt*2));
+    if(ALF.mode==='with'&&ALF.el.hidden){ ALF.leave-=dt; if(ALF.leave<=0||d>14) alfGoHome(); }
+  }
+  // the glass held up, with a little wave while someone is close
+  a.arms[0].rotation.x=-1.05+(ALF.mode!=='coming'&&ALF.mode!=='going'?Math.sin(t*2.4)*.06:0);
+  const showBub=ALF.mode==='home'&&a.f===player.floor&&ALF.el.hidden&&near?.type!=='alfred'&&Math.hypot(player.pos.x-q.x,player.pos.z-q.z)<16;
+  a.bub.visible=showBub; if(showBub) a.bub.position.y=3.0+Math.sin(t*2)*.06;
+  a.g.visible=a.f===player.floor||a.f===undefined;
+}
+function alfPlace(f,x,z,yaw){ const a=ALF.npc; a.f=f; a.g.position.set(x,f*FH,z); if(yaw!==undefined) a.g.rotation.y=yaw; }
+function alfGoHome(){ const a=ALF.npc; if(!a||ALF.mode==='home') return;
+  // a few steps away, then he is back at the desk
+  const q=a.g.position, dx=q.x-player.pos.x, dz=q.z-player.pos.z, L=Math.hypot(dx,dz)||1;
+  ALF.from.copy(q); ALF.to.set(q.x+dx/L*3,q.y,q.z+dz/L*3); ALF.t=0; ALF.mode='going'; }
+/* "עזרה": Alfred comes over and the chat opens. He walks in from a few metres off to a free spot at the player's
+   side, in view of the camera, so it reads as somebody arriving rather than appearing. */
+function summonAlfred(){
+  if(G.state!=='play') return; const a=ALF.npc; if(!a) return openAlfred();
+  buzz(12);
+  if(ALF.mode==='with'&&a.f===player.floor&&Math.hypot(a.g.position.x-player.pos.x,a.g.position.z-player.pos.z)<4) return openAlfred();
+  if(ALF.mode==='home'&&a.f===player.floor&&Math.hypot(a.g.position.x-player.pos.x,a.g.position.z-player.pos.z)<6) return openAlfred();
+  stopAuto(); const f=player.floor, p=player.pos;
+  const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), rx=Math.cos(player.yaw), rz=-Math.sin(player.yaw);
+  let spot=null;
+  for(const [sr,sf] of [[1.5,.9],[-1.5,.9],[1.7,0],[-1.7,0],[0,1.9],[1.4,-1],[-1.4,-1]]){ const x=p.x+rx*sr+fx*sf, z=p.z+rz*sr+fz*sf; if(walkable(x,z,.35,f)){ spot=[x,z]; break; } }
+  if(!spot) return openAlfred();
+  const away=[spot[0]-camera.position.x,spot[1]-camera.position.z], L=Math.hypot(away[0],away[1])||1;
+  a.f=f; ALF.from.set(spot[0]+away[0]/L*5,f*FH,spot[1]+away[1]/L*5); ALF.to.set(spot[0],f*FH,spot[1]); a.g.position.copy(ALF.from);
+  ALF.t=0; ALF.mode='coming'; ALF.openOnArrive=true; toast('אלפרד בדרך אליכם');
+}
+$('#helpBtn').addEventListener('click',summonAlfred);
+
+function alfPlace0(){ const d=deptAt(); if(d) return d.name; const p=player.pos; return player.floor===0&&Math.abs(p.x)<9&&p.z>12?'לובי':null; }
+function openAlfred(){
+  if(G.state!=='play') return; stopAuto(); G.paused=true; ALF.el.hidden=false; ui.card.hidden=true; shownCard=null;
+  // the product they are standing next to, if any: Alfred is told "this one" means it
+  let best=null, bd=3.2; CATALOG.forEach(it=>{ if(it.taken||it.f!==player.floor) return; const d=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); if(d<bd){ bd=d; best=it; } }); ALF.pin=best;
+  renderAlf(); renderAlfSug();
+  if(!PHONE.matches) setTimeout(()=>{ try{ $('#alfInput').focus(); }catch(e){} },60);
+  if(ALF.npc&&ALF.mode==='with') ALF.leave=25;
+}
+function closeAlfred(){ ALF.el.hidden=true; G.paused=false; last=performance.now(); try{ document.activeElement.blur(); }catch(e){} if(ALF.mode==='with') ALF.leave=25; }
+$('#alfClose').addEventListener('click',closeAlfred);
+ALF.el.addEventListener('click',e=>{ if(e.target===ALF.el) closeAlfred(); });
+$('#alfInput').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Escape') closeAlfred(); });
+$('#alfForm').addEventListener('submit',e=>{ e.preventDefault(); alfSend($('#alfInput').value); });
+function renderAlfSug(){ const box=$('#alfSug'); box.innerHTML='';
+  const list=ALF.pin?[`ספר לי על ה${ALF.pin.name}`,'יש עליו אחריות?','יש משהו דומה בזול יותר?']:(ALF.msgs.length>2?['מה זמן המשלוח?','איך מחזירים מוצר?']:ALF_SUGGEST);
+  list.forEach(q=>{ const b=document.createElement('button'); b.type='button'; b.textContent=q; b.addEventListener('click',()=>alfSend(q)); box.appendChild(b); }); }
+function alfProducts(ps){ const wrap=document.createElement('div'); wrap.className='apcs';
+  ps.slice(0,4).forEach(p=>{ const c=document.createElement('div'); c.className='apc';
+    const img=/^https:\/\//.test(p.imageUrl||'')?Object.assign(document.createElement('img'),{alt:'',loading:'lazy',referrerPolicy:'no-referrer',src:p.imageUrl}):Object.assign(document.createElement('div'),{className:'ph'});
+    const body=document.createElement('div'); const b=document.createElement('b'); b.textContent=p.title; const em=document.createElement('em'); em.className='num'; em.textContent=shekel(p.price);
+    const ab=document.createElement('div'); ab.className='ab';
+    const open=document.createElement('button'); open.type='button'; open.textContent='לעמוד המוצר'; open.addEventListener('click',()=>openProduct(SITE+'/product/'+encodeURIComponent(p.slug),p.title)); ab.appendChild(open);
+    const here=CATALOG.find(i=>i.slug===p.slug&&!i.taken);
+    if(here){ const go=document.createElement('button'); go.type='button'; go.className='go'; go.textContent='קחו אותי אליו'; go.addEventListener('click',()=>{ closeAlfred(); driveTo(itemGoal(here)); }); ab.appendChild(go); }
+    body.append(b,em,ab); c.append(img,body); wrap.appendChild(c); });
+  return wrap; }
+function renderAlf(){ const box=$('#alfMsgs'); box.innerHTML='';
+  ALF.msgs.forEach(m=>{ if(m.text){ const d=document.createElement('div'); d.className='am '+(m.role==='user'?'u':'m')+(m.failed?' err':''); d.textContent=m.text; box.appendChild(d); }
+    if(m.products&&m.products.length) box.appendChild(alfProducts(m.products)); });
+  if(ALF.busy&&!(ALF.msgs[ALF.msgs.length-1]||{}).text){ const d=document.createElement('div'); d.className='adots'; d.innerHTML='<i></i><i></i><i></i>'; box.appendChild(d); }
+  box.scrollTop=box.scrollHeight; }
+async function alfSend(raw){ const text=(raw||'').trim(); if(!text||ALF.busy) return;
+  const history=ALF.msgs.filter(m=>m.text&&!m.failed).map(m=>({role:m.role,text:m.text}));
+  ALF.msgs.push({role:'user',text}); const reply={role:'model',text:''}; ALF.msgs.push(reply); ALF.busy=true;
+  $('#alfInput').value=''; $('#alfSend').disabled=true; renderAlf(); $('#alfSug').innerHTML='';
+  try{
+    const res=await fetch(ALF.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,history,channel:'mall',mallPlace:alfPlace0(),pinnedSlugs:ALF.pin&&ALF.pin.slug?[ALF.pin.slug]:[]})});
+    if(!res.ok||!res.body){ let msg='מצטער, לא הצלחתי לענות כרגע. נסו שוב בעוד רגע.'; try{ const j=await res.json(); if(j&&j.error&&res.status!==400) msg=j.error; }catch(e){} reply.text=msg; reply.failed=true; }
+    else { const rd=res.body.getReader(), dec=new TextDecoder(); let buf='', box=$('#alfMsgs');
+      for(;;){ const {done,value}=await rd.read(); if(done) break; buf+=dec.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop();
+        for(const ln of lines){ if(!ln.trim()) continue; let o; try{ o=JSON.parse(ln); }catch(e){ continue; }
+          if(o.type==='delta'&&o.text){ const first=!reply.text; reply.text+=o.text; if(first) renderAlf(); else { const last=box.querySelector('.am.m:last-of-type'); const all=box.querySelectorAll('.am'); const el=all[all.length-1]; if(el) el.textContent=reply.text; box.scrollTop=box.scrollHeight; } }
+          else if(o.type==='products'&&Array.isArray(o.products)) reply.products=o.products; } }
+      if(!reply.text){ reply.text='מצטער, לא הצלחתי לענות כרגע. נסו לנסח אחרת?'; reply.failed=true; } }
+  }catch(e){ reply.text='אין חיבור כרגע. בדקו את האינטרנט ונסו שוב.'; reply.failed=true; }
+  ALF.busy=false; $('#alfSend').disabled=false; alfSave(); renderAlf(); renderAlfSug(); }
+buildAlfred();
+
 /* ---------- minimap ---------- */
 const mapCtx=ui.map.getContext('2d'); const MR=ui.map.width/2, MS=5;   // px per metre in the plan layer
 const plan=[0,1,2].map(f=>{ const c=document.createElement('canvas'); c.width=2*BX*MS; c.height=2*BZ*MS; const g=c.getContext('2d');
@@ -3075,7 +3255,7 @@ function fillCard(it){
   const sp=specOf(it); $('#cardSpec').textContent=sp; $('#cardSpec').hidden=!sp;
 }
 
-const ACT_ICON={item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
+const ACT_ICON={alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
 let actKind='';
 function setActKind(k){ if(k===actKind) return; actKind=k; ui.act.dataset.k=k; ui.act.querySelector('svg').innerHTML=ICONS[ACT_ICON[k]||'cart']; }
 const liftPad=$('#liftPad');
@@ -3083,6 +3263,7 @@ liftPad.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ c
 function showLiftPad(on){ if(liftPad.hidden===!on) return; liftPad.hidden=!on; if(on) liftPad.querySelectorAll('button').forEach(b=>b.classList.toggle('here',+b.dataset.f===elev.floor)); }
 function setHint(name,sub,warn,label){ ui.hint.hidden=false; ui.hintName.textContent=name; ui.hintPrice.textContent=sub; ui.hint.classList.toggle('warn',!!warn); ui.actLabel.textContent=label; ui.act.classList.remove('off'); }
 function updateNear(){
+  if(!ALF.el.hidden){ if(shownCard){ shownCard=null; ui.card.hidden=true; syncCardSpace(); } return; }   // the chat with Alfred has the screen
   near=null; const f=player.floor, p=player.pos;
   if(elev.rider && !auto.on){ ui.hint.hidden=false; ui.hintName.textContent='מעלית'; ui.hintPrice.textContent=(elev.to*FH>elev.from?'עולים ל':'יורדים ל')+FLOOR_NAME[elev.to]+'…'; ui.hint.classList.remove('warn'); ui.act.classList.add('off'); showLiftPad(false); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
   if(auto.on&&!auto.goal.label){ /* a short walk from a tap on the floor: no banner, the ring shows where */ }
@@ -3095,6 +3276,7 @@ function updateNear(){
     if(!near&&f===TOP){ for(const gs of GAME_SPOTS){ if(Math.hypot(gs.x-p.x,gs.z-p.z)<2.1||Math.hypot(gs.x-cx,gs.z-cz)<1.6){ near={type:'game',gs}; break; } }
       if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'}; }
     if(!near){ for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.9||Math.hypot(k.x-cx,k.z-cz)<2.2)){ near={type:'kiosk',d}; break; } } }
+    if(!near && alfNear(p,cx,cz)) near={type:'alfred'};
     if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
   if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=!cardIt; if(cardIt) fillCard(cardIt); syncCardSpace(); }
@@ -3106,6 +3288,7 @@ function updateNear(){
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
   else if(near.type==='game') setHint(near.gs.title,'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
   else if(near.type==='shop') setHint('חנות BuyToday','חולצות וכובעים למטבעות · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
+  else if(near.type==='alfred') setHint('אלפרד · נציג BuyToday','שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
@@ -3312,6 +3495,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=it.model.userData.face?Math.atan2(camera.position.x-it.x,camera.position.z-it.z):Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
+  alfTick(dt,t);
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
   AD.update(dt);
