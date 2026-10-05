@@ -3119,6 +3119,8 @@ try{ const v=JSON.parse(sessionStorage.getItem('bt-alf')||'null'); if(Array.isAr
 if(!ALF.msgs.length) ALF.msgs=[{role:'model',text:ALF_GREETING}];
 const alfSave=()=>{ try{ sessionStorage.setItem('bt-alf',JSON.stringify(ALF.msgs.slice(-30))); }catch(e){} };
 
+// the 3D Alfred (alfred.glb) is switched off for now: he stays the regular mall figure
+const USE_3D_ALFRED=false;
 function buildAlfred(){
   const a=mkGuy({skin:0xf3cfab,hair:0x5a3a22,shirt:0x17191f,pants:0x2b2f3a,extra:'glasses',logo:true,logoBack:true,wordmark:'wordmark-white'});
   // the magnifying glass he holds up in his own pictures
@@ -3138,7 +3140,7 @@ function buildAlfred(){
   a.g.position.set(ALF.home.x,0,ALF.home.z); a.g.rotation.y=ALF.home.yaw; scene.add(a.g);
   a.g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
   ALF.npc=a;
-  loadAlfredReal(a);
+  if(USE_3D_ALFRED) loadAlfredReal(a);
 }
 /* the realistic Alfred: a full 3D Alfred (headset, glasses, the Buy Today hoodie, jeans) with his own skeleton,
    loaded after the mall is up. He walks, breathes, turns his head to you and talks with his hands.
