@@ -480,22 +480,50 @@
   #helpBtn{position:fixed;right:var(--g);bottom:calc(var(--sb) + 112px);height:44px;padding:0 12px 0 6px;border-radius:22px;display:flex;align-items:center;gap:7px;font-weight:800;font-size:14px;color:#fff;z-index:3;}
   #helpBtn img{width:32px;height:32px;border-radius:50%;background:#fff;object-fit:cover;box-shadow:0 0 0 2px var(--brand);}
   #helpBtn:active{transform:scale(.95);}
-  /* talking to Alfred in the mall: a line to type in at the bottom, his answer in a bubble over his head */
-  #talk{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 16px);width:min(560px,calc(100vw - 2*var(--g)));display:flex;gap:6px;align-items:center;padding:6px;border-radius:26px;z-index:7;background:rgba(255,255,255,.97);box-shadow:0 8px 28px rgba(4,6,20,.3);direction:rtl;}
-  #talk[hidden]{display:none;}
-  #talk img{width:36px;height:36px;border-radius:50%;flex:none;object-fit:cover;background:#eef0f5;}
-  #talk input{flex:1;min-width:0;height:40px;border:0;outline:none;background:#eef0f5;border-radius:20px;padding:0 14px;font-size:16px;color:#161a2b;}
-  #talk button{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#eef0f5;color:#2a3150;}
+  /* ---------- talking to Alfred in the mall ----------
+     A dock at the bottom (suggested questions over a line to type or speak in), his answer in a bubble over
+     his head, what you said in a small one over yours. */
+  #talkDock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 14px);width:min(580px,calc(100vw - 2*var(--g)));z-index:7;display:flex;flex-direction:column;gap:8px;direction:rtl;}
+  #talkDock[hidden]{display:none;}
+  .tsug{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px;}
+  .tsug::-webkit-scrollbar{display:none;}
+  .tsug button{flex:none;height:34px;padding:0 13px;border-radius:17px;background:rgba(255,255,255,.94);color:#1b2446;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 3px 10px rgba(4,6,20,.18);}
+  .tsug button:active{transform:scale(.96);}
+  #talk{display:flex;gap:6px;align-items:center;padding:6px;border-radius:28px;background:rgba(255,255,255,.98);box-shadow:0 10px 30px rgba(4,6,20,.3);}
+  #talk img{width:38px;height:38px;border-radius:50%;flex:none;object-fit:cover;background:#eef0f5;box-shadow:0 0 0 2px var(--brand);}
+  #talk input{flex:1;min-width:0;height:42px;border:0;outline:none;background:#eef0f5;border-radius:21px;padding:0 14px;font-size:16px;color:#161a2b;}
+  #talk button{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#eef0f5;color:#2a3150;}
+  #talk button[hidden]{display:none;}
   #talk button svg{width:19px;height:19px;}
-  #talk #talkSend{background:var(--brand);color:#fff;} #talk #talkSend svg{transform:scaleX(-1);} #talk #talkSend:disabled{opacity:.5;}
-  .hud.talking #act,.hud.talking #helpBtn,.hud.talking #hint,.hud.talking #joyzone,.hud.talking #card,.hud.talking #emoTray{display:none!important;}
-  #alfBub{position:fixed;left:0;top:0;width:max-content;max-width:min(300px,calc(100vw - 24px));padding:10px 13px;border-radius:16px;background:#fff;color:#161a2b;box-shadow:0 8px 24px rgba(4,6,20,.28);font-size:14px;line-height:1.45;direction:rtl;z-index:6;pointer-events:auto;}
-  #alfBub[hidden]{display:none;}
-  #alfBub::after{content:"";position:absolute;bottom:-8px;left:50%;margin-left:-8px;border:8px solid transparent;border-bottom:0;border-top-color:#fff;}
-  #alfBub .q{display:block;font-size:11.5px;color:#8a90a3;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  #alfBub .t{display:block;max-height:8.7em;overflow-y:auto;white-space:pre-wrap;word-break:break-word;touch-action:pan-y;}
-  #alfBub .more{display:inline-flex;align-items:center;gap:4px;margin-top:6px;height:28px;padding:0 10px;border-radius:9px;background:var(--brand);color:#fff;font-size:12.5px;font-weight:800;}
+  #talk #talkSend{background:var(--brand);color:#fff;} #talk #talkSend svg{transform:scaleX(-1);} #talk #talkSend:disabled{opacity:.45;}
+  #talk #talkMic.on{background:#e0342a;color:#fff;animation:micPulse 1.2s ease-in-out infinite;}
+  @keyframes micPulse{50%{box-shadow:0 0 0 7px rgba(224,52,42,.18)}}
+  .hud.talking #act,.hud.talking #helpBtn,.hud.talking #hint,.hud.talking #joyzone,.hud.talking #card,.hud.talking #emoTray,.hud.talking #list{display:none!important;}
+  .sbub{position:fixed;left:0;top:0;direction:rtl;z-index:6;pointer-events:auto;will-change:transform;}
+  .sbub[hidden]{display:none;}
+  .sbub::after{content:"";position:absolute;bottom:-8px;left:50%;margin-left:-8px;border:8px solid transparent;border-bottom:0;border-top-color:var(--bg,#fff);}
+  #alfBub{--bg:#fff;width:max-content;max-width:min(320px,calc(100vw - 24px));padding:10px 12px 11px;border-radius:18px;background:#fff;color:#161a2b;box-shadow:0 10px 30px rgba(4,6,20,.28);font-size:14.5px;line-height:1.5;animation:bubIn .22s cubic-bezier(.2,.8,.2,1);}
+  @keyframes bubIn{from{opacity:0;transform:translateY(6px) scale(.96)}}
+  #alfBub .who{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:var(--brand);margin-bottom:3px;}
+  #alfBub .who i{width:6px;height:6px;border-radius:50%;background:#1f9d62;}
+  #alfBub .t{display:block;max-height:7.6em;overflow-y:auto;white-space:pre-wrap;word-break:break-word;touch-action:pan-y;}
+  #alfBub .dots{display:flex;gap:4px;padding:6px 2px 2px;} #alfBub .dots[hidden]{display:none;}
+  #alfBub .dots i{width:7px;height:7px;border-radius:50%;background:#aab1c8;animation:adot 1s infinite ease-in-out;} #alfBub .dots i:nth-child(2){animation-delay:.15s} #alfBub .dots i:nth-child(3){animation-delay:.3s}
+  #alfBub .prods{display:grid;gap:6px;margin-top:8px;} #alfBub .prods:empty{display:none;}
+  .bp{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center;padding:6px;border-radius:12px;background:#f4f5f9;}
+  .bp img,.bp .ph{width:44px;height:44px;border-radius:9px;object-fit:contain;background:#fff;}
+  .bp b{display:block;font-size:12.5px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bp em{font-style:normal;font-weight:800;font-size:13px;}
+  .bp .ab{display:flex;gap:5px;margin-top:4px;}
+  .bp .ab button{height:26px;padding:0 9px;border-radius:8px;font-size:11.5px;font-weight:800;background:#fff;color:#161a2b;}
+  .bp .ab button.go{background:var(--brand);color:#fff;}
+  #alfBub .more{display:inline-block;margin-top:7px;font-size:12px;font-weight:800;color:#2f5fd0;}
   #alfBub .more[hidden]{display:none;}
+  #youBub{--bg:#f55304;max-width:min(240px,calc(100vw - 24px));padding:7px 11px;border-radius:14px;background:#f55304;color:#fff;font-size:13.5px;font-weight:600;line-height:1.4;box-shadow:0 6px 18px rgba(4,6,20,.25);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;pointer-events:none;}
+  @media (max-width:700px){ #alfBub{font-size:14px;} #alfBub .t{max-height:6.2em;}
+    #talk{gap:5px;padding:5px;} #talk img{display:none;} #talk button{width:38px;height:38px;} #talk input{height:38px;padding:0 12px;}
+    /* while talking on a phone the side controls step aside: the two of you and the bubbles have the screen */
+    .hud.talking #mhead,.hud.talking #map,.hud.talking #cartBtn,.hud.talking #meBtn,.hud.talking #coins,.hud.talking #mute,.hud.talking #online,.hud.talking #emoBtn{display:none!important;} }
   .alfp{max-height:min(88vh,720px);align-self:flex-end;height:100%;}
   .alfh{display:flex;align-items:center;gap:10px;}
   .alfh img{width:46px;height:46px;border-radius:50%;object-fit:cover;background:#eef0f5;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);}
@@ -750,11 +778,16 @@
   </div>
 </div>
 
-<div id="alfBub" hidden aria-live="polite"><span class="q" id="alfBubQ"></span><span class="t" id="alfBubT"></span><button class="more" id="alfBubMore" type="button" hidden>💬 המשך בצ'אט</button></div>
-<form id="talk" hidden><img id="talkAv" alt=""><input id="talkInput" type="text" placeholder="דברו עם אלפרד…" autocomplete="off" enterkeyhint="send" maxlength="1000" aria-label="מה להגיד לאלפרד">
-  <button type="submit" id="talkSend" aria-label="שליחה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button>
-  <button type="button" id="talkChat" aria-label="פתיחת הצ'אט המלא"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg></button>
-  <button type="button" id="talkClose" aria-label="סיום השיחה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></form>
+<div id="alfBub" class="sbub" hidden aria-live="polite"><span class="who"><i></i>אלפרד</span><span class="t" id="alfBubT"></span><span class="dots" id="alfBubDots"><i></i><i></i><i></i></span><div class="prods" id="alfBubP"></div><button class="more" id="alfBubMore" type="button" hidden>להמשך בצ'אט המלא ←</button></div>
+<div id="youBub" class="sbub" hidden></div>
+<div id="talkDock" hidden>
+  <div class="tsug" id="talkSug"></div>
+  <form id="talk"><img id="talkAv" alt=""><input id="talkInput" type="text" placeholder="כתבו לאלפרד…" autocomplete="off" enterkeyhint="send" maxlength="1000" aria-label="מה להגיד לאלפרד">
+    <button type="button" id="talkMic" aria-label="דיבור במקום הקלדה" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button type="submit" id="talkSend" aria-label="שליחה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 20 4l-6 16-3-7z"/></svg></button>
+    <button type="button" id="talkChat" aria-label="פתיחת הצ'אט המלא"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg></button>
+    <button type="button" id="talkClose" aria-label="סיום השיחה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></form>
+</div>
 <div class="screen dir" id="alf" hidden>
   <div class="dpanel alfp" role="dialog" aria-modal="true" aria-labelledby="alfTitle">
     <div class="dtop">
@@ -3103,8 +3136,14 @@ function alfTick(dt,t){ const a=ALF.npc; if(!a) return; const q=a.g.position;
     if(ALF.mode==='with'&&ALF.el.hidden&&!ALF.talking){ ALF.leave-=dt; if(ALF.leave<=0||d>14) alfGoHome(); }
   }
   // the glass held up, with a little wave while someone is close
+  if(ALF.busy||(ALF.shown&&ALF.speakT>0)){ ALF.speakT=Math.max(0,(ALF.speakT||0)-dt); }
+  if(ALF.talking&&ALF.busy) ALF.speakT=1.4;
+  const talk=ALF.talking&&ALF.speakT>0;
   a.arms[0].rotation.x=-1.05+(ALF.mode!=='coming'&&ALF.mode!=='going'?Math.sin(t*2.4)*.06:0);
-  alfBubble();
+  a.arms[1].rotation.x=talk?-.55+Math.sin(t*5.2)*.35:a.arms[1].rotation.x*.9;
+  a.head.rotation.x=talk?Math.sin(t*7.5)*.07:a.head.rotation.x*.9;
+  a.tag.visible=!ALF.talking;
+  alfBubble(dt);
   const showBub=!ALF.talking&&ALF.mode==='home'&&a.f===player.floor&&ALF.el.hidden&&near?.type!=='alfred'&&Math.hypot(player.pos.x-q.x,player.pos.z-q.z)<16;
   a.bub.visible=showBub; if(showBub) a.bub.position.y=3.0+Math.sin(t*2)*.06;
   a.g.visible=a.f===player.floor||a.f===undefined;
@@ -3178,40 +3217,95 @@ async function alfSend(raw){ const text=(raw||'').trim(); if(!text||ALF.busy) re
           else if(o.type==='products'&&Array.isArray(o.products)) reply.products=o.products; } }
       if(!reply.text){ reply.text='מצטער, לא הצלחתי לענות כרגע. נסו לנסח אחרת?'; reply.failed=true; } }
   }catch(e){ reply.text='אין חיבור כרגע. בדקו את האינטרנט ונסו שוב.'; reply.failed=true; }
-  ALF.busy=false; $('#alfSend').disabled=false; $('#talkSend').disabled=false; alfSave(); if(!ALF.el.hidden){ renderAlf(); renderAlfSug(); } }
+  ALF.busy=false; ALF.speakT=Math.min(4,1+(ALF.msgs[ALF.msgs.length-1].text||'').length/60); $('#alfSend').disabled=false; $('#talkSend').disabled=false; if(ALF.talking) talkSug(); alfSave(); if(!ALF.el.hidden){ renderAlf(); renderAlfSug(); } }
 
-/* ---------- talking to him in the mall ---------- */
+/* ---------- talking to him in the mall ----------
+   The conversation happens where he stands: the camera swings to the side so both of you are in the
+   picture, he turns to you and talks (a nod and a gesture while he is answering), his answer is written
+   into a bubble over his head as it arrives, with up to two products as small cards you can walk to, and
+   what you said shows over your own head. Below, a dock with suggested questions and a line to type in, or
+   to speak into where the browser can listen. The same conversation as the full chat, one tap away. */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 function openTalk(){
-  if(G.state!=='play') return; stopAuto();
+  if(G.state!=='play') return; stopAuto(); const a=ALF.npc;
   let best=null, bd=3.2; CATALOG.forEach(it=>{ if(it.taken||it.f!==player.floor) return; const d=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); if(d<bd){ bd=d; best=it; } }); ALF.pin=best;
-  ALF.talking=true; ui.hud.classList.add('talking'); $('#talk').hidden=false; ui.card.hidden=true; shownCard=null; syncCardSpace();
-  ALF.shown=ALF.msgs.length>1?ALF.msgs[ALF.msgs.length-1]:{role:'model',text:'היי! במה אפשר לעזור? 🙂'};
-  ALF.asked=''; keysReset(); talkPos();
-  setTimeout(()=>{ try{ $('#talkInput').focus(); }catch(e){} },60);
+  ALF.talking=true; ui.hud.classList.add('talking'); $('#talkDock').hidden=false; ui.card.hidden=true; shownCard=null; syncCardSpace();
+  const fresh=ALF.msgs.length<=1;
+  ALF.shown=fresh||!ALF.msgs[ALF.msgs.length-1].text?{role:'model',text:best?`היי! 👋 רואה שאתם ליד ה${best.name}. רוצים לשמוע עליו, או לחפש משהו אחר?`:'היי! 👋 אני אלפרד. במה אפשר לעזור היום?'}:ALF.msgs[ALF.msgs.length-1];
+  ALF.asked=''; ALF.askedT=0; ALF.speakT=fresh?1.6:0; keysReset(); talkPos(); talkSug();
+  // the camera side: the one with more open floor
+  if(a){ const p=player.pos, q=a.g.position, dx=q.x-p.x, dz=q.z-p.z, L=Math.hypot(dx,dz)||1, px=-dz/L, pz=dx/L, mx=(p.x+q.x)/2, mz=(p.z+q.z)/2;
+    const room=sd=>{ let r=0; for(let k=1;k<=6;k++){ const x=mx+px*sd*k, z=mz+pz*sd*k; if(Math.abs(x)>BX-1||Math.abs(z)>BZ-1||!walkable(x,z,.2,player.floor)) break; r=k; } return r; };
+    ALF.camSide=room(1)>=room(-1)?1:-1; }
+  if(!PHONE.matches) setTimeout(()=>{ try{ $('#talkInput').focus(); }catch(e){} },60);
 }
-function closeTalk(){ if(!ALF.talking) return; ALF.talking=false; ui.hud.classList.remove('talking'); $('#talk').hidden=true; $('#alfBub').hidden=true; try{ $('#talkInput').blur(); }catch(e){} last=performance.now(); }
+function closeTalk(){ if(!ALF.talking) return; ALF.talking=false; micStop(); ui.hud.classList.remove('talking'); $('#talkDock').hidden=true; $('#alfBub').hidden=true; $('#youBub').hidden=true;
+  try{ $('#talkInput').blur(); }catch(e){} camYaw=Math.atan2(camera.position.x-player.pos.x,camera.position.z-player.pos.z); camYawSm=null; last=performance.now(); }
 function keysReset(){ for(const k in keys) keys[k]=false; }
 $('#talkAv').src=ASSET+'alfred-face.webp';
-$('#talk').addEventListener('submit',e=>{ e.preventDefault(); const v=$('#talkInput').value.trim(); if(!v||ALF.busy) return; $('#talkInput').value=''; $('#talkSend').disabled=true; ALF.asked=v; alfSend(v); ALF.shown=ALF.msgs[ALF.msgs.length-1]; });
+function talkAsk(v){ v=(v||'').trim(); if(!v||ALF.busy) return; $('#talkInput').value=''; $('#talkSend').disabled=true; micStop();
+  ALF.asked=v; ALF.askedT=0; alfSend(v); ALF.shown=ALF.msgs[ALF.msgs.length-1]; talkSug(); $('#alfBubT').scrollTop=0; }
+$('#talk').addEventListener('submit',e=>{ e.preventDefault(); talkAsk($('#talkInput').value); });
 $('#talkInput').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Escape') closeTalk(); });
 $('#talkInput').addEventListener('keyup',e=>e.stopPropagation());
 $('#talkClose').addEventListener('click',closeTalk);
 $('#talkChat').addEventListener('click',()=>{ closeTalk(); openAlfred(); });
 $('#alfBubMore').addEventListener('click',()=>{ closeTalk(); openAlfred(); });
-/* the bar stays above a phone's keyboard */
-function talkPos(){ const vv=window.visualViewport; const kb=vv?Math.max(0,innerHeight-vv.height-vv.offsetTop):0; $('#talk').style.bottom=kb>40?(kb+8)+'px':''; }
+function talkSug(){ const box=$('#talkSug'); box.innerHTML=''; if(ALF.busy) return;
+  const asked=ALF.msgs.filter(m=>m.role==='user').map(m=>m.text);
+  const list=(ALF.pin?[`ספר לי על ה${ALF.pin.name}`,'יש עליו אחריות?','יש משהו דומה בזול יותר?']:[]).concat(asked.length?['מה זמן המשלוח?','יש משהו במבצע?','איך מחזירים מוצר?']:ALF_SUGGEST).filter(q=>!asked.includes(q)).slice(0,5);
+  list.forEach(q=>{ const b=document.createElement('button'); b.type='button'; b.textContent=q; b.addEventListener('click',()=>talkAsk(q)); box.appendChild(b); }); }
+/* speak instead of typing, where the browser can listen (Chrome, Android, Safari); Hebrew */
+let rec=null;
+if(SR){ $('#talkMic').hidden=false; $('#talkMic').addEventListener('click',()=>{ if(rec) return micStop();
+  try{ rec=new SR(); rec.lang='he-IL'; rec.interimResults=true; rec.maxAlternatives=1;
+    rec.onresult=e=>{ let txt='', fin=false; for(let i=0;i<e.results.length;i++){ txt+=e.results[i][0].transcript; if(e.results[i].isFinal) fin=true; } $('#talkInput').value=txt; if(fin){ const v=txt; micStop(); talkAsk(v); } };
+    rec.onerror=e=>{ micStop(); if(e.error==='not-allowed') toast('צריך לאשר גישה למיקרופון','bad'); else if(e.error!=='aborted'&&e.error!=='no-speech') toast('לא הצלחתי לשמוע. נסו שוב או כתבו','bad'); };
+    rec.onend=()=>micStop();
+    rec.start(); $('#talkMic').classList.add('on'); $('#talkInput').placeholder='מקשיב… דברו עכשיו'; buzz(10);
+  }catch(e){ micStop(); } }); }
+function micStop(){ if(rec){ const r=rec; rec=null; try{ r.stop(); }catch(e){} } $('#talkMic').classList.remove('on'); $('#talkInput').placeholder='כתבו לאלפרד…'; }
+/* the dock stays above a phone's keyboard */
+function talkPos(){ const vv=window.visualViewport; const kb=vv?Math.max(0,innerHeight-vv.height-vv.offsetTop):0; $('#talkDock').style.bottom=kb>40?(kb+8)+'px':''; }
 if(window.visualViewport){ visualViewport.addEventListener('resize',()=>{ if(ALF.talking) talkPos(); }); visualViewport.addEventListener('scroll',()=>{ if(ALF.talking) talkPos(); }); }
-/* his answer over his head, as it is written; a long one or one with products continues in the chat */
-function alfBubble(){ const b=$('#alfBub'); if(!ALF.talking||!ALF.npc||ALF.npc.f!==player.floor){ b.hidden=true; return; }
-  const m=ALF.shown||{text:''};
-  $('#alfBubQ').textContent=ALF.asked?'אתם: '+ALF.asked:''; $('#alfBubQ').hidden=!ALF.asked;
-  const t=$('#alfBubT'); const txt=m.text||(ALF.busy?'…':''); if(t.textContent!==txt){ t.textContent=txt; t.scrollTop=t.scrollHeight; }
-  $('#alfBubMore').hidden=!(m.products&&m.products.length)&&!(m.text&&m.text.length>220);
-  $('#alfBubMore').textContent=m.products&&m.products.length?'🛒 לראות את המוצרים':'💬 המשך בצ\'אט';
-  place2d(b,ALF.npc.g.position,ALF.npc.g.position.y+2.45);
-  if(!b.hidden){ const r=b.getBoundingClientRect(); const tb=$('#talk').getBoundingClientRect().top;
-    let dx=0, dy=0; if(r.left<8) dx=8-r.left; else if(r.right>innerWidth-8) dx=innerWidth-8-r.right; if(r.top<70) dy=70-r.top; if(r.bottom>tb-8) dy=Math.min(dy,tb-8-r.bottom);
-    if(dx||dy) b.style.transform+=` translate(${dx}px,${dy}px)`; } }
+/* the conversation shot: from the side, both of you in it, a little nearer you */
+function talkCamera(){ const a=ALF.npc; if(!ALF.talking||!a||a.f!==player.floor) return false;
+  const p=player.pos, q=a.g.position, dx=q.x-p.x, dz=q.z-p.z, L=Math.hypot(dx,dz)||1, ux=dx/L, uz=dz/L, sd=ALF.camSide||1, px=-uz*sd, pz=ux*sd;
+  const tall=innerHeight>innerWidth;
+  if(tall){ // a tall phone: over your shoulder, Alfred facing the camera beyond you
+    tmp.set(p.x-ux*3.1+px*1.05, p.y+2.25, p.z-uz*3.1+pz*1.05); look.set(p.x+dx*.6, p.y+1.45, p.z+dz*.6); }
+  else { // wider screens: from the side, the two of you face to face
+    const D=3.2+L*.75, mx=p.x+dx*.45, mz=p.z+dz*.45;
+    tmp.set(mx+px*D-ux*1.1, p.y+2.15, mz+pz*D-uz*1.1); look.set(mx+ux*.3, p.y+1.4, mz+uz*.3); }
+  tmp.x=clamp(tmp.x,-BX+.7,BX-.7); tmp.z=clamp(tmp.z,-BZ+.7,BZ-.4);
+  player.yaw=lerpAngle(player.yaw,Math.atan2(dx,dz),.15); hero.g.rotation.y=player.yaw;
+  return true; }
+function bubPlace(el,obj,y,avoid){ place2d(el,obj,y); if(el.hidden) return null;
+  const r=el.getBoundingClientRect(), dock=$('#talkDock').getBoundingClientRect().top; let dx=0, dy=0;
+  if(r.left<8) dx=8-r.left; else if(r.right>innerWidth-8) dx=innerWidth-8-r.right;
+  const top=PHONE.matches?12:64; if(r.top<top) dy=top-r.top; if(r.bottom+dy>dock-10) dy=dock-10-r.bottom;
+  if(avoid){ const ox=Math.max(0,Math.min(r.right+dx,avoid.right)-Math.max(r.left+dx,avoid.left)), oy=Math.max(0,Math.min(r.bottom+dy,avoid.bottom)-Math.max(r.top+dy,avoid.top));
+    if(ox>0&&oy>0) dy+=avoid.top-(r.bottom+dy)-6; }
+  if(dx||dy) el.style.transform+=` translate(${dx}px,${dy}px)`; return el.getBoundingClientRect(); }
+function bubProducts(ps){ const box=$('#alfBubP'); const key=ps.map(p=>p.slug).join(','); if(box.dataset.k===key) return; box.dataset.k=key; box.innerHTML='';
+  ps.slice(0,2).forEach(p=>{ const c=document.createElement('div'); c.className='bp';
+    const img=/^https:\/\//.test(p.imageUrl||'')?Object.assign(document.createElement('img'),{alt:'',loading:'lazy',referrerPolicy:'no-referrer',src:p.imageUrl}):Object.assign(document.createElement('div'),{className:'ph'});
+    const body=document.createElement('div'); const b=document.createElement('b'); b.textContent=p.title; const em=document.createElement('em'); em.className='num'; em.textContent=shekel(p.price);
+    const ab=document.createElement('div'); ab.className='ab'; const here=CATALOG.find(i=>i.slug===p.slug&&!i.taken);
+    if(here){ const go=document.createElement('button'); go.type='button'; go.className='go'; go.textContent='קחו אותי אליו'; go.addEventListener('click',()=>{ closeTalk(); driveTo(itemGoal(here)); }); ab.appendChild(go); }
+    const op=document.createElement('button'); op.type='button'; op.textContent='פרטים'; op.addEventListener('click',()=>{ closeTalk(); openProduct(SITE+'/product/'+encodeURIComponent(p.slug),p.title); }); ab.appendChild(op);
+    body.append(b,em,ab); c.append(img,body); box.appendChild(c); }); }
+function alfBubble(dt){ const b=$('#alfBub'), y=$('#youBub'), a=ALF.npc;
+  if(!ALF.talking||!a||a.f!==player.floor){ b.hidden=true; y.hidden=true; return; }
+  const m=ALF.shown||{text:''}, waiting=ALF.busy&&!m.text;
+  const t=$('#alfBubT'); if(t.textContent!==(m.text||'')){ const atEnd=t.scrollTop+t.clientHeight>=t.scrollHeight-4; t.textContent=m.text||''; if(atEnd&&ALF.busy) t.scrollTop=t.scrollHeight; }
+  t.hidden=!m.text; $('#alfBubDots').hidden=!waiting;
+  bubProducts(!ALF.busy&&m.products?m.products:[]);
+  $('#alfBubMore').hidden=ALF.busy||!((m.products&&m.products.length>2)||(m.text&&m.text.length>260));
+  ALF.askedT+=dt||0; y.textContent=ALF.asked; const showYou=!!ALF.asked&&(ALF.busy||ALF.askedT<4);
+  let yr=null; if(showYou){ yr=bubPlace(y,hero.g.position,player.pos.y+2.35); } else y.hidden=true;
+  bubPlace(b,a.g.position,a.g.position.y+2.4,yr);
+}
 buildAlfred();
 
 /* ---------- minimap ---------- */
@@ -3578,7 +3672,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
   if(G.state==='play'){
     G.t+=dt; if(frame%20===0) renderQuest();
     updatePlayer(dt); updateNear(); updateArrow(t); netTick(dt);
-    updateCamera(dt,false);
+    if(!talkCamera()) updateCamera(dt,false); else { camPos.lerp(tmp,1-Math.exp(-dt*4)); lookSm.lerp(look,1-Math.exp(-dt*5)); camera.position.copy(camPos); camera.lookAt(lookSm); }
     bubbleT-=dt;
     if(bubbleT<=0){ bubbleT=rand(6,11); const cands=shoppers.filter(s=>s.f===player.floor); if(cands.length){ shopperLine={s:pick(cands),until:t+2.6}; shopperBubble.textContent=pick(SHOPPER_LINES); } }
     if(shopperLine&&t<shopperLine.until&&shopperLine.s.pos.distanceTo(player.pos)<14) place2d(shopperBubble,shopperLine.s.pos,shopperLine.s.pos.y+2.75); else shopperBubble.hidden=true;
