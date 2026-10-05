@@ -3140,8 +3140,8 @@ function buildAlfred(){
   ALF.npc=a;
   loadAlfredReal(a);
 }
-/* the realistic Alfred: a scanned-style 3D bust (hoodie, glasses, the magnifier) loaded after the mall is up, on
-   modelled jeans and sneakers. The head is skinned to its own bone so he can look at you and nod while he talks.
+/* the realistic Alfred: a full 3D Alfred (headset, glasses, the Buy Today hoodie, jeans) with his own skeleton,
+   loaded after the mall is up. He walks, breathes, turns his head to you and talks with his hands.
    Until it arrives, or if it cannot load, the blocky Alfred stays. */
 function loadAlfredReal(a){
   const go=()=>new THREE.GLTFLoader().load(ASSET+'alfred.glb',gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred',e); } },undefined,e=>console.warn('alfred',e));
@@ -3149,44 +3149,42 @@ function loadAlfredReal(a){
   (window.requestIdleCallback||setTimeout)(run,{timeout:2500});
 }
 function alfReal(a,gl){
-  let src=null; gl.scene.traverse(o=>{ if(o.isMesh&&!src) src=o; }); if(!src) return;
-  const geo=src.geometry, P=geo.attributes.position, n=P.count;
-  // head weights: everything above the collar, less the magnifier he holds up beside his face
-  const ss=(a0,b0,x)=>{ const t=Math.min(1,Math.max(0,(x-a0)/(b0-a0))); return t*t*(3-2*t); };
-  const si=new Uint16Array(n*4), sw=new Float32Array(n*4);
-  for(let i=0;i<n;i++){ const x=P.getX(i), y=P.getY(i); let w=ss(.66,.72,y);
-    w*=1-ss(-.17,-.215,x)*ss(.80,.76,y);
-    si[i*4]=0; si[i*4+1]=1; sw[i*4]=1-w; sw[i*4+1]=w; }
-  geo.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(si,4)); geo.setAttribute('skinWeight',new THREE.Float32BufferAttribute(sw,4));
-  const old=src.material, map=old.map; if(map){ map.encoding=THREE.sRGBEncoding; map.anisotropy=4; }
-  const m=new THREE.MeshStandardMaterial({map,roughness:.82,metalness:0}); m.skinning=true;
-  if(!geo.attributes.normal) geo.computeVertexNormals();
-  const root=new THREE.Bone(), neck=new THREE.Bone(); neck.position.set(-.07,.69,-.04); root.add(neck);
-  const mesh=new THREE.SkinnedMesh(geo,m); mesh.add(root); mesh.bind(new THREE.Skeleton([root,neck]));
+  const bones={}; let mesh=null;
+  gl.scene.traverse(o=>{ if(o.isBone) bones[o.name]=o; if(o.isSkinnedMesh) mesh=o; });
+  if(!mesh||!bones.head) return;
+  const m=mesh.material; m.metalness=0; m.roughness=.85; if(m.map){ m.map.encoding=THREE.sRGBEncoding; m.map.anisotropy=4; } m.needsUpdate=true;
   mesh.castShadow=true; mesh.frustumCulled=false;
-  const S=1.35, real=new THREE.Group(), up=new THREE.Group(); real.add(up); up.position.y=.84; up.scale.setScalar(S); up.add(mesh);
-  // jeans and white sneakers below the hoodie
-  const jean=new THREE.MeshStandardMaterial({color:0x1c2536,roughness:.92}), sole=new THREE.MeshStandardMaterial({color:0xf2f2f0,roughness:.6}), lace=new THREE.MeshStandardMaterial({color:0x22242a,roughness:.7});
-  const legs=[-1,1].map(s=>{ const l=new THREE.Group(); l.position.set(-.05+s*.12,.9,0); real.add(l);
-    const th=new THREE.Mesh(new THREE.CylinderGeometry(.115,.095,.84,12),jean); th.position.y=-.42; th.castShadow=true; l.add(th);
-    const sh=new THREE.Mesh(new THREE.BoxGeometry(.2,.11,.34),sole); sh.position.set(0,-.84,.05); sh.castShadow=true; l.add(sh);
-    const tp=new THREE.Mesh(new THREE.BoxGeometry(.16,.03,.16),lace); tp.position.set(0,-.775,.07); l.add(tp);
-    return l; });
+  const real=new THREE.Group(); gl.scene.scale.setScalar(2.12); real.add(gl.scene);
   a.body.visible=false; a.g.add(real);
-  a.real={g:real,up,neck,legs,yaw:0,pitch:0};
+  a.real={g:real,b:bones,yaw:0,pitch:0,walk:0};
 }
-/* the realistic body follows what the blocky rig is doing: steps, bob, nods, and turns its head to the player */
-function alfRealTick(a,dt,t){ const r=a.real; if(!r) return;
-  r.legs[0].rotation.x=a.legs[0].rotation.x*.8; r.legs[1].rotation.x=a.legs[1].rotation.x*.8;
+/* his skeleton follows what the blocky rig is doing (steps, pace), and adds what a person does: breathes,
+   shifts his weight, looks at you, gestures while he answers */
+function alfRealTick(a,dt,t){ const r=a.real; if(!r) return; const B=r.b;
   const moving=ALF.mode==='coming'||ALF.mode==='going';
-  r.up.position.y=.84+a.body.position.y+Math.sin(t*1.7)*.004; r.up.rotation.x=a.body.rotation.x*.6; r.up.rotation.z=a.body.rotation.z+(moving?0:Math.sin(t*.6)*.012);
-  r.up.scale.y=1.35*(1+Math.sin(t*1.7)*.006);
+  r.walk+=((moving?1:0)-r.walk)*(1-Math.exp(-dt*8)); const W=r.walk, ph=a.phase, s=Math.sin(ph), c=Math.cos(ph);
+  const talk=ALF.talking&&(ALF.busy||ALF.speakT>0), k=1-Math.exp(-dt*6);
+  // legs
+  B.thighR.rotation.x=-s*.5*W; B.thighL.rotation.x=s*.5*W;
+  B.shinR.rotation.x=Math.max(0,c)*.75*W; B.shinL.rotation.x=Math.max(0,-c)*.75*W;
+  B.footR.rotation.x=-Math.max(0,c)*.25*W; B.footL.rotation.x=-Math.max(0,-c)*.25*W;
+  B.hips.position.y=.45+Math.abs(c)*.012*W; B.hips.rotation.y=s*.08*W;
+  B.spine.rotation.y=-s*.06*W+(1-W)*Math.sin(t*.5)*.02; B.spine.rotation.z=(1-W)*Math.sin(t*.45)*.012;
+  B.chest.rotation.x=Math.sin(t*1.7)*.018*(1-W)+.04*W;
+  // arms: swing when walking, hang and sway when not, talk with the right hand
+  const gR=talk?1:0; r.g1=(r.g1||0)+(gR-(r.g1||0))*k;
+  B.armR.rotation.x=s*.35*W-(.28+Math.sin(t*2.1)*.06)*r.g1; B.armR.rotation.z=-.05*r.g1;
+  B.foreR.rotation.x=-.18*W-(.75+Math.sin(t*3.3)*.28)*r.g1; B.foreR.rotation.y=Math.sin(t*2.6)*.25*r.g1;
+  B.handR.rotation.z=Math.sin(t*3.7)*.2*r.g1;
+  B.armL.rotation.x=-s*.35*W+Math.sin(t*1.1)*.02*(1-W); B.foreL.rotation.x=-.18*W-.06;
+  // head: to the player when close, a nod while talking
   let wy=0, wp=0; const q=a.g.position;
   if(!moving&&a.f===player.floor){ const d=Math.hypot(player.pos.x-q.x,player.pos.z-q.z);
-    if(d<9){ wy=clamp(lerpAngle(0,Math.atan2(player.pos.x-q.x,player.pos.z-q.z)-a.g.rotation.y,1),-.55,.55); wp=.06; } }
-  else if(!moving) wy=Math.sin(t*.35)*.25;
+    if(d<9){ wy=clamp(lerpAngle(0,Math.atan2(player.pos.x-q.x,player.pos.z-q.z)-a.g.rotation.y,1),-.6,.6); wp=.05; }
+    else wy=Math.sin(t*.35)*.3; }
   r.yaw+=(wy-r.yaw)*(1-Math.exp(-dt*5)); r.pitch+=(wp-r.pitch)*(1-Math.exp(-dt*4));
-  r.neck.rotation.set(r.pitch+a.head.rotation.x*1.6,r.yaw,Math.sin(t*.9)*.03);
+  B.head.rotation.set(r.pitch+(talk?Math.sin(t*6.5)*.05:0),r.yaw*.7,Math.sin(t*.9)*.03);
+  B.neck.rotation.y=r.yaw*.3;
 }
 function alfNear(p,cx,cz){ const a=ALF.npc; if(!a||a.f!==player.floor||ALF.mode==='coming'||ALF.mode==='going') return false;
   const q=a.g.position, home=ALF.mode==='home';
