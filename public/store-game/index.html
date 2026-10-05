@@ -509,9 +509,11 @@
   .alfin button:disabled{opacity:.5;}
   .alfin button svg{width:20px;height:20px;transform:scaleX(-1);}
   @media (max-width:700px){
-    /* on a phone: a round face under the profile button, out of the way of the hint line and the action button */
-    #helpBtn{left:calc(var(--g) + 12px);right:auto;bottom:auto;top:calc(var(--m-top) + 172px);width:var(--m-btn);height:var(--m-btn);padding:0;border-radius:50%;justify-content:center;}
-    #helpBtn span{display:none;} #helpBtn img{width:calc(var(--m-btn) - 6px);height:calc(var(--m-btn) - 6px);}
+    /* on a phone: Alfred's round face right above the big action (cart) button */
+    #helpBtn{right:26px;left:auto;top:auto;bottom:calc(var(--sb) + 98px);width:44px;height:44px;padding:0;border-radius:50%;justify-content:center;z-index:4;}
+    #helpBtn span{display:none;} #helpBtn img{width:38px;height:38px;}
+    .hud.card-open #helpBtn{bottom:calc(var(--cardH,0px) + 12px);z-index:6;}
+    #hint.sheet{bottom:calc(var(--sb) + 152px);}   /* the hint line sits above Alfred's button, not on it */
     /* the chat fills the screen, the field always above the keyboard */
     .screen.dir#alf{padding-top:var(--st);}
     .alfp{max-height:none;height:100%;border-radius:0;}
