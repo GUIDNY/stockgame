@@ -1680,6 +1680,142 @@ function animGuy(G,speed,dt,pushing){
   G.body.rotation.x=m*.07; G.body.rotation.z=Math.sin(G.phase)*.03*m;
   G.head.rotation.x=-m*.05;
 }
+/* ---------- 3D hero (pilot) ----------
+   The player's own figure as a skinned GLB with Idle / Walk / Run clips, on top of the existing rig.
+   mkGuy3D() returns the same {g, body, legs, arms, head, phase} as mkGuy(): it IS a mkGuy figure, and the
+   GLB is laid over it once it has loaded. Until then, if it fails, or with USE_3D_HERO=false, the
+   primitive figure is what you see, so the player is never without a body. Movement, collisions, the
+   camera and the cart are untouched: the model only replaces what is drawn. Nothing here depends on a
+   particular skeleton: clips are found by name and bones are never addressed. */
+const USE_3D_HERO = true;
+const HERO_MODEL_URL = ASSET+'hero.glb';
+const HERO_MODEL_SCALE = 1.23;               // the pilot model is 1.83 tall; the mall's figures are ~2.25
+const HERO_MODEL_Y_OFFSET = 0;
+const HERO_MODEL_ROTATION_OFFSET = Math.PI;  // the pilot model faces -z; the game's figures face +z
+const HERO_SPEED = {walkOn:.35, walkOff:.2, runOn:4.6, runOff:4.0};   // m/s, with a little hysteresis
+const HERO_CLIP_PACE = {Walk:2.6, Run:6.0};  // speed at which each clip plays at its own rate (feet don't skate)
+const HERO_FADE = .25;                       // crossfade, seconds
+const HERO3D = {status:USE_3D_HERO?'idle':'off', url:HERO_MODEL_URL, gltf:null, promise:null, gen:0, owner:null, error:null};
+// one cached load per URL; uses the same GLTFLoader file as Alfred, adding it to the page if it isn't there yet
+const GLTF_CACHE = {};
+function loadGLTF(url){
+  if(GLTF_CACHE[url]) return GLTF_CACHE[url];
+  const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
+  return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)));
+}
+/* For now the model is used once, by the hero alone, and simply moves to the new figure when setAvatar
+   rebuilds it. A skinned scene can't be shared between figures by reference: when NPCs get GLBs too,
+   each one gets its own copy here via THREE.SkeletonUtils.clone(gltf.scene). */
+function cloneCharacter(gltf){ return gltf.scene; }
+function mkGuy3D(o){
+  const G = mkGuy(o);
+  if(!USE_3D_HERO) return G;
+  const id = ++HERO3D.gen;
+  G.h3d = {id, disposed:false, model:null, mixer:null, actions:{}, state:null, action:null, speed:0, slots:heroSlots()};
+  G.dispose = ()=>disposeHero3D(G);
+  if(HERO3D.status==='failed') return G;
+  HERO3D.status = HERO3D.gltf ? 'loaded' : 'loading';
+  HERO3D.promise = HERO3D.promise || loadGLTF(HERO_MODEL_URL);
+  HERO3D.promise.then(gltf=>{
+    HERO3D.gltf = gltf;
+    // the figure may have been replaced (setAvatar) while this was loading: only the live one gets the model
+    if(G.h3d.disposed || G.h3d.id!==HERO3D.gen) return;
+    attachHeroModel(G, gltf);
+  }).catch(e=>{ HERO3D.status='failed'; HERO3D.error=e&&e.target&&e.target.status!==undefined?'HTTP '+e.target.status:String(e&&e.message||e); console.warn('hero.glb: keeping the classic figure', e); });
+  return G;
+}
+function attachHeroModel(G, gltf){
+  const h = G.h3d;
+  try{
+    const model = cloneCharacter(gltf);
+    if(model.parent) model.parent.remove(model);   // still on the figure it belonged to before setAvatar
+    model.scale.setScalar(HERO_MODEL_SCALE); model.position.set(0,HERO_MODEL_Y_OFFSET,0); model.rotation.set(0,HERO_MODEL_ROTATION_OFFSET,0);
+    model.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } });
+    const actions = {};
+    let mixer = null;
+    if(gltf.animations && gltf.animations.length){
+      mixer = new THREE.AnimationMixer(model);
+      ['Idle','Walk','Run'].forEach(n=>{ const c=gltf.animations.find(a=>a.name.toLowerCase()===n.toLowerCase());
+        if(c&&c.duration>0&&c.tracks.length){ const a=mixer.clipAction(c); a.enabled=true; a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
+      if(!Object.keys(actions).length){ mixer.uncacheRoot(model); mixer=null; }
+    }
+    G.g.add(model);
+    h.model=model; h.mixer=mixer; h.actions=actions; h.state=null; h.action=null;
+    HERO3D.status='loaded'; HERO3D.owner=G;
+    heroAnimTick(G,0,0);
+    if(!HERO3D.logged){ HERO3D.logged=true; heroDebug(); }
+  }catch(e){
+    // anything wrong with the file or its clips: drop it and keep the classic figure
+    try{ if(h.model&&h.model.parent) h.model.parent.remove(h.model); if(h.mixer) h.mixer.stopAllAction(); }catch(_){}
+    h.model=null; h.mixer=null; h.actions={}; G.body.visible=true;
+    HERO3D.status='failed'; HERO3D.error=String(e&&e.message||e); console.warn('hero.glb: keeping the classic figure', e);
+  }
+}
+/* Idle / Walk / Run from the player's speed. A missing clip falls back to the nearest one: no Run plays Walk
+   faster, no Walk plays Run slower, no Idle holds the first frame of whichever clip there is. */
+function heroPick(A, state){
+  if(state==='Run') return A.Run ? [A.Run,'Run'] : A.Walk ? [A.Walk,'Walk'] : A.Idle ? [A.Idle,'Idle'] : null;
+  if(state==='Walk') return A.Walk ? [A.Walk,'Walk'] : A.Run ? [A.Run,'Run'] : A.Idle ? [A.Idle,'Idle'] : null;
+  return A.Idle ? [A.Idle,'Idle'] : A.Walk ? [A.Walk,'Hold'] : A.Run ? [A.Run,'Hold'] : null;
+}
+function heroAnimTick(H, speed, dt){
+  const h = H.h3d; if(!h||!h.model) return;
+  // the avatar editor shows the classic figure, which is the one it customises; the mall shows the model
+  const show3d = G.state!=='menu' && G.state!=='edit';
+  h.model.visible = show3d; H.body.visible = !show3d;
+  h.speed = speed;
+  if(!h.mixer) return;
+  try{
+    let st = h.state || 'Idle';
+    if(st==='Idle'){ if(speed>HERO_SPEED.walkOn) st = speed>HERO_SPEED.runOn ? 'Run' : 'Walk'; }
+    else if(st==='Walk'){ if(speed<HERO_SPEED.walkOff) st='Idle'; else if(speed>HERO_SPEED.runOn) st='Run'; }
+    else if(st==='Run'){ if(speed<HERO_SPEED.walkOff) st='Idle'; else if(speed<HERO_SPEED.runOff) st='Walk'; }
+    const pick = heroPick(h.actions, st);
+    if(pick){
+      const [act, clip] = pick;
+      if(act!==h.action){
+        act.reset(); act.setEffectiveWeight(1); act.play();
+        if(h.action){ h.action.crossFadeTo(act, HERO_FADE, false); } else act.fadeIn(HERO_FADE);
+        h.action = act;
+      }
+      if(clip==='Hold') act.timeScale = 0;
+      else if(st==='Idle') act.timeScale = 1;
+      else act.timeScale = clamp(speed/(HERO_CLIP_PACE[clip]||HERO_CLIP_PACE.Walk), .55, 1.6);
+    }
+    h.state = st;
+    h.mixer.update(dt);
+  }catch(e){
+    // bad animation data: stop animating and keep the figure on screen
+    try{ h.mixer.stopAllAction(); }catch(_){} h.mixer=null; console.warn('hero.glb: animation stopped', e);
+  }
+}
+/* the old figure is being replaced (setAvatar): stop its animation and take the model off it. Textures and
+   materials are kept: the same model goes straight onto the new figure. */
+function disposeHero3D(G){
+  const h = G.h3d; if(!h||h.disposed) return; h.disposed = true;
+  try{ if(h.mixer){ h.mixer.stopAllAction(); if(h.model) h.mixer.uncacheRoot(h.model); } }catch(e){}
+  if(h.model&&h.model.parent===G.g) G.g.remove(h.model);
+  h.mixer=null; h.actions={}; h.action=null; h.model=null;
+  if(HERO3D.owner===G) HERO3D.owner=null;
+}
+/* where customisation will plug in later; not used yet:
+   tint(part, color) - recolour a named material (skin, hair, shirt, pants)
+   attach(slot, object3d) - hat / hair / glasses / headphones on a named bone of the head */
+function heroSlots(){ return {tint:null, attach:null, items:{hat:null, hair:null, glasses:null, headphones:null}}; }
+function heroDebug(){
+  const G = HERO3D.owner || (typeof hero!=='undefined'?hero:null), h = G&&G.h3d, m = h&&h.model;
+  const info = {status:HERO3D.status, url:HERO3D.url, error:HERO3D.error, state:h&&h.state, speed:h?+h.speed.toFixed(2):null};
+  if(m){ let tris=0, skinned=0; const mats=new Set(), bones=new Set();
+    m.traverse(o=>{ if(o.isMesh){ const g=o.geometry; tris+=(g.index?g.index.count:g.attributes.position.count)/3; (Array.isArray(o.material)?o.material:[o.material]).forEach(x=>mats.add(x)); }
+      if(o.isSkinnedMesh){ skinned++; o.skeleton.bones.forEach(b=>bones.add(b)); } });
+    const wp=new THREE.Vector3(); m.getWorldPosition(wp);
+    Object.assign(info,{triangles:Math.round(tris), skinnedMeshes:skinned, materials:mats.size, bones:bones.size,
+      clips:(HERO3D.gltf.animations||[]).map(a=>a.name), playing:Object.keys(h.actions).filter(k=>h.actions[k]===h.action), mixerActive:!!h.mixer,
+      scale:m.scale.x, worldPosition:wp.toArray().map(v=>+v.toFixed(2)), visible:m.visible}); }
+  console.log('[heroDebug]', info); return info;
+}
+window.heroDebug = heroDebug;
+
 function mkCart(){
   const c=new THREE.Group(); const metal=mat(0xc9ced6,{metalness:.6,roughness:.35}); const red=mat(0xe63946,{roughness:.4});
   const wire=new THREE.MeshStandardMaterial({color:0xd4d9e1,metalness:.5,roughness:.35,transparent:true,opacity:.42,depthWrite:false});
@@ -2006,10 +2142,10 @@ const MERCH={
   'diamond':{shirt:0x7fdcff,shiny:true,logo:true,logoBack:true,wordmark:'wordmark-navy'},
 };
 const avOpts=a=>{ const m=MERCH[a.merch]; const o=Object.assign({},a,{pony:a.girl,tuft:!a.girl&&!['crown','beanie','headphones'].includes(a.extra),logo:a.shirt===BRAND,capColor:a.shirt===BRAND?0x22305f:BRAND}); return m?Object.assign(o,m,{capColor:BRAND}):o; };
-let hero=mkGuy(avOpts(avatar));
+let hero=(USE_3D_HERO?mkGuy3D:mkGuy)(avOpts(avatar));
 const cart=mkCart(); cart.c.position.set(0,0,1.32); hero.g.add(cart.c); scene.add(hero.g);
-function setAvatar(a){ avatar=a; const p=hero.g.position.clone(), r=hero.g.rotation.y; hero.g.remove(cart.c); scene.remove(hero.g);
-  hero=mkGuy(avOpts(a)); hero.g.add(cart.c); hero.g.position.copy(p); hero.g.rotation.y=r; scene.add(hero.g); }
+function setAvatar(a){ avatar=a; const p=hero.g.position.clone(), r=hero.g.rotation.y; hero.g.remove(cart.c); scene.remove(hero.g); if(hero.dispose) hero.dispose();
+  hero=(USE_3D_HERO?mkGuy3D:mkGuy)(avOpts(a)); hero.g.add(cart.c); hero.g.position.copy(p); hero.g.rotation.y=r; scene.add(hero.g); }
 function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=FLOOR_SHORT[f]; lastDept=undefined; }
 
 // shoppers on both floors
@@ -3434,6 +3570,7 @@ function updatePlayer(dt){
   if(!elev.rider) player.pos.y=f*FH;
   hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw;
   animGuy(hero,speed,dt,true);
+  if(hero.h3d) heroAnimTick(hero,speed,dt);
   dragT-=dt;
   if(dragT<=0 && fwd>.2 && speed>.5) camYaw=lerpAngle(camYaw,player.yaw+Math.PI,1-Math.exp(-dt*CAM.follow*fwd));
 }
@@ -3814,7 +3951,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     if(frame%2===0) drawMap();
   } else {
     updateCamera(dt,G.state==='menu'||G.state==='edit'); arrow.visible=false;
-    hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false);
+    hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false); if(hero.h3d) heroAnimTick(hero,0,dt);
   }
   updateNPCs(dt,t); netUpdate(dt,now); botsUpdate(dt,now);
   renderer.render(scene,camera);
