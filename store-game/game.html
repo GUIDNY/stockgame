@@ -1689,11 +1689,11 @@ function animGuy(G,speed,dt,pushing){
    particular skeleton: clips are found by name and bones are never addressed. */
 const USE_3D_HERO = true;
 const HERO_MODEL_URL = ASSET+'hero.glb';
-const HERO_MODEL_SCALE = 1.23;               // the pilot model is 1.83 tall; the mall's figures are ~2.25
+const HERO_MODEL_SCALE = 1.25;               // the BuyToday hero is 1.80 tall; the mall's figures are ~2.25
 const HERO_MODEL_Y_OFFSET = 0;
-const HERO_MODEL_ROTATION_OFFSET = Math.PI;  // the pilot model faces -z; the game's figures face +z
-const HERO_SPEED = {walkOn:.35, walkOff:.2, runOn:4.6, runOff:4.0};   // m/s, with a little hysteresis
-const HERO_CLIP_PACE = {Walk:2.6, Run:6.0};  // speed at which each clip plays at its own rate (feet don't skate)
+const HERO_MODEL_ROTATION_OFFSET = 0;        // the hero faces +z like the game's figures (Soldier, kept as hero-soldier.glb, needs Math.PI and 1.23)
+const HERO_SPEED = {walkOn:.35, walkOff:.2, runOn:3.0, runOff:2.6};   // m/s, with a little hysteresis
+const HERO_CLIP_PACE = {Walk:1.5, Run:3.5};  // speed at which each clip plays at its own rate (feet don't skate)
 const HERO_FADE = .25;                       // crossfade, seconds
 const HERO3D = {status:USE_3D_HERO?'idle':'off', url:HERO_MODEL_URL, gltf:null, promise:null, gen:0, owner:null, error:null};
 // one cached load per URL; uses the same GLTFLoader file as Alfred, adding it to the page if it isn't there yet
