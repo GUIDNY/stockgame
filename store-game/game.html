@@ -480,7 +480,7 @@
   #helpBtn{position:fixed;right:var(--g);bottom:calc(var(--sb) + 112px);height:44px;padding:0 12px 0 6px;border-radius:22px;display:flex;align-items:center;gap:7px;font-weight:800;font-size:14px;color:#fff;z-index:3;}
   #helpBtn img{width:32px;height:32px;border-radius:50%;background:#fff;object-fit:cover;box-shadow:0 0 0 2px var(--brand);}
   #helpBtn:active{transform:scale(.95);}
-  .alfp{height:min(88vh,720px);}
+  .alfp{max-height:min(88vh,720px);align-self:flex-end;height:100%;}
   .alfh{display:flex;align-items:center;gap:10px;}
   .alfh img{width:46px;height:46px;border-radius:50%;object-fit:cover;background:#eef0f5;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);}
   .alfh .live{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#1f9d62;}
@@ -508,7 +508,19 @@
   .alfin button{flex:none;width:44px;height:44px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;}
   .alfin button:disabled{opacity:.5;}
   .alfin button svg{width:20px;height:20px;transform:scaleX(-1);}
-  @media (max-width:700px){ #helpBtn{bottom:calc(var(--sb) + 96px);height:40px;font-size:13px;} #helpBtn img{width:28px;height:28px;} .hud.card-open #helpBtn{bottom:calc(var(--cardH,0px) + 12px);z-index:6;} }
+  @media (max-width:700px){
+    /* on a phone: a round face under the profile button, out of the way of the hint line and the action button */
+    #helpBtn{left:calc(var(--g) + 12px);right:auto;bottom:auto;top:calc(var(--m-top) + 172px);width:var(--m-btn);height:var(--m-btn);padding:0;border-radius:50%;justify-content:center;}
+    #helpBtn span{display:none;} #helpBtn img{width:calc(var(--m-btn) - 6px);height:calc(var(--m-btn) - 6px);}
+    /* the chat fills the screen, the field always above the keyboard */
+    .screen.dir#alf{padding-top:var(--st);}
+    .alfp{max-height:none;height:100%;border-radius:0;}
+    .alfp .dtop{padding:10px 12px 8px;} .alfh img{width:40px;height:40px;} .alfp .dhead h2{font-size:19px;}
+    .alfmsgs{padding:12px 10px 4px;} .am{max-width:90%;font-size:14px;}
+    .alfsug{flex-wrap:wrap;overflow:visible;padding:4px 10px 8px;} .alfsug button{height:32px;font-size:12.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+    .alfin{padding:8px 10px calc(var(--sb) + 10px);}
+    .alfin input{font-size:16px;}   /* 16px: iOS does not zoom the page into a field this size */
+  }
   /* ---------- redesign, phase 1: a quieter HUD on a computer ----------
      Every control is still here and works the same; they are just smaller, share one radius and one soft
      shadow, and sit closer to the edges, so most of the screen is the mall. (Phones keep the layer below.) */
@@ -3040,11 +3052,11 @@ function buildAlfred(){
   mgl.position.set(0,-.78,.06); a.arms[0].add(mgl);
   // a name over his head, and a speech bubble that says what he is for
   const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:canvasTex(512,128,(g,W,H)=>{ g.fillStyle='rgba(22,26,43,.88)'; rrect(g,8,16,W-16,H-32,44); g.fill(); g.fillStyle='#f55304'; g.beginPath(); g.arc(58,H/2,13,0,7); g.fill();
-    g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff'; g.font='700 46px Rubik, sans-serif'; g.fillText('אלפרד · נציג מכירות',W/2+16,H/2+2); }),transparent:true,depthWrite:false}));
-  tag.scale.set(1.9,.47,1); tag.position.y=2.45; a.g.add(tag);
+    g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff'; g.font='700 46px Rubik, sans-serif'; g.fillText('אלפרד · נציג',W/2+16,H/2+2); }),transparent:true,depthWrite:false}));
+  tag.scale.set(1.3,.33,1); tag.position.y=2.45; a.g.add(tag);
   const bub=new THREE.Sprite(new THREE.SpriteMaterial({map:canvasTex(512,160,(g,W,H)=>{ g.fillStyle='#ffffff'; rrect(g,8,8,W-16,H-46,40); g.fill(); g.beginPath(); g.moveTo(W/2-18,H-40); g.lineTo(W/2,H-12); g.lineTo(W/2+18,H-40); g.fill();
     g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#161a2b'; g.font='800 44px Rubik, sans-serif'; g.fillText('צריכים עזרה? 💬',W/2,(H-38)/2+6); }),transparent:true,depthWrite:false}));
-  bub.scale.set(1.75,.55,1); bub.position.y=3.0; a.g.add(bub);
+  bub.scale.set(1.4,.44,1); bub.position.y=3.0; a.g.add(bub);
   a.tag=tag; a.bub=bub; a.f=0;
   a.g.position.set(ALF.home.x,0,ALF.home.z); a.g.rotation.y=ALF.home.yaw; scene.add(a.g);
   a.g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
@@ -3288,7 +3300,7 @@ function updateNear(){
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
   else if(near.type==='game') setHint(near.gs.title,'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
   else if(near.type==='shop') setHint('חנות BuyToday','חולצות וכובעים למטבעות · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
-  else if(near.type==='alfred') setHint('אלפרד · נציג BuyToday','שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
+  else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
