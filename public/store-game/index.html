@@ -1693,7 +1693,7 @@ const USE_3D_HERO = true;
 /* The hero's wardrobe: one file per body (men / women), each holding every haircut, top, trousers and shoes on
    one shared skeleton; the avatar picks which parts show and what colour they are. Bump ?v= when a file
    changes: they are cached for a day. */
-const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w1', f:ASSET+'hero-w.glb?v=w1'};
+const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w2', f:ASSET+'hero-w.glb?v=w2'};
 const heroUrl = o => HERO_MODEL_FILES[o&&o.girl?'f':'m'];
 const HERO_STYLES = {
   m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
@@ -1755,7 +1755,7 @@ function attachHeroModel(G, gltf){
     let mixer = null;
     if(gltf.animations && gltf.animations.length){
       mixer = new THREE.AnimationMixer(model);
-      ['Idle','Walk','Run'].forEach(n=>{ const c=gltf.animations.find(a=>a.name.toLowerCase()===n.toLowerCase());
+      ['Idle','Walk','Run','Wave','Interact'].forEach(n=>{ const c=gltf.animations.find(a=>a.name.toLowerCase()===n.toLowerCase());
         if(c&&c.duration>0&&c.tracks.length){ const a=mixer.clipAction(c); a.enabled=true; a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
       if(!Object.keys(actions).length){ mixer.uncacheRoot(model); mixer=null; }
     }
@@ -1845,6 +1845,38 @@ function heroPick(A, state){
   if(state==='Walk') return A.Walk ? [A.Walk,'Walk'] : A.Run ? [A.Run,'Run'] : A.Idle ? [A.Idle,'Idle'] : null;
   return A.Idle ? [A.Idle,'Idle'] : A.Walk ? [A.Walk,'Hold'] : A.Run ? [A.Run,'Hold'] : null;
 }
+/* one-off gestures (Wave, Interact) on a standing figure, hero or NPC: fade in, play, fade back to the walk cycle.
+   Walking off cuts it short. */
+function gestStart(rec,name,reps){
+  const a=rec&&rec.mixer&&rec.actions[name]; if(!a||(rec.speed||0)>HERO_SPEED.walkOn) return false;
+  reps=reps||1; a.reset(); a.setLoop(THREE.LoopRepeat,reps); a.clampWhenFinished=true; a.timeScale=1; a.setEffectiveWeight(1); a.play();
+  if(rec.action&&rec.action!==a) rec.action.crossFadeTo(a,.2,false); else a.fadeIn(.2);
+  rec.action=a; rec.gest={name,t:0,end:Math.max(.4,a.getClip().duration*reps-HERO_FADE)}; return true;
+}
+function gestTick(rec,speed,dt){
+  const g=rec.gest; if(!g) return false; g.t+=dt;
+  if(g.t>=g.end||speed>HERO_SPEED.walkOn){ rec.gest=null; rec.state=null; return false; }   // the state machine fades back from the gesture
+  return true;
+}
+const heroGesture=(name,reps)=>{ const G=HERO3D.owner, h=G&&G.h3d; if(h&&h.model&&!h.cele) gestStart(h,name,reps); };
+/* after a purchase: arms up, a little hop and a happy turn on the spot, about two seconds */
+const HERO_CELE={dur:2.4,hop:.14,hops:2.5};
+function heroCelebrate(){ const G=HERO3D.owner, h=G&&G.h3d; if(!h||!h.model||!h.ik) return; h.gest=null; h.state=null; h.cele={t:0}; }
+function heroCeleTick(H,h,speed,dt){
+  const c=h.cele; c.t+=dt;
+  if(c.t>=HERO_CELE.dur||speed>HERO_SPEED.walkOn){ h.cele=null; h.model.position.y=HERO_MODEL_Y_OFFSET; h.model.rotation.y=HERO_MODEL_ROTATION_OFFSET; return; }
+  const u=c.t/HERO_CELE.dur, env=Math.min(1,c.t/.25,(HERO_CELE.dur-c.t)/.3);
+  h.model.position.y=HERO_MODEL_Y_OFFSET+Math.abs(Math.sin(c.t*Math.PI*HERO_CELE.hops))*HERO_CELE.hop*env;
+  h.model.rotation.y=HERO_MODEL_ROTATION_OFFSET+Math.PI*2*(u<.5?0:(1-Math.cos((u-.5)*2*Math.PI))/2);   // stand and cheer, then spin once
+  h.model.updateMatrixWorld(true);
+  const q=H.g.getWorldQuaternion(new THREE.Quaternion());
+  h.ik.arms.forEach((A,i)=>{
+    const S=new THREE.Vector3().setFromMatrixPosition(A.u.matrixWorld), W=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld), len=S.distanceTo(W);
+    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(q);
+    const T=S.clone().addScaledVector(out,len*.42).add(new THREE.Vector3(0,len*(.86+.08*Math.sin(c.t*14+i*Math.PI)),0));   // a V, pumping
+    ikAim(A.u,W,T,env);
+  });
+}
 function heroAnimTick(H, speed, dt){
   const h = H.h3d; if(!h||!h.model) return;
   // the avatar editor shows the classic figure, which is the one it customises; the mall shows the model
@@ -1852,6 +1884,7 @@ function heroAnimTick(H, speed, dt){
   h.speed = speed;
   if(!h.mixer) return;
   try{
+    if(gestTick(h,speed,dt)){ h.mixer.update(dt); heroCartIK(H,dt); return; }
     let st = h.state || 'Idle';
     if(st==='Idle'){ if(speed>HERO_SPEED.walkOn) st = speed>HERO_SPEED.runOn ? 'Run' : 'Walk'; }
     else if(st==='Walk'){ if(speed<HERO_SPEED.walkOff) st='Idle'; else if(speed>HERO_SPEED.runOn) st='Run'; }
@@ -1870,6 +1903,7 @@ function heroAnimTick(H, speed, dt){
     }
     h.state = st;
     h.mixer.update(dt);
+    if(h.cele) heroCeleTick(H,h,speed,dt);
     heroCartIK(H, dt);
   }catch(e){
     // bad animation data: stop animating and keep the figure on screen
@@ -1919,7 +1953,7 @@ function ikCurl(ch,side,angles,k){
 }
 function heroCartIK(H,dt,rec,pushing){
   const h=rec||H.h3d, ik=h&&h.ik; if(!ik) return;
-  const on=rec?!!pushing:typeof cart!=='undefined'&&cart.c.visible&&cart.c.parent===H.g&&h.model.visible;
+  const on=!h.gest&&!h.cele&&(rec?!!pushing:typeof cart!=='undefined'&&cart.c.visible&&cart.c.parent===H.g&&h.model.visible);   // hands off the bar for a gesture
   h.push+=((on?1:0)-h.push)*(1-Math.exp(-dt*8));
   h.model.position.z=HERO_CART_STEP_IN*h.push;
   if(h.push<.01) return;
@@ -2057,7 +2091,7 @@ function npcAttach(G,gl){
     mesh.castShadow=false; mesh.receiveShadow=false;   // the round blob under the feet is their shadow
     root.scale.setScalar(HERO_MODEL_SCALE); root.rotation.y=HERO_MODEL_ROTATION_OFFSET;
     const mixer=new THREE.AnimationMixer(root), actions={};
-    ['Idle','Walk','Run'].forEach(n=>{ const c=gl.animations.find(a=>a.name===n); if(c){ const a=mixer.clipAction(c); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
+    ['Idle','Walk','Run','Wave'].forEach(n=>{ const c=gl.animations.find(a=>a.name===n); if(c){ const a=mixer.clipAction(c); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
     if(!actions.Idle||!actions.Walk) return;
     G.g.add(root); G.body.visible=false;
     G.npc3d={model:root,mixer,actions,state:null,action:null,ik:heroFindArms(root),push:0,phase:Math.random()*10};
@@ -2065,6 +2099,7 @@ function npcAttach(G,gl){
     NPC3D.built++;
   }catch(e){ console.warn('npc 3D: keeping the classic figure',e); }
 }
+const npcGesture=(G,name)=>{ if(G&&G.npc3d&&G.g.visible) gestStart(G.npc3d,name,name==='Wave'?2:1); };
 // the cashiers are built before this code runs: they join now
 function npcAdopt(G,o){ if(!USE_3D_NPCS||!USE_3D_HERO||G.npc3d) return; G.npcOpts=o; const url=heroUrl(o); if(NPC3D.gltfs[url]) npcAttach(G,NPC3D.gltfs[url]); else { NPC3D.pending.push(G); npcLoad(url); } }
 setTimeout(()=>{ if(typeof cashiers!=='undefined') cashiers.forEach(c=>{ if(c.npcLater) npcAdopt(c,c.npcLater); }); },0);   // after the whole mall has been built
@@ -2073,7 +2108,8 @@ function npcAnimTick(G,speed,dt,pushing){
   const n=G.npc3d; if(!G.g.visible) return;
   // far away: a slower animation clock, nobody can tell
   const d=camera.position.distanceTo(G.g.position); n.skip=(n.skip||0)+dt; const every=d>34?.1:d>20?.05:0;
-  if(n.skip<every) return; dt=n.skip; n.skip=0;
+  if(n.skip<every) return; dt=n.skip; n.skip=0; n.speed=speed;
+  if(gestTick(n,speed,dt)){ n.mixer.update(dt); if(n.push>.01&&n.ik) heroCartIK(G,dt,n,false); return; }
   let st=n.state||'Idle';
   if(st==='Idle'&&speed>HERO_SPEED.walkOn) st=speed>HERO_SPEED.runOn?'Run':'Walk';
   else if(st!=='Idle'&&speed<HERO_SPEED.walkOff) st='Idle';
@@ -2424,7 +2460,7 @@ function walkable(x,z,r,f){ for(const s of solids[f]){ if(x>s.minX-r&&x<s.maxX+r
   for(const s of noSpawn[f]){ if(x>s.minX&&x<s.maxX&&z>s.minZ&&z<s.maxZ) return false; } return true; }
 function randPoint(f){ for(let i=0;i<80;i++){ const x=rand(-22.5,22.5), z=rand(-30.5,f?30.5:19); if(walkable(x,z,.9,f)) return new THREE.Vector3(x,f*FH,z); } return new THREE.Vector3(0,f*FH,f?20:12); }
 const shoppers=[];
-[[0,4],[1,3],[2,4]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
+[[0,2],[1,1],[2,2]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
   const girl=Math.random()<.5; const G=mkGuyNPC({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
   const p=randPoint(f); G.g.position.copy(p); scene.add(G.g);
   if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; floorCasters.push(o); } });
@@ -2697,7 +2733,7 @@ function openReceipt(){
   const pay=$('#payLink'); pay.hidden=!CHECKOUT_URL;
   if(!pay.hidden){ pay.href=buyUrl(its,'checkout'); pay.textContent='לתשלום באתר · '+shekel(cartTotal()); }
   $('#stMoney').textContent=String(its.length); $('#stTime').textContent=shekel(cartTotal()); $('#stScore').textContent=shekel(cartSaved());
-  ui.end.hidden=false; Sound.cash();
+  ui.end.hidden=false; Sound.cash(); heroCelebrate();
 }
 function closeReceipt(){ ui.end.hidden=true; ui.hud.hidden=false; G.paused=false; last=performance.now(); }
 
@@ -2868,7 +2904,7 @@ function doAction(){
     it.taken=true; it.ring.visible=false; it.tag.visible=false; Prog.cart();
     if(it.slug) scPost('add',it.slug).then(j=>{ if(j&&j.error==='unavailable') toast('המוצר אזל מהמלאי באתר','bad'); });
     const fm=it.model.clone(); const wp=new THREE.Vector3(); it.model.getWorldPosition(wp); fm.position.copy(wp); fm.scale.copy(it.model.scale); scene.add(fm);
-    it.model.visible=false; flyers.push({m:fm,from:wp.clone(),t:0,it});
+    it.model.visible=false; flyers.push({m:fm,from:wp.clone(),t:0,it}); heroGesture('Interact');
     Sound.pickup(); renderMoney(); renderList();
     toast(it.name+' נוסף לעגלה','good'); buzz(18);
   } else if(near.type==='game'){
@@ -3194,7 +3230,7 @@ function orderDone(d){
   const no=String(d.orderNumber||'').slice(0,20); let first=true;
   try{ const k='bt-order-'+no; first=!localStorage.getItem(k); localStorage.setItem(k,'1'); }catch(e){}
   coView.classList.add('done'); $('#coTitle').textContent='🎉 ההזמנה התקבלה!'+(no?' · '+no:''); $('#coOpen').hidden=true;
-  Sound.cash(); buzz([30,60,30]);
+  Sound.cash(); buzz([30,60,30]); heroCelebrate();
   if(first){ addCoins(100); toast('תודה על הקנייה! +100 מטבעות, והקנייה מקדמת אתכם ברמה 🎉','good'); }
   // the payment confirmation can land a few seconds later: ask the shop for the new level twice
   [4000,15000].forEach(t=>setTimeout(refreshPurchases,t));
@@ -4037,7 +4073,7 @@ function netSnap(s){ if(!Array.isArray(s)||s.length<4||!s.every(Number.isFinite)
   return {t:performance.now(),x:clamp(s[0],-BX,BX),y:clamp(s[1],0,TOP*FH),z:clamp(s[2],-BZ,BZ),yaw:s[3]}; }
 function netMove(m){ const q=m&&Net.peers.get(m.i); if(!q) return; const s=netSnap(m.s); if(!s) return; q.snaps.push(s); if(q.snaps.length>8) q.snaps.shift(); }
 function netEmoIn(m){ const q=m&&Net.peers.get(m.i), now=performance.now(); if(!q||PC.muted.has(m.i)||!Number.isInteger(m.e)||!EMOJI[m.e]||now-q.emoAt<800) return;
-  q.emoAt=now; q.emoUntil=now+2600; q.emo.textContent=EMOJI[m.e]; q.emo.classList.remove('chat'); q.emo.classList.toggle('txt',m.e>6); }
+  q.emoAt=now; q.emoUntil=now+2600; npcGesture(q.G,'Wave'); q.emo.textContent=EMOJI[m.e]; q.emo.classList.remove('chat'); q.emo.classList.toggle('txt',m.e>6); }
 function netSend(){ const s=netState(); Net.sent=s; Net.sendT=SEND_EVERY; Net.idleT=0; Net.force=false;
   Net.ch.send({type:'broadcast',event:'m',payload:{i:Net.id,s}}); }
 function netTick(dt){
@@ -4066,7 +4102,7 @@ function netUpdate(dt,now){
 function sendEmoji(i){ const now=performance.now(); if(!Net.ready||now-Net.emoAt<1200) return; Net.emoAt=now;
   Net.ch.send({type:'broadcast',event:'e',payload:{i:Net.id,e:i}});
   if(!Net.selfEmo) Net.selfEmo={el:bubble('emo'),until:0}; Net.selfEmo.el.textContent=EMOJI[i]; Net.selfEmo.el.classList.remove('chat'); Net.selfEmo.el.classList.toggle('txt',i>6); Net.selfEmo.until=now+2600;
-  emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); botsReact(); }
+  emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); botsReact(); heroGesture('Wave',2); }
 EMOJI.slice(0,6).forEach((e,i)=>{ const b=document.createElement('button'); b.textContent=e; b.setAttribute('aria-label','שליחת '+e); b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
 PHRASES.forEach(i=>{ const b=document.createElement('button'); b.className='phrase'; b.textContent=EMOJI[i]; b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
 emoBtn.addEventListener('click',()=>{ emoTray.hidden=!emoTray.hidden; emoBtn.setAttribute('aria-expanded',String(!emoTray.hidden)); if(!emoTray.hidden){ PC.unread=0; pcDot(); const l=$('#pcLog'); l.scrollTop=l.scrollHeight; } });
@@ -4139,7 +4175,7 @@ function netChatIn(m){ const q=m&&Net.peers.get(m.i), now=performance.now(); if(
    your emoji. The "מחוברים" counter still counts real people only. */
 const BOT_NAMES=['נועה','איתי','מאיה','יונתן','שירה','אורי','תמר','עומר','דניאל','ליה','רוני','אביב','יעל','עידו','הילה','גיא','נוי','אליה','בן','אגם','עדי','שקד','רז','מיכל','טל','אלון','רותם','Tal88','Shaked','Omer_K','דור','ים','סהר','לירון','אופיר','מעיין'];
 const BOT_FLOORS=[0,0,0,1,1,2,2];
-const Bots={list:[],target:5+((Math.random()*8)|0),driftT:rand(40,80),spawnT:0,names:BOT_NAMES.slice().sort(()=>Math.random()-.5),ni:0,started:false};
+const Bots={list:[],target:3+((Math.random()*4)|0),driftT:rand(40,80),spawnT:0,names:BOT_NAMES.slice().sort(()=>Math.random()-.5),ni:0,started:false};
 function botAvatar(){ const girl=Math.random()<.5; return {girl,merch:Math.random()<.3?pick(AV_MERCH.slice(1,4)):'none',bottom:girl&&Math.random()<.6?'skirt':'pants',extra:pick(['none','none','cap','glasses','beanie','shades','headphones']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}; }
 function botGoal(b){
   const r=Math.random(), f=b.f;
@@ -4161,11 +4197,11 @@ function botSpawn(){
 }
 function botRemove(b){ scene.remove(b.G.g); b.tag.remove(); b.emo.remove(); if(b.casters.length){ const set=new Set(b.casters); for(let i=floorCasters.length-1;i>=0;i--) if(set.has(floorCasters[i])) floorCasters.splice(i,1); }
   Bots.list.splice(Bots.list.indexOf(b),1); }
-function botEmoji(b,e,delay){ setTimeout(()=>{ if(!Bots.list.includes(b)) return; b.emo.textContent=e; b.emoUntil=performance.now()+2600; },delay||0); }
+function botEmoji(b,e,delay){ setTimeout(()=>{ if(!Bots.list.includes(b)) return; b.emo.textContent=e; b.emoUntil=performance.now()+2600; npcGesture(b.G,'Wave'); },delay||0); }
 function botsReact(){ Bots.list.forEach(b=>{ if(b.f===player.floor&&b.pos.distanceTo(player.pos)<11&&Math.random()<.45) botEmoji(b,pick(['👋','👍','😂','🔥','😍']),rand(600,1800)); }); }
 function botsUpdate(dt,now){
   if(!Bots.started) return;
-  Bots.driftT-=dt; if(Bots.driftT<=0){ Bots.driftT=rand(40,90); Bots.target=clamp(Bots.target+pick([-1,0,1]),5,12); }
+  Bots.driftT-=dt; if(Bots.driftT<=0){ Bots.driftT=rand(40,90); Bots.target=clamp(Bots.target+pick([-1,0,1]),3,6); }
   const real=Net.ready?Math.max(0,Net.count-1):0, want=Math.max(0,Bots.target-1-real), active=Bots.list.filter(b=>!b.leaving);
   Bots.spawnT-=dt;
   if(active.length<want&&Bots.spawnT<=0){ botSpawn(); Bots.spawnT=rand(2,6); }
