@@ -1702,8 +1702,8 @@ const HERO_CART_GRIPS = [[-0.30,1.15,0.60],[0.30,1.15,0.60]];   // wrists, just 
 const HERO_CART_LEAN = 0.26;                 // radians the chest leans towards the handle
 const HERO_CART_STEP_IN = 0.26;              // how much closer to the handle the figure stands
 const HERO_CART_BAR = {y:1.17, z:0.66};      // the handle bar itself, in the hero group's space
-const HERO_GRIP_CURL = [.45, 1.5, 1.2];       // finger joint bends round the bar (radians, knuckle to tip)
-const HERO_THUMB_CURL = [.5, .7, .6];
+const HERO_GRIP_CURL = [.55, .95, .5];        // finger joint bends round the bar (radians, knuckle to tip)
+const HERO_THUMB_CURL = [.3, .4, .3];
 const HERO3D = {status:USE_3D_HERO?'idle':'off', url:HERO_MODEL_URL, gltf:null, promise:null, gen:0, owner:null, error:null};
 // one cached load per URL; uses the same GLTFLoader file as Alfred, adding it to the page if it isn't there yet
 const GLTF_CACHE = {};
@@ -1859,7 +1859,7 @@ function heroCartIK(H,dt){
     const g=HERO_CART_GRIPS[i];
     // the wrist sits a palm's length behind the bar and a little above it, so the palm lies on the bar
     const palm=A.mid?new THREE.Vector3().setFromMatrixPosition(A.mid.matrixWorld).distanceTo(new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld))/H.g.scale.x:.1;
-    const T=_ik.t.set(g[0],HERO_CART_BAR.y+.06,HERO_CART_BAR.z-palm*.95); H.g.localToWorld(T); const target=T.clone();
+    const T=_ik.t.set(g[0],HERO_CART_BAR.y+.095,HERO_CART_BAR.z-palm*1.05); H.g.localToWorld(T); const target=T.clone();
     const S=new THREE.Vector3().setFromMatrixPosition(A.u.matrixWorld), E=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld), W=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld);
     const a=S.distanceTo(E), b=E.distanceTo(W); let d=S.distanceTo(target); d=Math.min(Math.max(d,Math.abs(a-b)+1e-3),a+b-1e-3);
     const dir=target.clone().sub(S).normalize();
