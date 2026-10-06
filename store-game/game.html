@@ -1688,7 +1688,7 @@ function animGuy(G,speed,dt,pushing){
    camera and the cart are untouched: the model only replaces what is drawn. Nothing here depends on a
    particular skeleton: clips are found by name and bones are never addressed. */
 const USE_3D_HERO = true;
-const HERO_MODEL_URL = ASSET+'hero.glb';
+const HERO_MODEL_URL = ASSET+'hero.glb?v=bt1';   // bump when hero.glb changes: the file is cached for a day
 const HERO_MODEL_SCALE = 1.25;               // the BuyToday hero is 1.80 tall; the mall's figures are ~2.25
 const HERO_MODEL_Y_OFFSET = 0;
 const HERO_MODEL_ROTATION_OFFSET = 0;        // the hero faces +z like the game's figures (Soldier, kept as hero-soldier.glb, needs Math.PI and 1.23)
