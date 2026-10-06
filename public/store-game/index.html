@@ -2401,7 +2401,7 @@ function buildKiosks(){
     solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
   });
 }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildFronts(); buildKiosks(); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildFronts(); buildWayfinding(); buildKiosks(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -2457,6 +2457,37 @@ function buildFronts(){
     box(.52,.03,.52,M.yellow,c.x,base+1.2,z,P,false);
     [-1,1].forEach(s=>box(.02,H-1.6,.07,M.ledWarm,c.x+s*.255,base+1.3+(H-1.6)/2,z,P,false));
     solid(c.f,c.x,z,.6,.6,'col'); });
+}
+
+/* ---------- wayfinding and street furniture ----------
+   Hanging direction signs over the main aisle, like a real mall's (low enough to read under the top bar,
+   and the camera keeps out of them), and bins by the seating. Each sign has its own text on each side: left and right swap. */
+function signTex(L,R,C){ return canvasTex(1152,256,(g,W,H)=>{
+  const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1d2757'); gr.addColorStop(1,'#141b42'); g.fillStyle=gr; rrect(g,4,4,W-8,H-8,26); g.fill();
+  g.fillStyle='#f55304'; g.fillRect(4,H-18,W-8,10);
+  g.fillStyle='#fff'; g.textBaseline='middle'; g.direction='rtl';
+  const arrow=(x,dir)=>{ g.save(); g.translate(x,H/2-4); g.scale(dir,1); g.beginPath(); g.moveTo(-26,0); g.lineTo(6,-30); g.lineTo(6,-12); g.lineTo(30,-12); g.lineTo(30,12); g.lineTo(6,12); g.lineTo(6,30); g.closePath(); g.fill(); g.restore(); };
+  const fit=t=>{ let px=52; do{ g.font='600 '+px+'px Rubik, sans-serif'; px-=2; }while(px>30&&g.measureText(t).width>W/2-150); };   // each side keeps to its half
+  if(L){ fit(L); arrow(60,1); g.textAlign='left'; g.direction='ltr'; g.fillText(L,112,H/2-2); }
+  if(R){ fit(R); arrow(W-60,-1); g.textAlign='right'; g.fillText(R,W-112,H/2-2); }
+  if(C){ g.font='600 40px Rubik, sans-serif'; g.textAlign='center'; g.fillStyle='#ffb07a'; g.fillText(C,W/2,40); }
+}); }
+function hangSign(f,x,z,front,back){
+  const P=STATIC[f], y=f*FH+3.95, top=f===0?FH-.3:2*FH;
+  const at=new THREE.Object3D(); at.position.set(x,y,z); camBlocks.push({o:at,r:2.3,hy:.8});   // the camera keeps out of it
+  box(3.7,.86,.08,M.navyDeep,x,y,z,P,false);
+  plane(3.6,.8,new THREE.MeshBasicMaterial({map:signTex(...front)}),x,y,z+.045,0,P);
+  plane(3.6,.8,new THREE.MeshBasicMaterial({map:signTex(...back)}),x,y,z-.045,Math.PI,P);
+  [-1.5,1.5].forEach(dx=>box(.02,top-y-.43,.02,M.dark,x+dx,(top+y+.43)/2,z,P,false));
+}
+function bin(f,x,z){ const P=STATIC[f], b=f*FH;
+  cyl(.24,.21,.84,M.navyDeep,x,b+.42,z,P,16); cyl(.255,.255,.06,M.rail,x,b+.86,z,P,16); cyl(.17,.17,.02,M.black,x,b+.895,z,P,16); cyl(.245,.245,.05,M.yellow,x,b+.62,z,P,16);
+  solid(f,x,z,.55,.55); }
+function buildWayfinding(){
+  // front: seen walking in (towards -z), where left is -x; back: seen walking out
+  hangSign(0,0,12.6,['טלוויזיות · סטריאו','מטבח · תנורים','↑ הדיל החם · מעלית'],['מטבח · טיפוח','קופות · סטריאו','↑ יציאה']);
+  hangSign(1,0,10.2,['מקררים · כביסה','חשמל לבית · מיזוג',''],['חשמל לבית · מיזוג','מקררים · כביסה','↑ חימום ואוורור']);
+  [[0,-5.8,5.9],[0,5.8,5.9],[0,-3.8,17.6],[0,3.8,17.6],[1,-5,-12],[1,5,-12]].forEach(([f,x,z])=>{ if(walkable(x,z,.4,f)) bin(f,x,z); });
 }
 
 /* ---------- floor shading ----------
@@ -2681,6 +2712,13 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
   init(){ if(this.ctx) return; try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); this.master=this.ctx.createGain(); this.master.gain.value=this.on?1:0; this.master.connect(this.ctx.destination); }catch(e){ this.ctx=null; } },
   tone(f,d,type,v,delay,slideTo){ if(!this.ctx) return; const t=this.ctx.currentTime+(delay||0); const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,t); if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t+d);
     g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v||.15,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d); o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.05); },
+  /* the room: a far-off murmur of people and air, very low, under the music; it breathes slowly */
+  ambience(){ if(!this.ctx||this.amb) return; try{ const c=this.ctx, n=c.sampleRate*4, buf=c.createBuffer(1,n,c.sampleRate), d=buf.getChannelData(0);
+      let b0=0,b1=0,b2=0; for(let i=0;i<n;i++){ const w=Math.random()*2-1; b0=.997*b0+w*.029; b1=.985*b1+w*.032; b2=.95*b2+w*.048; d[i]=(b0+b1+b2)*.6; }   // soft pink-ish noise
+      const src=c.createBufferSource(); src.buffer=buf; src.loop=true;
+      const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=420; bp.Q.value=.6;
+      const g=c.createGain(); g.gain.value=.05; const lfo=c.createOscillator(), lg=c.createGain(); lfo.frequency.value=.07; lg.gain.value=.015; lfo.connect(lg); lg.connect(g.gain);
+      src.connect(bp); bp.connect(g); g.connect(this.master); src.start(); lfo.start(); this.amb=g; }catch(e){} },
   pickup(){ this.tone(660,.12,'triangle',.18); this.tone(990,.2,'triangle',.18,.08); },
   cash(){ [523,659,784,1047].forEach((f,i)=>this.tone(f,.25,'triangle',.16,i*.08)); this.tone(2600,.35,'sine',.08,.34); },
   bad(){ this.tone(220,.3,'sawtooth',.1,0,110); },
@@ -2775,7 +2813,7 @@ function resetGame(){
 }
 let coPending=false;
 function enterMall(){
-  Sound.init(); if(Sound.ctx&&Sound.ctx.state==='suspended') Sound.ctx.resume(); Sound.startMusic();
+  Sound.init(); if(Sound.ctx&&Sound.ctx.state==='suspended') Sound.ctx.resume(); Sound.startMusic(); Sound.ambience();
   try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){}
   avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
