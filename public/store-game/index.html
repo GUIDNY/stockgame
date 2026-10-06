@@ -21,6 +21,7 @@
     -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;-webkit-tap-highlight-color:transparent;}
   input{-webkit-user-select:text;user-select:text;font:inherit;}
   #game{position:fixed;inset:0;}
+  #game::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 75% 70% at 50% 46%,transparent 58%,rgba(18,22,34,.2) 100%);}
   #c{display:block;width:100%;height:100%;touch-action:none;}
   button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0;}
   button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--brand-text);outline-offset:2px;}
@@ -968,7 +969,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = .9;
+renderer.toneMappingExposure = .86;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe4e7ed);
 // a light haze far away gives the long aisles depth without hiding anything near
@@ -1039,7 +1040,7 @@ const overlay = o => Object.assign({polygonOffset:true,polygonOffsetFactor:-1,po
    sky/ground fill, and two warm point lights over the entrance lobby and the atrium. Everything else
    that glows (ceiling strips, coves, sign halos, under-counter lines) is emissive and baked into the
    static meshes: it reads as light and costs nothing per frame. */
-scene.add(new THREE.HemisphereLight(0xfff5e8, 0xb9ae9f, .48));
+scene.add(new THREE.HemisphereLight(0xfff3e2, 0xa99b88, .4));   // less flat fill, so form and shadow read
 const sun = new THREE.DirectionalLight(0xfff0dc, .74);
 sun.position.set(10,40,16); sun.target.position.set(0,0,-2);
 sun.castShadow = true; sun.shadow.mapSize.set(2048,2048);
@@ -1176,7 +1177,7 @@ const floorCasters=[];
 /* ---------- building shell ---------- */
 function buildShell(){
   SG=STATIC[0];
-  const s0=stoneTex('#cbc4b9','#a59d91',11), s1=stoneTex('#cfc9bf','#aaa296',23);
+  const s0=stoneTex('#c3bbaf','#a0988c',11), s1=stoneTex('#c8c1b6','#a69e92',23);
   const fm0=new THREE.MeshStandardMaterial({map:s0.map,roughnessMap:s0.rm,roughness:1,metalness:0,envMapIntensity:.75});
   const fm1=new THREE.MeshStandardMaterial({map:s1.map,roughnessMap:s1.rm,roughness:1,metalness:0,envMapIntensity:.7});
   floorPlane(-BX,BX,-BZ,BZ,0,fm0,null,6);
@@ -2421,6 +2422,45 @@ function bake(group){
   while(group.children.length) group.remove(group.children[0]);
   buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.mat); m.castShadow=b.cast; m.receiveShadow=true; m.userData.c=b.cast; group.add(m); });
 }
+/* ---------- floor shading ----------
+   Painted once into two textures per floor and laid over it as one plane each, so it costs two cheap draws:
+   - contact shadow: a soft darkening round the foot of everything that stands on the floor (counters, kiosks,
+     benches, planters, shelving, rails) and along the walls. It is what makes a thing stand ON the floor.
+   - light pools: the glow each ceiling light line throws on a polished floor under it. */
+const SHADE={px:10, ao:.75, pool:.11};
+function floorShade(){
+  const k=SHADE.px, W=BX*2*k, H=BZ*2*k, OFF=W*3;
+  const X=x=>(x+BX)*k, Z=z=>(z+BZ)*k;
+  for(let f=0;f<=TOP;f++){
+    // contact shadows: each footprint twice, tight and dark, then wide and faint (a canvas shadow is the blur)
+    const ao=document.createElement('canvas'); ao.width=W; ao.height=H; const g=ao.getContext('2d');
+    const stamp=(blur,a,grow)=>{ g.shadowColor='rgba(0,0,0,'+a+')'; g.shadowBlur=blur*k; g.shadowOffsetX=OFF; g.fillStyle='#000';
+      solids[f].forEach(o=>{ if(o.off) return; const x0=X(o.minX)-grow*k, z0=Z(o.minZ)-grow*k; g.fillRect(x0-OFF,z0,X(o.maxX)-X(o.minX)+grow*2*k,Z(o.maxZ)-Z(o.minZ)+grow*2*k); }); };
+    stamp(.3,.7,-.02); stamp(1.3,.45,.06);
+    g.shadowColor='transparent';
+    // along the walls
+    const edge=(x,y,w,h,gx0,gy0,gx1,gy1)=>{ const gr=g.createLinearGradient(gx0,gy0,gx1,gy1); gr.addColorStop(0,'rgba(0,0,0,.5)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(x,y,w,h); };
+    const e=.7*k; edge(0,0,W,e,0,0,0,e); edge(0,H-e,W,e,0,H,0,H-e); edge(0,0,e,H,0,0,e,0); edge(W-e,0,e,H,W,0,W-e,0);
+    if(f>=1) g.clearRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*k,(VOID.maxZ-VOID.minZ)*k);   // the atrium is open air
+    const tex=new THREE.CanvasTexture(ao); tex.anisotropy=4;
+    const y=f*FH+.025;
+    const am=new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:SHADE.ao,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8});
+    const pa=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),am); pa.rotation.x=-Math.PI/2; pa.position.set(0,y,0); pa.renderOrder=1; STATIC[f].add(pa);
+    if(f===TOP) continue;   // the roof has sky, not ceiling lights
+    // light pools under the ceiling light lines (the same grid the ceilings use), and a wide one under the atrium halo
+    const lc=document.createElement('canvas'); lc.width=W; lc.height=H; const l=lc.getContext('2d');
+    const pool=(x,z,rx,rz,a)=>{ l.save(); l.translate(X(x),Z(z)); l.scale(rx/rz,1); const gr=l.createRadialGradient(0,0,0,0,0,rz*k);
+      gr.addColorStop(0,'rgba(255,240,215,'+a+')'); gr.addColorStop(.5,'rgba(255,236,205,'+(a*.45)+')'); gr.addColorStop(1,'rgba(255,236,205,0)');
+      l.fillStyle=gr; l.beginPath(); l.arc(0,0,rz*k,0,7); l.fill(); l.restore(); };
+    for(let x=-21;x<=21;x+=6) for(let z=-27;z<=27;z+=6){ if(x>VOID.minX-1.5&&x<VOID.maxX+1.5&&z>VOID.minZ-1.5&&z<VOID.maxZ+1.5) continue; pool(x,z,.8,3.2,1); }
+    if(f===0) pool(0,0,7.5,6.5,.55);
+    if(f>=1) l.clearRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*k,(VOID.maxZ-VOID.minZ)*k);
+    const lt=new THREE.CanvasTexture(lc); lt.encoding=THREE.sRGBEncoding;
+    const lm=new THREE.MeshBasicMaterial({map:lt,transparent:true,opacity:SHADE.pool,blending:THREE.AdditiveBlending,depthWrite:false,fog:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8});
+    const pl=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),lm); pl.rotation.x=-Math.PI/2; pl.position.set(0,y+.003,0); pl.renderOrder=1; STATIC[f].add(pl);
+  }
+}
+floorShade();
 bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
 STATIC[1].children.forEach(m=>floorCasters.push(m));
 STATIC[2].children.forEach(m=>{ m.userData.f=2; floorCasters.push(m); });
