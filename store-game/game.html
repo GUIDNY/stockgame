@@ -1695,6 +1695,12 @@ const HERO_MODEL_ROTATION_OFFSET = 0;        // the hero faces +z like the game'
 const HERO_SPEED = {walkOn:.35, walkOff:.2, runOn:4.0, runOff:3.4};   // m/s, with a little hysteresis
 const HERO_CLIP_PACE = {Walk:1.9, Run:5.0};  // speed at which each clip plays at its own rate (feet don't skate)
 const HERO_FADE = .25;                       // crossfade, seconds
+/* pushing the cart: the hands are locked onto the trolley's handle (two-bone IK on each arm, after the clip
+   has posed the body), the body leans in a little and the figure stands a step closer to the handle.
+   Grips are in the hero group's own space; the cart sits at z 1.32 with its handle 0.66 behind its centre. */
+const HERO_CART_GRIPS = [[-0.30,1.15,0.60],[0.30,1.15,0.60]];   // wrists, just behind the handle (-x right, +x left)
+const HERO_CART_LEAN = 0.26;                 // radians the chest leans towards the handle
+const HERO_CART_STEP_IN = 0.26;              // how much closer to the handle the figure stands
 const HERO3D = {status:USE_3D_HERO?'idle':'off', url:HERO_MODEL_URL, gltf:null, promise:null, gen:0, owner:null, error:null};
 // one cached load per URL; uses the same GLTFLoader file as Alfred, adding it to the page if it isn't there yet
 const GLTF_CACHE = {};
@@ -1741,6 +1747,7 @@ function attachHeroModel(G, gltf){
     }
     G.g.add(model);
     h.model=model; h.mixer=mixer; h.actions=actions; h.state=null; h.action=null;
+    h.ik=heroFindArms(model); h.push=0;
     HERO3D.status='loaded'; HERO3D.owner=G;
     heroAnimTick(G,0,0);
     if(!HERO3D.logged){ HERO3D.logged=true; heroDebug(); }
@@ -1784,10 +1791,66 @@ function heroAnimTick(H, speed, dt){
     }
     h.state = st;
     h.mixer.update(dt);
+    heroCartIK(H, dt);
   }catch(e){
     // bad animation data: stop animating and keep the figure on screen
     try{ h.mixer.stopAllAction(); }catch(_){} h.mixer=null; console.warn('hero.glb: animation stopped', e);
   }
+}
+/* the bones the cart IK needs, found by their usual names (UpperArm/LowerArm/Wrist, Arm/ForeArm/Hand, .L/.R,
+   Left/Right); nothing else depends on the skeleton. Missing bones simply switch the IK off. */
+function heroFindArms(model){
+  const bones=[]; model.traverse(o=>{ if(o.isBone) bones.push(o); });
+  // three.js drops the dot: "UpperArm.L" arrives as "UpperArmL"
+  const side=(n)=>/(Left|[._]?L)$|^Left|_l$/.test(n)?1:/(Right|[._]?R)$|^Right|_r$/.test(n)?-1:0;
+  const base=(n)=>n.replace(/(Left|Right|[._]?[LR]|_[lr])$/,'').replace(/^(Left|Right)/,'');
+  const find=(re,sd)=>bones.find(b=>side(b.name)===sd&&re.test(base(b.name)));
+  const arm=(sd)=>{ const u=find(/^(upper.?arm|arm)$/i,sd), l=find(/^(lower.?arm|fore.?arm)$/i,sd), w=find(/^(wrist|hand)$/i,sd);
+    return u&&l&&w?{u,l,w}:null; };
+  const chest=bones.find(b=>/chest|spine2/i.test(b.name))||bones.find(b=>/torso|spine1/i.test(b.name));
+  const R=arm(-1), L=arm(1);
+  return R&&L?{arms:[R,L],chest}:null;
+}
+const _ik={a:new THREE.Vector3(),b:new THREE.Vector3(),c:new THREE.Vector3(),t:new THREE.Vector3(),p:new THREE.Vector3(),e:new THREE.Vector3(),
+  q:new THREE.Quaternion(),q2:new THREE.Quaternion(),q3:new THREE.Quaternion(),v:new THREE.Vector3(),w:new THREE.Vector3()};
+// turn a bone (in world space) so that the direction from it to `from` points at `to`
+function ikAim(bone,from,to,k){
+  const o=_ik.v.setFromMatrixPosition(bone.matrixWorld), d1=_ik.a.subVectors(from,o).normalize(), d2=_ik.b.subVectors(to,o).normalize();
+  if(d1.lengthSq()<1e-8||d2.lengthSq()<1e-8) return;
+  _ik.q.setFromUnitVectors(d1,d2); if(k<1) _ik.q.slerp(_ik.q3.identity(),1-k);
+  bone.getWorldQuaternion(_ik.q2); _ik.q2.premultiply(_ik.q);                       // new world rotation
+  bone.parent.getWorldQuaternion(_ik.q3).invert(); bone.quaternion.copy(_ik.q3.multiply(_ik.q2));
+  bone.updateMatrixWorld(true);
+}
+function heroCartIK(H,dt){
+  const h=H.h3d, ik=h&&h.ik; if(!ik) return;
+  const on=typeof cart!=='undefined'&&cart.c.visible&&cart.c.parent===H.g&&h.model.visible;
+  h.push+=((on?1:0)-h.push)*(1-Math.exp(-dt*8));
+  h.model.position.z=HERO_CART_STEP_IN*h.push;
+  if(h.push<.01) return;
+  const k=h.push;
+  h.model.updateMatrixWorld(true);
+  if(ik.chest){ // lean in: rotate the chest about the figure's own right-hand axis
+    const right=_ik.w.set(1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2));
+    const o=_ik.p.setFromMatrixPosition(ik.chest.matrixWorld), fwd=_ik.e.set(0,0,1).applyQuaternion(_ik.q2);
+    const tip=_ik.c.copy(o).add(_ik.t.set(0,.5,0)), lean=_ik.t.copy(o).add(_ik.a.set(0,.5*Math.cos(HERO_CART_LEAN),0)).addScaledVector(fwd,.5*Math.sin(HERO_CART_LEAN));
+    ikAim(ik.chest,tip.clone(),lean.clone(),k);
+  }
+  ik.arms.forEach((A,i)=>{
+    const g=HERO_CART_GRIPS[i], T=_ik.t.set(g[0],g[1],g[2]); H.g.localToWorld(T); const target=T.clone();
+    const S=new THREE.Vector3().setFromMatrixPosition(A.u.matrixWorld), E=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld), W=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld);
+    const a=S.distanceTo(E), b=E.distanceTo(W); let d=S.distanceTo(target); d=Math.min(Math.max(d,Math.abs(a-b)+1e-3),a+b-1e-3);
+    const dir=target.clone().sub(S).normalize();
+    // the elbow bends outwards and down, like holding a handle
+    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2)), pole=out.multiplyScalar(.8).add(new THREE.Vector3(0,-1,0));
+    pole.addScaledVector(dir,-pole.dot(dir)).normalize();
+    const x=(a*a-b*b+d*d)/(2*d), hgt=Math.sqrt(Math.max(0,a*a-x*x));
+    const Ed=S.clone().addScaledVector(dir,x).addScaledVector(pole,hgt);
+    ikAim(A.u,E,Ed,k);
+    const W2=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld), E2=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld);
+    ikAim(A.l,W2,E2.clone().add(target.clone().sub(E2).normalize().multiplyScalar(b)),k);
+    h.ikErr=(h.ikErr||[]); h.ikErr[i]=+new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld).distanceTo(target).toFixed(3);
+  });
 }
 /* the old figure is being replaced (setAvatar): stop its animation and take the model off it. Textures and
    materials are kept: the same model goes straight onto the new figure. */
@@ -1811,7 +1874,7 @@ function heroDebug(){
     const wp=new THREE.Vector3(); m.getWorldPosition(wp);
     Object.assign(info,{triangles:Math.round(tris), skinnedMeshes:skinned, materials:mats.size, bones:bones.size,
       clips:(HERO3D.gltf.animations||[]).map(a=>a.name), playing:Object.keys(h.actions).filter(k=>h.actions[k]===h.action), mixerActive:!!h.mixer,
-      scale:m.scale.x, worldPosition:wp.toArray().map(v=>+v.toFixed(2)), visible:m.visible}); }
+      scale:m.scale.x, worldPosition:wp.toArray().map(v=>+v.toFixed(2)), visible:m.visible, cartIK:h.ik?{push:+h.push.toFixed(2),handGap:h.ikErr}:'no arm bones'}); }
   console.log('[heroDebug]', info); return info;
 }
 window.heroDebug = heroDebug;
