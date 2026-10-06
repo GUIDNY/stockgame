@@ -1701,6 +1701,9 @@ const HERO_FADE = .25;                       // crossfade, seconds
 const HERO_CART_GRIPS = [[-0.30,1.15,0.60],[0.30,1.15,0.60]];   // wrists, just behind the handle (-x right, +x left)
 const HERO_CART_LEAN = 0.26;                 // radians the chest leans towards the handle
 const HERO_CART_STEP_IN = 0.26;              // how much closer to the handle the figure stands
+const HERO_CART_BAR = {y:1.17, z:0.66};      // the handle bar itself, in the hero group's space
+const HERO_GRIP_CURL = [.45, 1.5, 1.2];       // finger joint bends round the bar (radians, knuckle to tip)
+const HERO_THUMB_CURL = [.5, .7, .6];
 const HERO3D = {status:USE_3D_HERO?'idle':'off', url:HERO_MODEL_URL, gltf:null, promise:null, gen:0, owner:null, error:null};
 // one cached load per URL; uses the same GLTFLoader file as Alfred, adding it to the page if it isn't there yet
 const GLTF_CACHE = {};
@@ -1805,8 +1808,12 @@ function heroFindArms(model){
   const side=(n)=>/(Left|[._]?L)$|^Left|_l$/.test(n)?1:/(Right|[._]?R)$|^Right|_r$/.test(n)?-1:0;
   const base=(n)=>n.replace(/(Left|Right|[._]?[LR]|_[lr])$/,'').replace(/^(Left|Right)/,'');
   const find=(re,sd)=>bones.find(b=>side(b.name)===sd&&re.test(base(b.name)));
+  const chain=(nm,sd)=>[1,2,3,4].map(n=>find(new RegExp('^(hand)?'+nm+n+'$','i'),sd)).filter(Boolean);
   const arm=(sd)=>{ const u=find(/^(upper.?arm|arm)$/i,sd), l=find(/^(lower.?arm|fore.?arm)$/i,sd), w=find(/^(wrist|hand)$/i,sd);
-    return u&&l&&w?{u,l,w}:null; };
+    if(!(u&&l&&w)) return null;
+    // a 4-bone finger starts inside the palm (metacarpal): the finger proper starts at the knuckle, bone 2
+    const fingers=['Index','Middle','Ring','Pinky'].map(n=>chain(n,sd)).filter(c=>c.length).map(c=>c.length>3?c.slice(1):c);
+    return {u,l,w,fingers,thumb:chain('Thumb',sd),mid:(fingers[1]||fingers[0]||[])[0]||null}; };
   const chest=bones.find(b=>/chest|spine2/i.test(b.name))||bones.find(b=>/torso|spine1/i.test(b.name));
   const R=arm(-1), L=arm(1);
   return R&&L?{arms:[R,L],chest}:null;
@@ -1821,6 +1828,18 @@ function ikAim(bone,from,to,k){
   bone.getWorldQuaternion(_ik.q2); _ik.q2.premultiply(_ik.q);                       // new world rotation
   bone.parent.getWorldQuaternion(_ik.q3).invert(); bone.quaternion.copy(_ik.q3.multiply(_ik.q2));
   bone.updateMatrixWorld(true);
+}
+function ikTurn(bone,qWorld){
+  bone.getWorldQuaternion(_ik.q2); _ik.q2.premultiply(qWorld);
+  bone.parent.getWorldQuaternion(_ik.q3).invert(); bone.quaternion.copy(_ik.q3.multiply(_ik.q2)); bone.updateMatrixWorld(true);
+}
+// curl a finger chain round the bar: each joint turns about the hand's side axis, whichever way takes the tip down
+function ikCurl(ch,side,angles,k){
+  const q=new THREE.Quaternion(), p=new THREE.Vector3(), c=new THREE.Vector3();
+  ch.forEach((b,j)=>{ const nx=ch[j+1]||b.children.find(x=>x.isBone); if(!nx) return;
+    p.setFromMatrixPosition(b.matrixWorld); c.setFromMatrixPosition(nx.matrixWorld).sub(p);
+    const a=angles[j]*k, up=c.clone().applyAxisAngle(side,a).y, dn=c.clone().applyAxisAngle(side,-a).y;
+    q.setFromAxisAngle(side,up<dn?a:-a); ikTurn(b,q); });
 }
 function heroCartIK(H,dt){
   const h=H.h3d, ik=h&&h.ik; if(!ik) return;
@@ -1837,7 +1856,10 @@ function heroCartIK(H,dt){
     ikAim(ik.chest,tip.clone(),lean.clone(),k);
   }
   ik.arms.forEach((A,i)=>{
-    const g=HERO_CART_GRIPS[i], T=_ik.t.set(g[0],g[1],g[2]); H.g.localToWorld(T); const target=T.clone();
+    const g=HERO_CART_GRIPS[i];
+    // the wrist sits a palm's length behind the bar and a little above it, so the palm lies on the bar
+    const palm=A.mid?new THREE.Vector3().setFromMatrixPosition(A.mid.matrixWorld).distanceTo(new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld))/H.g.scale.x:.1;
+    const T=_ik.t.set(g[0],HERO_CART_BAR.y+.06,HERO_CART_BAR.z-palm*.95); H.g.localToWorld(T); const target=T.clone();
     const S=new THREE.Vector3().setFromMatrixPosition(A.u.matrixWorld), E=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld), W=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld);
     const a=S.distanceTo(E), b=E.distanceTo(W); let d=S.distanceTo(target); d=Math.min(Math.max(d,Math.abs(a-b)+1e-3),a+b-1e-3);
     const dir=target.clone().sub(S).normalize();
@@ -1849,7 +1871,15 @@ function heroCartIK(H,dt){
     ikAim(A.u,E,Ed,k);
     const W2=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld), E2=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld);
     ikAim(A.l,W2,E2.clone().add(target.clone().sub(E2).normalize().multiplyScalar(b)),k);
-    h.ikErr=(h.ikErr||[]); h.ikErr[i]=+new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld).distanceTo(target).toFixed(3);
+    // hand flat over the bar, fingers forward, then wrapped round it
+    if(A.mid){ const fwd=new THREE.Vector3(0,0,1).applyQuaternion(H.g.getWorldQuaternion(new THREE.Quaternion())), side=new THREE.Vector3(1,0,0).applyQuaternion(H.g.getWorldQuaternion(new THREE.Quaternion()));
+      const Wp=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld), Mp=new THREE.Vector3().setFromMatrixPosition(A.mid.matrixWorld);
+      ikAim(A.w,Mp,Wp.clone().addScaledVector(fwd,Wp.distanceTo(Mp)).add(new THREE.Vector3(0,-.012,0)),k);
+      A.fingers.forEach(ch=>ikCurl(ch,side,HERO_GRIP_CURL,k)); if(A.thumb.length) ikCurl(A.thumb,side,HERO_THUMB_CURL,k);
+      const bar=new THREE.Vector3(g[0],HERO_CART_BAR.y,HERO_CART_BAR.z); H.g.localToWorld(bar);
+      const tip=new THREE.Vector3().setFromMatrixPosition((A.fingers[1]||A.fingers[0]).slice(-1)[0].matrixWorld);
+      h.ikErr=(h.ikErr||[]); h.ikErr[i]=+Math.hypot(tip.y-bar.y, (tip.clone().sub(bar)).dot(fwd)).toFixed(3); }
+    else { h.ikErr=(h.ikErr||[]); h.ikErr[i]=+new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld).distanceTo(target).toFixed(3); }
   });
 }
 /* the old figure is being replaced (setAvatar): stop its animation and take the model off it. Textures and
