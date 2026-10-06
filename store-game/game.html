@@ -1786,7 +1786,7 @@ const shade=(c,k)=>((Math.round((c>>16&255)*k)<<16)|(Math.round((c>>8&255)*k)<<8
    an orange shirt or any BuyToday merch; and the accessory on the head */
 function heroDress(model,o){
   const L=heroLook(o), m=MERCH[o.merch];
-  const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND;
+  const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND||!!o.logo3d;
   const logoCol=m&&m.wordmark==='wordmark-orange'?BRAND:m&&m.wordmark==='wordmark-navy'?0x22305f:0xffffff;
   let headNode=null; const mats={};
   model.traverse(x=>{
@@ -3571,8 +3571,8 @@ try{ const v=JSON.parse(sessionStorage.getItem('bt-alf')||'null'); if(Array.isAr
 if(!ALF.msgs.length) ALF.msgs=[{role:'model',text:ALF_GREETING}];
 const alfSave=()=>{ try{ sessionStorage.setItem('bt-alf',JSON.stringify(ALF.msgs.slice(-30))); }catch(e){} };
 
-// the 3D Alfred (alfred.glb) is switched off for now: he stays the regular mall figure
-const USE_3D_ALFRED=false;
+// the 3D Alfred, built like the player's character; the blocky figure is the fallback
+const USE_3D_ALFRED=USE_3D_HERO;
 function buildAlfred(){
   const a=mkGuy({skin:0xf3cfab,hair:0x5a3a22,shirt:0x17191f,pants:0x2b2f3a,extra:'glasses',logo:true,logoBack:true,wordmark:'wordmark-white'});
   // the magnifying glass he holds up in his own pictures
@@ -3594,51 +3594,76 @@ function buildAlfred(){
   ALF.npc=a;
   if(USE_3D_ALFRED) loadAlfredReal(a);
 }
-/* the realistic Alfred: a full 3D Alfred (headset, glasses, the Buy Today hoodie, jeans) with his own skeleton,
-   loaded after the mall is up. He walks, breathes, turns his head to you and talks with his hands.
+/* the 3D Alfred: the same rig and wardrobe as the player's character (hero-m.glb, loaded a second time so he
+   has his own copy), dressed as in his picture: curly brown hair, glasses, the black BuyToday hoodie, dark jeans,
+   and the magnifying glass in his right hand. He walks with the Walk clip, waves when you come over, points
+   ("Interact") when he finds products, nods while he talks and turns his head to you.
    Until it arrives, or if it cannot load, the blocky Alfred stays. */
+const ALF_LOOK={girl:false,hairStyle:'casual',top:'hoodie',bottom:'pants',skin:0xf3cfab,hair:0x4a2f1c,shirt:0x17191f,pants:0x2b3346,extra:'glasses',merch:'none',logo3d:true};
+const ALF_GLASS={x:-.3,y:1.58,z:.32};   // where his right hand holds the glass up, in his own space (right is -x)
 function loadAlfredReal(a){
-  const go=()=>new THREE.GLTFLoader().load(ASSET+'alfred.glb',gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred',e); } },undefined,e=>console.warn('alfred',e));
-  const run=()=>{ if(THREE.GLTFLoader) return go(); const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=go; document.head.appendChild(sc); };
-  (window.requestIdleCallback||setTimeout)(run,{timeout:2500});
+  const url=HERO_MODEL_FILES.m;
+  (window.requestIdleCallback||setTimeout)(()=>{
+    loadGLTF(url)   // the GLTF loader script, and the file in the browser cache
+      .then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
+      .then(gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred 3D: keeping the classic figure',e); } })
+      .catch(e=>console.warn('alfred 3D: keeping the classic figure',e));
+  },{timeout:2500});
 }
 function alfReal(a,gl){
-  const bones={}; let mesh=null;
-  gl.scene.traverse(o=>{ if(o.isBone) bones[o.name]=o; if(o.isSkinnedMesh) mesh=o; });
-  if(!mesh||!bones.head) return;
-  const m=mesh.material; m.metalness=0; m.roughness=.85; if(m.map){ m.map.encoding=THREE.sRGBEncoding; m.map.anisotropy=4; } m.needsUpdate=true;
-  mesh.castShadow=true; mesh.frustumCulled=false;
-  const real=new THREE.Group(); gl.scene.scale.setScalar(2.12); real.add(gl.scene);
-  a.body.visible=false; a.g.add(real);
-  a.real={g:real,b:bones,yaw:0,pitch:0,walk:0};
+  const model=gl.scene;
+  model.scale.setScalar(HERO_MODEL_SCALE); model.rotation.y=HERO_MODEL_ROTATION_OFFSET;
+  model.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } });
+  heroDress(model,ALF_LOOK);
+  const mixer=new THREE.AnimationMixer(model), actions={};
+  ['Idle','Walk','Run','Wave','Interact'].forEach(n=>{ const c=gl.animations.find(x=>x.name===n); if(c){ const x=mixer.clipAction(c); x.setLoop(THREE.LoopRepeat,Infinity); actions[n]=x; } });
+  const ik=heroFindArms(model); if(!actions.Idle||!actions.Walk||!ik) return;
+  // the glass he holds up in his picture, moved over from the blocky figure
+  const glass=a.arms[0].children.find(c=>c.isGroup); if(glass){ a.arms[0].remove(glass); glass.position.set(0,0,0); glass.scale.setScalar(1); a.g.add(glass); }
+  a.g.add(model); a.body.visible=false;
+  a.real={model,mixer,actions,ik,glass,state:null,action:null,speed:0,push:0,yaw:0,pitch:0,raise:0,near:false,waveT:0};
+  alfRealTick(a,0,0);
 }
-/* his skeleton follows what the blocky rig is doing (steps, pace), and adds what a person does: breathes,
-   shifts his weight, looks at you, gestures while he answers */
-function alfRealTick(a,dt,t){ const r=a.real; if(!r) return; const B=r.b;
-  const moving=ALF.mode==='coming'||ALF.mode==='going';
-  r.walk+=((moving?1:0)-r.walk)*(1-Math.exp(-dt*8)); const W=r.walk, ph=a.phase, s=Math.sin(ph), c=Math.cos(ph);
-  const talk=ALF.talking&&(ALF.busy||ALF.speakT>0), k=1-Math.exp(-dt*6);
-  // legs
-  B.thighR.rotation.x=-s*.5*W; B.thighL.rotation.x=s*.5*W;
-  B.shinR.rotation.x=Math.max(0,c)*.75*W; B.shinL.rotation.x=Math.max(0,-c)*.75*W;
-  B.footR.rotation.x=-Math.max(0,c)*.25*W; B.footL.rotation.x=-Math.max(0,-c)*.25*W;
-  B.hips.position.y=.45+Math.abs(c)*.012*W; B.hips.rotation.y=s*.08*W;
-  B.spine.rotation.y=-s*.06*W+(1-W)*Math.sin(t*.5)*.02; B.spine.rotation.z=(1-W)*Math.sin(t*.45)*.012;
-  B.chest.rotation.x=Math.sin(t*1.7)*.018*(1-W)+.04*W;
-  // arms: swing when walking, hang and sway when not, talk with the right hand
-  const gR=talk?1:0; r.g1=(r.g1||0)+(gR-(r.g1||0))*k;
-  B.armR.rotation.x=s*.35*W-(.28+Math.sin(t*2.1)*.06)*r.g1; B.armR.rotation.z=-.05*r.g1;
-  B.foreR.rotation.x=-.18*W-(.75+Math.sin(t*3.3)*.28)*r.g1; B.foreR.rotation.y=Math.sin(t*2.6)*.25*r.g1;
-  B.handR.rotation.z=Math.sin(t*3.7)*.2*r.g1;
-  B.armL.rotation.x=-s*.35*W+Math.sin(t*1.1)*.02*(1-W); B.foreL.rotation.x=-.18*W-.06;
+const alfGesture=name=>{ const r=ALF.npc&&ALF.npc.real; if(r) gestStart(r,name,name==='Wave'?2:1); };
+const _alf={v:new THREE.Vector3(),w:new THREE.Vector3(),q:new THREE.Quaternion()};
+function alfRealTick(a,dt,t){ const r=a.real; if(!r) return;
+  const moving=(ALF.mode==='coming'||ALF.mode==='going')&&ALF.t<1, speed=moving?3.2:0; r.speed=speed;
+  const q=a.g.position, d=a.f===player.floor?Math.hypot(player.pos.x-q.x,player.pos.z-q.z):99;
+  // a wave when you walk up to him (not more than every 20 s), and when he arrives at your side
+  r.waveT-=dt; const near=!moving&&d<5;
+  if(near&&!r.near&&r.waveT<=0&&!ALF.talking){ r.waveT=20; gestStart(r,'Wave',2); }
+  r.near=near;
+  if(!gestTick(r,speed,dt)){
+    const st=moving?'Walk':'Idle', act=r.actions[st];
+    if(act!==r.action){ act.reset(); act.play(); if(r.action) r.action.crossFadeTo(act,HERO_FADE,false); else act.fadeIn(HERO_FADE); r.action=act; }
+    act.timeScale=moving?clamp(speed/HERO_CLIP_PACE.Walk,.55,1.6):1; r.state=st;
+  }
+  r.mixer.update(dt);
+  r.model.updateMatrixWorld(true);
+  // the right hand holds the glass up beside his face while he stands; it drops to his side to walk or gesture
+  const up=!moving&&!r.gest; r.raise+=((up?1:0)-r.raise)*(1-Math.exp(-dt*5));
+  const A=r.ik.arms[0];
+  if(r.raise>.01){
+    const T=a.g.localToWorld(_alf.v.set(ALF_GLASS.x,ALF_GLASS.y,ALF_GLASS.z)).clone();
+    const S=new THREE.Vector3().setFromMatrixPosition(A.u.matrixWorld), E=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld), W=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld);
+    const la=S.distanceTo(E), lb=E.distanceTo(W); let dd=S.distanceTo(T); dd=Math.min(Math.max(dd,Math.abs(la-lb)+1e-3),la+lb-1e-3);
+    const dir=T.clone().sub(S).normalize(), pole=new THREE.Vector3(-1,-1.2,0).applyQuaternion(a.g.getWorldQuaternion(_alf.q));
+    pole.addScaledVector(dir,-pole.dot(dir)).normalize();
+    const x=(la*la-lb*lb+dd*dd)/(2*dd), h=Math.sqrt(Math.max(0,la*la-x*x));
+    ikAim(A.u,E,S.clone().addScaledVector(dir,x).addScaledVector(pole,h),r.raise);
+    const W2=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld), E2=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld);
+    ikAim(A.l,W2,E2.clone().add(T.clone().sub(E2).normalize().multiplyScalar(lb)),r.raise);
+    A.fingers.forEach(ch=>ikCurl(ch,new THREE.Vector3(1,0,0).applyQuaternion(_alf.q),HERO_GRIP_CURL,r.raise));
+  }
+  if(r.glass){ const hp=new THREE.Vector3().setFromMatrixPosition((A.mid||A.w).matrixWorld); a.g.worldToLocal(hp);
+    r.glass.position.set(hp.x,hp.y+.13,hp.z+.02); r.glass.rotation.set(0,0,-.25); r.glass.visible=r.raise>.5; }
   // head: to the player when close, a nod while talking
-  let wy=0, wp=0; const q=a.g.position;
-  if(!moving&&a.f===player.floor){ const d=Math.hypot(player.pos.x-q.x,player.pos.z-q.z);
-    if(d<9){ wy=clamp(lerpAngle(0,Math.atan2(player.pos.x-q.x,player.pos.z-q.z)-a.g.rotation.y,1),-.6,.6); wp=.05; }
-    else wy=Math.sin(t*.35)*.3; }
-  r.yaw+=(wy-r.yaw)*(1-Math.exp(-dt*5)); r.pitch+=(wp-r.pitch)*(1-Math.exp(-dt*4));
-  B.head.rotation.set(r.pitch+(talk?Math.sin(t*6.5)*.05:0),r.yaw*.7,Math.sin(t*.9)*.03);
-  B.neck.rotation.y=r.yaw*.3;
+  const head=r.model.getObjectByName('Head');
+  if(head){ let wy=0, wp=0; const talk=ALF.talking&&(ALF.busy||ALF.speakT>0);
+    if(!moving&&d<9){ wy=clamp(lerpAngle(0,Math.atan2(player.pos.x-q.x,player.pos.z-q.z)-a.g.rotation.y,1),-.6,.6); }
+    r.yaw+=(wy-r.yaw)*(1-Math.exp(-dt*5)); r.pitch+=(wp-r.pitch)*(1-Math.exp(-dt*4));
+    _alf.q.setFromEuler(new THREE.Euler(r.pitch+(talk?Math.sin(t*6.5)*.06:0),r.yaw,0));
+    ikTurn(head,_alf.q.premultiply(a.g.getWorldQuaternion(new THREE.Quaternion())).multiply(a.g.getWorldQuaternion(new THREE.Quaternion()).invert())); }
 }
 function alfNear(p,cx,cz){ const a=ALF.npc; if(!a||a.f!==player.floor||ALF.mode==='coming'||ALF.mode==='going') return false;
   const q=a.g.position, home=ALF.mode==='home';
@@ -3739,7 +3764,7 @@ async function alfSend(raw){ const text=(raw||'').trim(); if(!text||ALF.busy) re
       for(;;){ const {done,value}=await rd.read(); if(done) break; buf+=dec.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop();
         for(const ln of lines){ if(!ln.trim()) continue; let o; try{ o=JSON.parse(ln); }catch(e){ continue; }
           if(o.type==='delta'&&o.text){ const first=!reply.text; reply.text+=o.text; if(first) renderAlf(); else { const last=box.querySelector('.am.m:last-of-type'); const all=box.querySelectorAll('.am'); const el=all[all.length-1]; if(el) el.textContent=reply.text; box.scrollTop=box.scrollHeight; } }
-          else if(o.type==='products'&&Array.isArray(o.products)) reply.products=o.products; } }
+          else if(o.type==='products'&&Array.isArray(o.products)){ reply.products=o.products; alfGesture('Interact'); } } }
       if(!reply.text){ reply.text='מצטער, לא הצלחתי לענות כרגע. נסו לנסח אחרת?'; reply.failed=true; } }
   }catch(e){ reply.text='אין חיבור כרגע. בדקו את האינטרנט ונסו שוב.'; reply.failed=true; }
   ALF.busy=false; ALF.speakT=Math.min(4,1+(ALF.msgs[ALF.msgs.length-1].text||'').length/60); $('#alfSend').disabled=false; $('#talkSend').disabled=false; if(ALF.talking) talkSug(); alfSave(); if(!ALF.el.hidden){ renderAlf(); renderAlfSug(); } }
