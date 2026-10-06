@@ -40,7 +40,7 @@
       ]
     },
     {
-      "source": "/(alfred.glb|hero.glb|gltf-loader.js)",
+      "source": "/(alfred.glb|hero.glb|hero-m.glb|hero-w.glb|gltf-loader.js)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",

@@ -1688,7 +1688,16 @@ function animGuy(G,speed,dt,pushing){
    camera and the cart are untouched: the model only replaces what is drawn. Nothing here depends on a
    particular skeleton: clips are found by name and bones are never addressed. */
 const USE_3D_HERO = true;
-const HERO_MODEL_URL = ASSET+'hero.glb?v=bt3';   // bump when hero.glb changes: the file is cached for a day
+/* The hero's wardrobe: one file per body (men / women), each holding every haircut, top, trousers and shoes on
+   one shared skeleton; the avatar picks which parts show and what colour they are. Bump ?v= when a file
+   changes: they are cached for a day. */
+const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w1', f:ASSET+'hero-w.glb?v=w1'};
+const heroUrl = o => HERO_MODEL_FILES[o&&o.girl?'f':'m'];
+const HERO_STYLES = {
+  m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
+     top:[['hoodie','קפוצ׳ון'],['tee','טישרט'],['tank','גופייה'],['suit','חליפה']]},
+  f:{head:[['bob','חלק'],['pony','קוקו'],['updo','אסוף'],['mohawk','מוהוק']],
+     top:[['tee','טישרט'],['crop','קרופ'],['dress','שמלה'],['suit','חליפה']]}};
 const HERO_MODEL_SCALE = 1.2;                // the hero model is 1.87 tall; the mall's figures are ~2.25
 const HERO_MODEL_Y_OFFSET = 0;
 const HERO_MODEL_ROTATION_OFFSET = 0;        // the hero faces +z like the game's figures (Soldier, kept as hero-soldier.glb, needs Math.PI and 1.23)
@@ -1704,7 +1713,7 @@ const HERO_CART_STEP_IN = 0.26;              // how much closer to the handle th
 const HERO_CART_BAR = {y:1.17, z:0.66};      // the handle bar itself, in the hero group's space
 const HERO_GRIP_CURL = [.55, .95, .5];        // finger joint bends round the bar (radians, knuckle to tip)
 const HERO_THUMB_CURL = [.3, .4, .3];
-const HERO3D = {status:USE_3D_HERO?'idle':'off', url:HERO_MODEL_URL, gltf:null, promise:null, gen:0, owner:null, error:null};
+const HERO3D = {status:USE_3D_HERO?'idle':'off', url:'', gltfs:{}, failed:{}, gen:0, owner:null, error:null};
 // one cached load per URL; uses the same GLTFLoader file as Alfred, adding it to the page if it isn't there yet
 const GLTF_CACHE = {};
 function loadGLTF(url){
@@ -1720,17 +1729,17 @@ function mkGuy3D(o){
   const G = mkGuy(o);
   if(!USE_3D_HERO) return G;
   const id = ++HERO3D.gen;
-  G.h3d = {id, disposed:false, model:null, mixer:null, actions:{}, state:null, action:null, speed:0, slots:heroSlots()};
+  const url = heroUrl(o);
+  G.h3d = {id, disposed:false, model:null, mixer:null, actions:{}, state:null, action:null, speed:0, slots:heroSlots(), av:o, url, gltf:null};
   G.dispose = ()=>disposeHero3D(G);
-  if(HERO3D.status==='failed') return G;
-  HERO3D.status = HERO3D.gltf ? 'loaded' : 'loading';
-  HERO3D.promise = HERO3D.promise || loadGLTF(HERO_MODEL_URL);
-  HERO3D.promise.then(gltf=>{
-    HERO3D.gltf = gltf;
+  if(HERO3D.failed[url]) return G;
+  HERO3D.url = url; HERO3D.status = HERO3D.gltfs[url] ? 'loaded' : 'loading';
+  loadGLTF(url).then(gltf=>{
+    HERO3D.gltfs[url] = gltf;
     // the figure may have been replaced (setAvatar) while this was loading: only the live one gets the model
     if(G.h3d.disposed || G.h3d.id!==HERO3D.gen) return;
     attachHeroModel(G, gltf);
-  }).catch(e=>{ HERO3D.status='failed'; HERO3D.error=e&&e.target&&e.target.status!==undefined?'HTTP '+e.target.status:String(e&&e.message||e); console.warn('hero.glb: keeping the classic figure', e); });
+  }).catch(e=>{ HERO3D.failed[url]=true; HERO3D.status='failed'; HERO3D.error=e&&e.target&&e.target.status!==undefined?'HTTP '+e.target.status:String(e&&e.message||e); console.warn('hero.glb: keeping the classic figure', e); });
   return G;
 }
 function attachHeroModel(G, gltf){
@@ -1749,7 +1758,8 @@ function attachHeroModel(G, gltf){
       if(!Object.keys(actions).length){ mixer.uncacheRoot(model); mixer=null; }
     }
     G.g.add(model);
-    h.model=model; h.mixer=mixer; h.actions=actions; h.state=null; h.action=null;
+    h.model=model; h.mixer=mixer; h.actions=actions; h.state=null; h.action=null; h.gltf=gltf;
+    heroDress(model, h.av||{});
     h.ik=heroFindArms(model); h.push=0;
     HERO3D.status='loaded'; HERO3D.owner=G;
     heroAnimTick(G,0,0);
@@ -1761,6 +1771,71 @@ function attachHeroModel(G, gltf){
     HERO3D.status='failed'; HERO3D.error=String(e&&e.message||e); console.warn('hero.glb: keeping the classic figure', e);
   }
 }
+/* which parts the avatar wears. A hat goes over short hair: spiky, mohawk, ponytail and updo would poke through. */
+function heroLook(o){
+  const g=o.girl?'f':'m', S=HERO_STYLES[g], pick=(list,v)=>list.some(x=>x[0]===v)?v:list[0][0];
+  let head=pick(S.head,o.hairStyle); const top=pick(S.top,o.top);
+  if(['cap','beanie','crown','headphones'].includes(o.extra)&&['spiky','mohawk','pony','updo'].includes(head)) head=g==='m'?'casual':'bob';
+  const legs=g==='m'?(o.bottom==='shorts'?'shorts':'long'):(o.bottom==='skirt'?'skirt':'pants');
+  return {g,head,top,legs};
+}
+const shade=(c,k)=>((Math.round((c>>16&255)*k)<<16)|(Math.round((c>>8&255)*k)<<8)|Math.round((c&255)*k));
+/* show the chosen parts and paint them: skin, hair, shirt (or the merch shirt), trousers; the BuyToday wordmark on
+   an orange shirt or any BuyToday merch; and the accessory on the head */
+function heroDress(model,o){
+  const L=heroLook(o), m=MERCH[o.merch];
+  const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND;
+  const logoCol=m&&m.wordmark==='wordmark-orange'?BRAND:m&&m.wordmark==='wordmark-navy'?0x22305f:0xffffff;
+  let headNode=null; const mats={};
+  model.traverse(x=>{
+    if(/^P_/.test(x.name)){ const [,slot,id]=x.name.split('_'); x.visible = slot==='feet' || (slot==='head'&&id===L.head) || (slot==='top'&&id===L.top) || (slot==='legs'&&id===L.legs);
+      if(slot==='head'&&id===L.head&&x.userData&&x.userData.eyeY) headNode=x; }   // the node itself carries the measurements; its meshes are P_head_x_N
+    if(/^L_/.test(x.name)) x.visible = logo && x.name==='L_'+L.top && ['hoodie','tee','tank'].includes(L.top);   // a chest print, not on a suit, dress or crop top
+    if(x.isMesh) (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ if(/^R_/.test(mt.name)) mats[mt.name.slice(2)]=mt; });
+  });
+  const col=(k,c)=>{ if(mats[k]) mats[k].color.setHex(c).convertSRGBToLinear(); };   // the swatches are sRGB, the renderer works in linear
+  col('Skin',o.skin); col('Skin2',shade(o.skin,.86)); col('Hair',o.hair); col('Hair2',shade(o.hair,.7)); col('Eyebrows',shade(o.hair,.62));
+  col('Top',shirt); col('Top2',m&&m.stripes?m.stripes:0x1a1c22); col('Accent',shirt===0x22305f?BRAND:0x22305f); col('Pants',o.pants);
+  col('Shirt',0xf2f2ee); col('Shoe',0xf2f2ee); col('Sole',0x1b2350); col('Logo',logoCol);
+  if(mats.Top){ mats.Top.metalness=m&&m.shiny?.6:0; mats.Top.roughness=m&&m.shiny?.32:.85; }
+  heroAccessory(model,o,headNode&&headNode.userData);
+}
+/* hats, glasses and headphones from the rooftop shop, built to the head's measurements (stored with each haircut)
+   and fixed to the head bone, so they follow every movement */
+function heroAccessory(model,o,E){
+  let sm=null; model.traverse(x=>{ if(x.isSkinnedMesh&&!sm) sm=x; });
+  const old=model.userData.acc; if(old&&old.parent) old.parent.remove(old); model.userData.acc=null;
+  if(!sm||!E||!E.eyeY||!o.extra||o.extra==='none') return;
+  const sk=sm.skeleton, hi=sk.bones.findIndex(b=>/^head$/i.test(b.name)); if(hi<0) return;
+  const g=new THREE.Group(); g.name='HeroAcc'; const r=E.halfW, cx=E.cx||0, cz=E.cz||0, sT=E.skinTop, eY=E.eyeY, fr=E.front;
+  const M=(c,o2)=>{ const mt=new THREE.MeshStandardMaterial(Object.assign({roughness:.6,metalness:0},o2||{})); mt.color.setHex(c).convertSRGBToLinear(); return mt; };
+  const add=(geo,mat,x,y,z,rx,ry,rz,sx,sy,sz)=>{ const me=new THREE.Mesh(geo,mat); me.position.set(x,y,z); me.rotation.set(rx||0,ry||0,rz||0); if(sx) me.scale.set(sx,sy,sz); me.castShadow=true; g.add(me); return me; };
+  const capCol=o.merch&&o.merch!=='none'?BRAND:(o.shirt===BRAND?0x22305f:BRAND);
+  switch(o.extra){
+    case 'cap': add(new THREE.SphereGeometry(r*1.17,18,10,0,Math.PI*2,0,Math.PI/2),M(capCol),cx,sT-.055,cz-.006,0,0,0,1,.66,1.08);
+      add(new THREE.BoxGeometry(r*1.75,.012,r*1.35),M(capCol),cx,sT-.052,cz+r*1.3,-.1); break;
+    case 'beanie': add(new THREE.SphereGeometry(r*1.2,18,10,0,Math.PI*2,0,Math.PI/2),M(BRAND,{roughness:.95}),cx,sT-.04,cz,0,0,0,1,.95,1.1);
+      add(new THREE.CylinderGeometry(r*1.22,r*1.22,.04,18,1,true),M(0x22305f,{roughness:.95,side:THREE.DoubleSide}),cx,sT-.035,cz,0,0,0,1,1,1.1);
+      add(new THREE.SphereGeometry(.033,10,8),M(0xffffff,{roughness:1}),cx,sT-.04+r*1.2*.95+.02,cz); break;
+    case 'crown': { const gm=M(0xf2c230,{metalness:.8,roughness:.25}), y=(E.hairTop||sT)-.005;
+      add(new THREE.CylinderGeometry(r*.78,r*.72,.05,12,1,true),Object.assign(gm,{side:THREE.DoubleSide}),cx,y,cz);
+      for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; add(new THREE.ConeGeometry(.02,.055,4),gm,cx+Math.sin(a)*r*.78,y+.05,cz+Math.cos(a)*r*.78); }
+      add(new THREE.SphereGeometry(.015,8,6),M(0xe63946,{roughness:.2}),cx,y,cz+r*.8); break; }
+    case 'glasses': { const fm=M(0x16181d,{roughness:.4}), lm=M(0x9fc4e8,{roughness:.1,transparent:true,opacity:.45});
+      [-1,1].forEach(sd=>{ add(new THREE.TorusGeometry(.028,.005,6,18),fm,cx+sd*.044,eY,fr+.012); add(new THREE.CircleGeometry(.026,16),lm,cx+sd*.044,eY,fr+.011); });
+      add(new THREE.BoxGeometry(.03,.006,.006),fm,cx,eY+.008,fr+.012); break; }
+    case 'shades': { const sm2=M(0x0b0c10,{roughness:.2});
+      [-1,1].forEach(sd=>add(new THREE.BoxGeometry(.062,.032,.008),sm2,cx+sd*.043,eY,fr+.013));
+      add(new THREE.BoxGeometry(.17,.008,.008),sm2,cx,eY+.016,fr+.013); break; }
+    case 'headphones': { const hm=M(0x16181d,{roughness:.4}), am=M(BRAND,{roughness:.4});
+      add(new THREE.TorusGeometry(r*1.12,.012,6,24,Math.PI),hm,cx,eY-.01,cz);
+      [-1,1].forEach(sd=>add(new THREE.CylinderGeometry(.045,.045,.032,18),am,cx+sd*(r*1.12),eY-.01,cz,0,0,Math.PI/2)); break; }
+    default: return;
+  }
+  // from the skinned mesh's bind space into the head bone's own space
+  const mtx=new THREE.Matrix4().copy(sk.boneInverses[hi]).multiply(sm.bindMatrix);
+  g.applyMatrix4(mtx); sk.bones[hi].add(g); model.userData.acc=g;
+}
 /* Idle / Walk / Run from the player's speed. A missing clip falls back to the nearest one: no Run plays Walk
    faster, no Walk plays Run slower, no Idle holds the first frame of whichever clip there is. */
 function heroPick(A, state){
@@ -1771,8 +1846,7 @@ function heroPick(A, state){
 function heroAnimTick(H, speed, dt){
   const h = H.h3d; if(!h||!h.model) return;
   // the avatar editor shows the classic figure, which is the one it customises; the mall shows the model
-  const show3d = G.state!=='menu' && G.state!=='edit';
-  h.model.visible = show3d; H.body.visible = !show3d;
+  h.model.visible = true; H.body.visible = false;
   h.speed = speed;
   if(!h.mixer) return;
   try{
@@ -1903,7 +1977,7 @@ function heroDebug(){
       if(o.isSkinnedMesh){ skinned++; o.skeleton.bones.forEach(b=>bones.add(b)); } });
     const wp=new THREE.Vector3(); m.getWorldPosition(wp);
     Object.assign(info,{triangles:Math.round(tris), skinnedMeshes:skinned, materials:mats.size, bones:bones.size,
-      clips:(HERO3D.gltf.animations||[]).map(a=>a.name), playing:Object.keys(h.actions).filter(k=>h.actions[k]===h.action), mixerActive:!!h.mixer,
+      clips:((h.gltf||{}).animations||[]).map(a=>a.name), look:heroLook(h.av||{}), playing:Object.keys(h.actions).filter(k=>h.actions[k]===h.action), mixerActive:!!h.mixer,
       scale:m.scale.x, worldPosition:wp.toArray().map(v=>+v.toFixed(2)), visible:m.visible, cartIK:h.ik?{push:+h.push.toFixed(2),handGap:h.ikErr}:'no arm bones'}); }
   console.log('[heroDebug]', info); return info;
 }
@@ -2221,7 +2295,7 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 
 // player
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
-const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:''};
+const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:'',hairStyle:'',top:''};
 function loadAvatar(){ try{ const v=JSON.parse(localStorage.getItem('bt-avatar')||'null'); if(v&&typeof v==='object') return Object.assign({},AV_DEFAULT,v); }catch(e){} return Object.assign({},AV_DEFAULT); }
 function saveAvatar(){ try{ localStorage.setItem('bt-avatar',JSON.stringify(avatar)); }catch(e){} }
 let avatar=loadAvatar();
@@ -2541,17 +2615,24 @@ function renderCreator(){
   tabs.forEach(([k,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(k===ctab)); if(k===ctab) b.className='on';
     b.addEventListener('click',()=>{ ctab=k; renderCreator(); buzz(6); }); tb.appendChild(b); });
   const pane=$('#cpane'); pane.innerHTML='';
-  const set=(key,v)=>{ const a=Object.assign({},avatar,{[key]:v}); if(key==='girl') a.bottom=v?'skirt':'pants'; setAvatar(a); renderCreator(); buzz(6); };
+  const set=(key,v)=>{ const a=Object.assign({},avatar,{[key]:v}); if(key==='girl'){ a.bottom=v?'skirt':'pants'; a.hairStyle=''; a.top=''; } setAvatar(a); saveAvatar(); renderCreator(); buzz(6); };
   if(ctab==='style'){
     const ownedX=(typeof Coins!=='undefined'?Coins.owned:[]), SH_=typeof SHOP!=='undefined'?SHOP:[];
     const extras=[['none','בלי'],['cap','כובע'],['glasses','משקפיים']].concat(SH_.filter(i=>i.slot==='extra'&&ownedX.includes(i.id)).map(i=>[i.id,i.icon]));
-    const rows=[['דמות','girl',[[false,'בן'],[true,'בת']]],['תחתון','bottom',[['pants','מכנסיים'],['skirt','חצאית']]],['אביזר','extra',extras]];
+    const rows=[['דמות','girl',[[false,'בן'],[true,'בת']]]].concat(USE_3D_HERO?[]:[['תחתון','bottom',[['pants','מכנסיים'],['skirt','חצאית']]]]).concat([['אביזר','extra',extras]]);
     const merch=SH_.filter(i=>i.slot==='merch'&&ownedX.includes(i.id)); if(merch.length) rows.push(['חולצת BT','merch',[['none','בלי']].concat(merch.map(i=>[i.id,i.icon]))]);
     rows.forEach(([label,key,vals])=>{
       const row=document.createElement('div'); row.className='srow'; row.innerHTML='<span></span><div class="segc"></div>'; row.firstChild.textContent=label;
       vals.forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('aria-pressed',String(avatar[key]===v)); if(avatar[key]===v) b.className='on'; b.addEventListener('click',()=>set(key,v)); row.lastChild.appendChild(b); });
       pane.appendChild(row); });
   } else {
+    // the 3D wardrobe: haircut, shirt style, long or short / skirt
+    const S=HERO_STYLES[avatar.girl?'f':'m'], L=USE_3D_HERO?heroLook(avatar):null;
+    const styleRow=USE_3D_HERO&&{hair:['תספורת','hairStyle',S.head,L.head],shirt:['סגנון','top',S.top,L.top],
+      pants:['סוג','bottom',avatar.girl?[['pants','מכנסיים'],['skirt','חצאית']]:[['pants','ארוכים'],['shorts','קצרים']],avatar.bottom==='skirt'||avatar.bottom==='shorts'?avatar.bottom:'pants']}[ctab];
+    if(styleRow){ const [label,key,vals,cur]=styleRow; const r2=document.createElement('div'); r2.className='srow'; r2.innerHTML='<span></span><div class="segc"></div>'; r2.firstChild.textContent=label;
+      vals.forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('aria-pressed',String(cur===v)); if(cur===v) b.className='on'; b.addEventListener('click',()=>set(key,v)); r2.lastChild.appendChild(b); });
+      pane.appendChild(r2); }
     const row=document.createElement('div'); row.className='tiles';
     AV_CHOICES[ctab].forEach(c=>{ const b=document.createElement('button'); b.style.background=hex(c); b.style.color=light(c)?'#161a2b':'#fff'; b.innerHTML=CHECK;
       b.setAttribute('aria-label',hex(c)); b.setAttribute('aria-pressed',String(avatar[ctab]===c)); if(avatar[ctab]===c) b.className='on';
@@ -2561,7 +2642,8 @@ function renderCreator(){
   const nm=$('#optName'); if(document.activeElement!==nm) nm.value=avatar.name||'';
 }
 $('#dice').addEventListener('click',()=>{ const girl=Math.random()<.5;
-  setAvatar(Object.assign({},avatar,{girl,bottom:girl&&Math.random()<.65?'skirt':'pants',extra:pick(['none','none','cap','glasses']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}));
+  const S3=HERO_STYLES[girl?'f':'m'];
+  setAvatar(Object.assign({},avatar,{girl,bottom:girl?(Math.random()<.65?'skirt':'pants'):(Math.random()<.3?'shorts':'pants'),hairStyle:pick(S3.head)[0],top:pick(S3.top)[0],extra:pick(['none','none','cap','glasses']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}));
   renderCreator(); buzz(12); });
 $('#optName').addEventListener('input',e=>{ avatar.name=e.target.value; });
 $('#optName').addEventListener('change',e=>{ avatar.name=cleanName(e.target.value); e.target.value=avatar.name; });
@@ -2577,7 +2659,7 @@ $('#optName').addEventListener('keyup',e=>e.stopPropagation());
 const ACCT_API='https://buytoday.co.il/api/game/profile', LOGIN_URL='https://buytoday.co.il/login?redirect=/api/game/return';
 const Acct={state:'unknown',first:null,saved:''};
 const acctEl=$('#acct');
-function profileOf(a){ return {name:cleanName(a.name),girl:!!a.girl,skin:a.skin,hair:a.hair,shirt:a.shirt,pants:a.pants,bottom:a.bottom,extra:['none','cap','glasses'].includes(a.extra)?a.extra:'none'}; }
+function profileOf(a){ return {name:cleanName(a.name),girl:!!a.girl,skin:a.skin,hair:a.hair,shirt:a.shirt,pants:a.pants,bottom:a.bottom==='skirt'?'skirt':'pants',extra:['none','cap','glasses'].includes(a.extra)?a.extra:'none'}; }
 function renderAcct(){
   if(Acct.state!=='in'&&Acct.state!=='out'){ acctEl.hidden=true; return; }
   acctEl.hidden=false;
@@ -2592,6 +2674,8 @@ async function acctLoad(){
       const pr=j.profile&&typeof j.profile==='object'?j.profile:null;
       if(pr){ const a=unpackAv([pr.girl?1:0,pr.skin,pr.hair,pr.shirt,pr.pants,AV_BOTTOM.indexOf(pr.bottom),AV_EXTRA.indexOf(pr.extra)]);
         const keep=AV_EXTRA.indexOf(avatar.extra)>2?{extra:avatar.extra}:{};
+        // the account keeps the classic fields; the 3D haircut, shirt style and shorts live on this device
+        if(a.girl===!!avatar.girl) Object.assign(keep,{hairStyle:avatar.hairStyle||'',top:avatar.top||''}, !a.girl&&a.bottom==='pants'&&avatar.bottom==='shorts'?{bottom:'shorts'}:{});
         setAvatar(Object.assign({},a,{name:cleanName(pr.name)||avatar.name,merch:avatar.merch||'none'},keep)); saveAvatar(); Acct.saved=JSON.stringify(profileOf(avatar)); if(G.state!=='play') renderCreator(); }
       adoptProgress(j.progress); if(j.purchases) setPurchases(j.purchases); acctSave(); }
     else Acct.state='out'; }
@@ -3783,7 +3867,7 @@ const PHRASES=[7,8,9,10,11,12];
 const ROOM_CAP=12, ROOMS=8, SEND_EVERY=1/3, IDLE_EVERY=12, INTERP=420;
 const BAD_NAME=/(זונה|שרמוט|כוס|זין|מניאק|הומו|נאצי|fuck|shit|bitch|dick|cunt|porn|sex|nazi|hitler)/i;
 function cleanName(v){ v=String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,12); return BAD_NAME.test(v)?'':v; }
-const AV_BOTTOM=['pants','skirt'], AV_EXTRA=['none','cap','glasses','beanie','crown','headphones','shades'], AV_MERCH=['none','bt-orange','bt-navy','jersey','gold'];
+const AV_BOTTOM=['pants','skirt','shorts'], AV_EXTRA=['none','cap','glasses','beanie','crown','headphones','shades'], AV_MERCH=['none','bt-orange','bt-navy','jersey','gold'];
 const packAv=a=>[a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra),Math.max(0,AV_MERCH.indexOf(a.merch||'none'))];
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
