@@ -2400,7 +2400,7 @@ function buildKiosks(){
     solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
   });
 }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildKiosks(); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildFronts(); buildKiosks(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -2422,6 +2422,42 @@ function bake(group){
   while(group.children.length) group.remove(group.children[0]);
   buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.mat); m.castShadow=b.cast; m.receiveShadow=true; m.userData.c=b.cast; group.add(m); });
 }
+/* ---------- department fronts ----------
+   The departments are open floor zones (walls would block walking, the bots and the auto-route), so a front
+   is made of what sits above and beside the way in: a slim column at each corner on the aisle, a bulkhead
+   dropped from the ceiling along the aisle edge with a line of the department's colour under it and a warm
+   cove inside, and a dark threshold in the floor. Inside, the floor gets more light pools (floorShade). */
+function deptFronts(){ return DEPTS.filter(d=>d.f<=1&&(d.rect[0]<=-BX||d.rect[1]>=BX)&&d.rect[1]-d.rect[0]<BX*1.5).map(d=>{
+  const [x0,x1,z0,z1]=d.rect, ex=x0<=-BX?x1:x0, inward=x0<=-BX?-1:1;
+  return {d,ex,inward,z0:Math.max(z0,-BZ+.25),z1:Math.min(z1,BZ-.25)}; }); }
+function buildFronts(){
+  const cols=[];
+  deptFronts().forEach(({d,ex,inward,z0,z1})=>{
+    const f=d.f, P=STATIC[f], base=f*FH, top=f===0?FH-.3:2*FH, L=z1-z0, zc=(z0+z1)/2;
+    const line=new THREE.MeshBasicMaterial({color:new THREE.Color(d.color)});
+    // bulkhead
+    box(.46,.85,L,M.fascia,ex,top-.425,zc,P,false);
+    box(.48,.04,L,line,ex,top-.87,zc,P,false);
+    box(.03,.03,L,M.ledWarm,ex+inward*.25,top-.82,zc,P,false);
+    // threshold
+    floorPlane(ex-.14,ex+.14,z0,z1,base+.016,mat(0x0d1330,overlay({roughness:.45})),P,1);
+    floorPlane(ex+inward*.16-.025,ex+inward*.16+.025,z0,z1,base+.019,new THREE.MeshBasicMaterial({color:new THREE.Color(d.color),polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6}),P,1);
+    [z0,z1].forEach(z=>{ if(Math.abs(z)>=BZ-.3) return; cols.push({f,x:ex,z,top,inward}); });
+  });
+  // one column per corner (two departments can share it), and none where it would narrow a way past
+  const done=[];
+  cols.forEach(c=>{ if(done.some(o=>o.f===c.f&&Math.hypot(o.x-c.x,o.z-c.z)<1.6)) return;
+    const near=cols.filter(o=>o.f===c.f&&Math.abs(o.x-c.x)<.1&&Math.abs(o.z-c.z)<1.6), z=near.reduce((a,o)=>a+o.z,0)/near.length;
+    if(c.f>=1&&z>VOID.minZ-1.4&&z<VOID.maxZ+1.4) return;   // beside the atrium rail
+    if(!walkable(c.x,z,.5,c.f)) return;
+    done.push({f:c.f,x:c.x,z});
+    const P=STATIC[c.f], base=c.f*FH, H=c.top-base;
+    box(.5,H,.5,M.column,c.x,base+H/2,z,P); box(.6,.14,.6,M.navyDeep,c.x,base+.07,z,P);
+    box(.52,.03,.52,M.yellow,c.x,base+1.2,z,P,false);
+    [-1,1].forEach(s=>box(.02,H-1.6,.07,M.ledWarm,c.x+s*.255,base+1.3+(H-1.6)/2,z,P,false));
+    solid(c.f,c.x,z,.6,.6,'col'); });
+}
+
 /* ---------- floor shading ----------
    Painted once into two textures per floor and laid over it as one plane each, so it costs two cheap draws:
    - contact shadow: a soft darkening round the foot of everything that stands on the floor (counters, kiosks,
@@ -2454,6 +2490,8 @@ function floorShade(){
       l.fillStyle=gr; l.beginPath(); l.arc(0,0,rz*k,0,7); l.fill(); l.restore(); };
     for(let x=-21;x<=21;x+=6) for(let z=-27;z<=27;z+=6){ if(x>VOID.minX-1.5&&x<VOID.maxX+1.5&&z>VOID.minZ-1.5&&z<VOID.maxZ+1.5) continue; pool(x,z,.8,3.2,1); }
     if(f===0) pool(0,0,7.5,6.5,.55);
+    deptFronts().filter(o=>o.d.f===f).forEach(({d})=>{ const [x0,x1,z0,z1]=d.rect;
+      for(let x=-18;x<=18;x+=6) for(let z=-24;z<=30;z+=6) if(x>x0+1&&x<x1-1&&z>z0+1&&z<z1-1) pool(x,z,1.4,2.4,.6); });
     if(f>=1) l.clearRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*k,(VOID.maxZ-VOID.minZ)*k);
     const lt=new THREE.CanvasTexture(lc); lt.encoding=THREE.sRGBEncoding;
     const lm=new THREE.MeshBasicMaterial({map:lt,transparent:true,opacity:SHADE.pool,blending:THREE.AdditiveBlending,depthWrite:false,fog:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8});
