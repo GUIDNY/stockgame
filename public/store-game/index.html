@@ -1375,6 +1375,7 @@ function buildGround(){
     const nm=new THREE.Mesh(new THREE.CircleGeometry(.3,24),new THREE.MeshBasicMaterial({map:num,side:THREE.DoubleSide})); nm.position.set(cx-.45,2.55,25.4); SG.add(nm);
     solid(0,cx,24,1.4,3.4,'counter');
     const g=mkGuy({skin:pick([0xf1c7a0,0xc98e62,0x8d5a3b]),shirt:BRAND,pants:0x2b2f3a,hair:pick([0x2b1a10,0x5a3a1a,0x111111]),vest:0x22305f});
+    g.npcLater={skin:pick([0xf1c7a0,0xc98e62,0x8d5a3b]),shirt:BRAND,pants:0x22305f,hair:0x2b1a10,hairStyle:'neat',top:'tee',girl:false};   // turned 3D once the NPC code below has run
     g.g.position.set(cx+1.25,0,24.6); g.g.rotation.y=-Math.PI/2; scene.add(g.g); solid(0,cx+1.25,24.6,.8,.8); cashiers.push(g);
   });
   floorPlane(-21,-9,20.9,21.15,.013,mat(BRAND,overlay()));
@@ -1670,6 +1671,7 @@ function mkGuy(o){
   return {g,body,legs,arms,head,phase:Math.random()*6};
 }
 function animGuy(G,speed,dt,pushing){
+  if(G.npc3d) npcAnimTick(G,speed,dt,pushing);
   G.phase+=dt*(2.2+speed*1.9);
   const a=Math.min(1,speed/3)*.7, s=Math.sin(G.phase)*a;
   G.legs[0].rotation.x=s; G.legs[1].rotation.x=-s;
@@ -1915,9 +1917,9 @@ function ikCurl(ch,side,angles,k){
     const a=angles[j]*k, up=c.clone().applyAxisAngle(side,a).y, dn=c.clone().applyAxisAngle(side,-a).y;
     q.setFromAxisAngle(side,up<dn?a:-a); ikTurn(b,q); });
 }
-function heroCartIK(H,dt){
-  const h=H.h3d, ik=h&&h.ik; if(!ik) return;
-  const on=typeof cart!=='undefined'&&cart.c.visible&&cart.c.parent===H.g&&h.model.visible;
+function heroCartIK(H,dt,rec,pushing){
+  const h=rec||H.h3d, ik=h&&h.ik; if(!ik) return;
+  const on=rec?!!pushing:typeof cart!=='undefined'&&cart.c.visible&&cart.c.parent===H.g&&h.model.visible;
   h.push+=((on?1:0)-h.push)*(1-Math.exp(-dt*8));
   h.model.position.z=HERO_CART_STEP_IN*h.push;
   if(h.push<.01) return;
@@ -1982,6 +1984,107 @@ function heroDebug(){
   console.log('[heroDebug]', info); return info;
 }
 window.heroDebug = heroDebug;
+
+/* ---------- 3D shoppers, bots, cashiers and other players ----------
+   Every other figure in the mall is dressed from the same two wardrobe files as the hero. Each one is built
+   once into a single skinned mesh with its colours in the vertices (one draw call per person), on its own
+   copy of the skeleton, with its own Idle/Walk/Run. mkGuyNPC() returns a classic mkGuy figure straight away
+   and swaps the 3D body in when the wardrobe has loaded; if it never does, the classic figure stays. */
+const USE_3D_NPCS = true;
+const NPC3D = {status:USE_3D_NPCS?'idle':'off', gltfs:{}, pending:[], mat:null, built:0};
+function mkGuyNPC(o){
+  const G=mkGuy(o);
+  if(!USE_3D_NPCS||!USE_3D_HERO) return G;
+  G.npcOpts=o;
+  const url=heroUrl(o);
+  if(NPC3D.gltfs[url]) npcAttach(G,NPC3D.gltfs[url]);
+  else if(!HERO3D.failed[url]){ NPC3D.pending.push(G); npcLoad(url); }
+  return G;
+}
+function npcLoad(url){
+  if(NPC3D['p'+url]) return; NPC3D['p'+url]=1;
+  // after the hero's own file, and only when the page is idle: the mall comes first
+  const go=()=>loadGLTF(url).then(gl=>{ NPC3D.gltfs[url]=gl; NPC3D.status='loaded';
+      const wait=NPC3D.pending; NPC3D.pending=[];
+      wait.forEach(G=>{ if(heroUrl(G.npcOpts)===url) npcAttach(G,gl); else NPC3D.pending.push(G); }); })
+    .catch(e=>{ NPC3D.status='failed'; console.warn('npc wardrobe: keeping the classic figures',e); });
+  (window.requestIdleCallback||setTimeout)(go,{timeout:3000});
+}
+// everyone not given a haircut or shirt style gets one at random, once
+function npcStyle(o){
+  const S=HERO_STYLES[o.girl?'f':'m'];
+  if(!o.hairStyle) o.hairStyle=pick(S.head)[0];
+  if(!o.top) o.top=o.vest?(o.girl?'tee':'hoodie'):pick(S.top)[0];
+  if(!o.bottom) o.bottom='pants';
+  return o;
+}
+function npcAttach(G,gl){
+  if(G.npc3d) return;
+  try{
+    const o=npcStyle(Object.assign({},G.npcOpts)), L=heroLook(o), m=MERCH[o.merch];
+    const shirt=m?m.shirt:o.shirt;
+    const ROLE={Skin:o.skin,Skin2:shade(o.skin,.86),Hair:o.hair,Hair2:shade(o.hair,.7),Eyebrows:shade(o.hair,.62),Eye:0x2b1b10,Acc:0xe7c04a,
+      Top:o.vest||shirt,Top2:m&&m.stripes?m.stripes:0x1a1c22,Shirt:0xf2f2ee,Accent:shirt===0x22305f?BRAND:0x22305f,Pants:o.pants,Shoe:0xf2f2ee,Sole:0x1b2350};
+    const want=['P_head_'+L.head,'P_top_'+L.top,'P_legs_'+L.legs];
+    let feet=null, src=null, arm=null; const parts=[];
+    gl.scene.traverse(x=>{ if(want.includes(x.name)) parts.push(x); if(/^P_feet_/.test(x.name)&&!feet) feet=x; if(x.isSkinnedMesh&&!src) src=x; if(x.name==='CharacterArmature') arm=x; });
+    if(feet) parts.push(feet);
+    if(!src||!arm||parts.length<3) return;
+    // one geometry: positions, normals, skin data and a colour per vertex from the part's role
+    const chunks=[]; let nv=0, ni=0;
+    parts.forEach(pn=>pn.traverse(me=>{ if(!me.isSkinnedMesh) return; const role=(me.material.name||'').slice(2); if(role==='Logo') return;
+      const g=me.geometry; chunks.push({g,c:new THREE.Color(ROLE[role]!==undefined?ROLE[role]:0xcccccc).convertSRGBToLinear()}); nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; }));
+    const P=new Float32Array(nv*3), N=new Float32Array(nv*3), C=new Float32Array(nv*3), SI=new Float32Array(nv*4), SW=new Float32Array(nv*4), I=new Uint32Array(ni);
+    let v0=0, i0=0;
+    chunks.forEach(({g,c})=>{ const a=g.attributes, n=a.position.count, j=a.skinIndex, w=a.skinWeight, wn=w.normalized?(w.array instanceof Uint8Array?255:65535):1;
+      for(let k=0;k<n;k++){ const t=v0+k; P[t*3]=a.position.getX(k); P[t*3+1]=a.position.getY(k); P[t*3+2]=a.position.getZ(k);
+        N[t*3]=a.normal.getX(k); N[t*3+1]=a.normal.getY(k); N[t*3+2]=a.normal.getZ(k); C[t*3]=c.r; C[t*3+1]=c.g; C[t*3+2]=c.b;
+        for(let q=0;q<4;q++){ SI[t*4+q]=j.array[k*4+q]; SW[t*4+q]=w.array[k*4+q]/wn; } }
+      const idx=g.index?g.index.array:null, m2=idx?idx.length:n; for(let k=0;k<m2;k++) I[i0+k]=(idx?idx[k]:k)+v0;
+      v0+=n; i0+=m2; });
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(P,3)); geo.setAttribute('normal',new THREE.BufferAttribute(N,3)); geo.setAttribute('color',new THREE.BufferAttribute(C,3));
+    geo.setAttribute('skinIndex',new THREE.BufferAttribute(SI,4)); geo.setAttribute('skinWeight',new THREE.BufferAttribute(SW,4)); geo.setIndex(new THREE.BufferAttribute(I,1));
+    geo.computeBoundingSphere();
+    // its own skeleton: a copy of the bones (without anything the hero carries on them)
+    const root=new THREE.Group(), armC=new THREE.Object3D(); armC.position.copy(arm.position); armC.quaternion.copy(arm.quaternion); armC.scale.copy(arm.scale); root.add(armC);
+    const rootBone=arm.children.find(c=>c.isBone), bones=rootBone.clone(true); armC.add(bones);
+    bones.traverse(b=>{ if(b.name==='HeroAcc') b.parent.remove(b); });
+    const byName={}; bones.traverse(b=>{ if(b.isBone) byName[b.name]=b; });
+    const skel=new THREE.Skeleton(src.skeleton.bones.map(b=>byName[b.name]), src.skeleton.boneInverses.map(m=>m.clone()));
+    if(!NPC3D.mat){ NPC3D.mat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:0}); NPC3D.mat.skinning=true; }
+    const mesh=new THREE.SkinnedMesh(geo,NPC3D.mat); armC.add(mesh); mesh.bind(skel,src.bindMatrix);
+    mesh.castShadow=false; mesh.receiveShadow=false;   // the round blob under the feet is their shadow
+    root.scale.setScalar(HERO_MODEL_SCALE); root.rotation.y=HERO_MODEL_ROTATION_OFFSET;
+    const mixer=new THREE.AnimationMixer(root), actions={};
+    ['Idle','Walk','Run'].forEach(n=>{ const c=gl.animations.find(a=>a.name===n); if(c){ const a=mixer.clipAction(c); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
+    if(!actions.Idle||!actions.Walk) return;
+    G.g.add(root); G.body.visible=false;
+    G.npc3d={model:root,mixer,actions,state:null,action:null,ik:heroFindArms(root),push:0,phase:Math.random()*10};
+    mixer.update(G.npc3d.phase);
+    NPC3D.built++;
+  }catch(e){ console.warn('npc 3D: keeping the classic figure',e); }
+}
+// the cashiers are built before this code runs: they join now
+function npcAdopt(G,o){ if(!USE_3D_NPCS||!USE_3D_HERO||G.npc3d) return; G.npcOpts=o; const url=heroUrl(o); if(NPC3D.gltfs[url]) npcAttach(G,NPC3D.gltfs[url]); else { NPC3D.pending.push(G); npcLoad(url); } }
+setTimeout(()=>{ if(typeof cashiers!=='undefined') cashiers.forEach(c=>{ if(c.npcLater) npcAdopt(c,c.npcLater); }); },0);   // after the whole mall has been built
+/* called from animGuy for every figure that has a 3D body */
+function npcAnimTick(G,speed,dt,pushing){
+  const n=G.npc3d; if(!G.g.visible) return;
+  // far away: a slower animation clock, nobody can tell
+  const d=camera.position.distanceTo(G.g.position); n.skip=(n.skip||0)+dt; const every=d>34?.1:d>20?.05:0;
+  if(n.skip<every) return; dt=n.skip; n.skip=0;
+  let st=n.state||'Idle';
+  if(st==='Idle'&&speed>HERO_SPEED.walkOn) st=speed>HERO_SPEED.runOn?'Run':'Walk';
+  else if(st!=='Idle'&&speed<HERO_SPEED.walkOff) st='Idle';
+  else if(st==='Walk'&&speed>HERO_SPEED.runOn) st='Run'; else if(st==='Run'&&speed<HERO_SPEED.runOff) st='Walk';
+  const act=n.actions[st]||n.actions.Walk;
+  if(act!==n.action){ act.reset(); act.play(); if(n.action) n.action.crossFadeTo(act,HERO_FADE,false); n.action=act; }
+  act.timeScale=st==='Idle'?1:clamp(speed/(HERO_CLIP_PACE[st]||HERO_CLIP_PACE.Walk),.55,1.6);
+  n.state=st; n.mixer.update(dt);
+  if(n.ik&&(pushing||n.push>.01)&&d<16) heroCartIK(G,dt,n,pushing);
+  else if(n.push){ n.push=0; n.model.position.z=0; }
+}
 
 function mkCart(){
   const c=new THREE.Group(); const metal=mat(0xc9ced6,{metalness:.6,roughness:.35}); const red=mat(0xe63946,{roughness:.4});
@@ -2322,7 +2425,7 @@ function walkable(x,z,r,f){ for(const s of solids[f]){ if(x>s.minX-r&&x<s.maxX+r
 function randPoint(f){ for(let i=0;i<80;i++){ const x=rand(-22.5,22.5), z=rand(-30.5,f?30.5:19); if(walkable(x,z,.9,f)) return new THREE.Vector3(x,f*FH,z); } return new THREE.Vector3(0,f*FH,f?20:12); }
 const shoppers=[];
 [[0,4],[1,3],[2,4]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
-  const girl=Math.random()<.5; const G=mkGuy({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
+  const girl=Math.random()<.5; const G=mkGuyNPC({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
   const p=randPoint(f); G.g.position.copy(p); scene.add(G.g);
   if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; floorCasters.push(o); } });
   shoppers.push({G,f,pos:p,target:randPoint(f),speed:rand(1.2,1.9),wait:rand(0,2),stuck:0,yaw:0,last:p.clone()});
@@ -3781,7 +3884,7 @@ function wander(a,dt,speed,r){
 function updateNPCs(dt,t){
   shoppers.forEach(s=>{ const sp=wander(s,dt,s.speed,.45); s.G.g.position.copy(s.pos); s.G.g.rotation.y=s.yaw; animGuy(s.G,sp,dt,false); s.G.head.rotation.y=sp?0:Math.sin(t*.8+s.speed*9)*.5; });
   for(let i=0;i<shoppers.length;i++) for(let j=i+1;j<shoppers.length;j++) if(shoppers[i].f===shoppers[j].f) pushApart(shoppers[i].pos,shoppers[j].pos,.9);
-  cashiers.forEach((c,i)=>{ c.head.rotation.y=Math.sin(t*.6+i)*.35; c.arms[0].rotation.x=-.4+Math.sin(t*2+i)*.15; });
+  cashiers.forEach((c,i)=>{ c.head.rotation.y=Math.sin(t*.6+i)*.35; c.arms[0].rotation.x=-.4+Math.sin(t*2+i)*.15; if(c.npc3d) npcAnimTick(c,0,dt,false); });
   robots.forEach(r=>{ r.turn-=dt; r.x+=Math.sin(r.a)*dt*1.1; r.z+=Math.cos(r.a)*dt*1.1;
     if(r.x<robotArena.x0||r.x>robotArena.x1||r.z<robotArena.z0||r.z>robotArena.z1||r.turn<0){ r.x=clamp(r.x,robotArena.x0,robotArena.x1); r.z=clamp(r.z,robotArena.z0,robotArena.z1); r.a+=Math.PI*rand(.5,1.2); r.turn=rand(2,5); }
     r.m.position.set(r.x,FH+.01,r.z); r.m.rotation.y=r.a; });
@@ -3868,11 +3971,15 @@ const ROOM_CAP=12, ROOMS=8, SEND_EVERY=1/3, IDLE_EVERY=12, INTERP=420;
 const BAD_NAME=/(זונה|שרמוט|כוס|זין|מניאק|הומו|נאצי|fuck|shit|bitch|dick|cunt|porn|sex|nazi|hitler)/i;
 function cleanName(v){ v=String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,12); return BAD_NAME.test(v)?'':v; }
 const AV_BOTTOM=['pants','skirt','shorts'], AV_EXTRA=['none','cap','glasses','beanie','crown','headphones','shades'], AV_MERCH=['none','bt-orange','bt-navy','jersey','gold'];
-const packAv=a=>[a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra),Math.max(0,AV_MERCH.indexOf(a.merch||'none'))];
+const packAv=a=>{ const S=HERO_STYLES[a.girl?'f':'m'], L=heroLook(a);
+  return [a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra),Math.max(0,AV_MERCH.indexOf(a.merch||'none')),
+    S.head.findIndex(x=>x[0]===(a.hairStyle||L.head)),S.top.findIndex(x=>x[0]===L.top)]; };   // 8, 9: the 3D haircut and shirt style
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
-  return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none',merch:AV_MERCH[v[7]]||'none'}; }
+  const S=HERO_STYLES[v[0]===1?'f':'m'], st=(list,i)=>Number.isInteger(i)&&list[i]?list[i][0]:'';
+  return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none',merch:AV_MERCH[v[7]]||'none',
+    hairStyle:st(S.head,v[8]),top:st(S.top,v[9])}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
@@ -3917,7 +4024,7 @@ function netPeer(id,meta){
   let q=Net.peers.get(id); const key=JSON.stringify(meta.a), name=cleanName(meta.n)||'אורח/ת';
   if(q&&q.key!==key){ netDrop(id); q=null; }
   if(!q){ if(Net.peers.size>=ROOM_CAP+4) return; const av=unpackAv(meta.a); if(!av) return;
-    const G=mkGuy(avOpts(av)), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.visible=false; scene.add(G.g);
+    const G=mkGuyNPC(avOpts(av)), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.visible=false; scene.add(G.g);
     const tag=document.createElement('div'); tag.className='nametag'; tag.hidden=true; $('#bubbles').appendChild(tag);
     const emo=bubble('emo');
     q={id,key,G,tag,emo,snaps:[],seen:false,speed:0,prev:new THREE.Vector3(),emoUntil:0,emoAt:0};
@@ -4045,7 +4152,7 @@ function botGoal(b){
 function botSpawn(){
   const f=pick(BOT_FLOORS); let p=null;
   for(let i=0;i<25;i++){ const q=randPoint(f); if(f!==player.floor||q.distanceTo(player.pos)>16){ p=q; break; } } if(!p) p=randPoint(f);
-  const G=mkGuy(avOpts(botAvatar())), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.position.copy(p); scene.add(G.g);
+  const G=mkGuyNPC(avOpts(botAvatar())), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.position.copy(p); scene.add(G.g);
   const casters=[]; if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; o.castShadow=f===player.floor&&o.userData.c; floorCasters.push(o); casters.push(o); } });
   G.g.visible=f!==TOP||STATIC[2].visible;
   const tag=document.createElement('div'); tag.className='nametag'; tag.hidden=true; tag.textContent=Bots.names[Bots.ni++%Bots.names.length]; $('#bubbles').appendChild(tag);
