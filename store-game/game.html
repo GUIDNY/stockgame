@@ -206,6 +206,13 @@
   #joy{position:absolute;width:124px;height:124px;margin:-62px 0 0 -62px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.04),rgba(255,255,255,.12));border:2px solid rgba(255,255,255,.3);pointer-events:none;transition:opacity .2s;}
   #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(250,250,252,.92);box-shadow:0 4px 12px rgba(0,0,0,.3);}
   #joyzone.idle #joy{opacity:.85;}
+  /* the camera stick: on touch screens only, beside the action button; it turns the view and nothing else */
+  #camstick{display:none;position:fixed;right:112px;bottom:calc(var(--sb) + 30px);width:78px;height:78px;border-radius:50%;touch-action:none;z-index:3;
+    background:radial-gradient(circle,rgba(255,255,255,.05),rgba(255,255,255,.14));border:1.5px solid rgba(255,255,255,.35);}
+  #camstick i{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(250,250,252,.88);box-shadow:0 3px 10px rgba(0,0,0,.28);display:grid;place-items:center;pointer-events:none;}
+  #camstick i svg{width:18px;height:18px;color:#f55304;}
+  @media (pointer:coarse){ #camstick{display:block;} }
+  .hud.card-open #camstick,.hud.talking #camstick{display:none!important;}
   /* first visit: the joystick says what it is, and pulses until it is used once */
   #joyTip{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);white-space:nowrap;text-align:center;font-size:12.5px;font-weight:800;line-height:1.25;color:#fff;background:var(--brand);padding:7px 11px;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.35);}
   #joyTip b{display:block;font-size:18px;animation:joyNudge 1.1s ease-in-out infinite;}
@@ -365,6 +372,42 @@
   .acct .ok{flex:none;width:34px;height:34px;border-radius:50%;background:var(--good);color:#06301b;display:grid;place-items:center;}
   .acct .ok svg{width:18px;height:18px;}
   .csheet .go{margin-top:4px;}
+  /* creator, white and orange: the character stands in the mall, framed in the free part of the screen */
+  .creator{pointer-events:none;background:linear-gradient(to bottom,rgba(255,255,255,.88),rgba(255,255,255,.35) 18%,transparent 30%);}
+  .creator .ctop,.creator .csheet{pointer-events:auto;}
+  .creator .ctop h1{color:#1b2350;text-shadow:none;} .creator .ctop h1 em{color:var(--brand);font-style:normal;}
+  .creator .ctop p{color:#4a5170;text-shadow:none;} .creator .brandrow{color:#5b6280;}
+  .csheet{background:#fff;color:#1b2350;border:0;box-shadow:0 -8px 30px rgba(20,25,60,.18);gap:12px;max-height:58vh;overflow-y:auto;overscroll-behavior:contain;}
+  .csheet input{background:#f4f5f8;border:1.5px solid #e4e6ee;color:#1b2350;} .csheet input:focus{border-color:var(--brand);outline:0;}
+  .csheet input::placeholder{color:#8a90a8;}
+  .ctabs{background:#f1f2f6;} .ctabs button{color:#5b6280;} .ctabs button.on{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(245,83,4,.3);}
+  .cpane{min-height:0;align-content:start;gap:12px;}
+  .crow{display:grid;gap:6px;} .crow > span{font-size:12px;font-weight:800;color:#5b6280;}
+  .segc{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:#f1f2f6;}
+  .segc button{flex:1 0 auto;min-width:58px;padding:0 10px;color:#3a4160;height:34px;}
+  .segc button.on{background:var(--brand);color:#fff;}
+  .tiles{justify-content:flex-start;gap:9px;padding:2px;}
+  .tiles button{width:36px;height:36px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);}
+  .tiles button svg{width:16px;height:16px;}
+  .tiles button.on{transform:none;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);}
+  .acct{background:#fff4ec;border:1px solid #ffd9c2;} .acct small{color:#7a5a48;} .acct a{background:var(--brand);color:#fff;}
+  .cwelcome{display:grid;gap:2px;text-align:center;padding:4px 0 2px;} .cwelcome small{font-size:13px;color:#5b6280;font-weight:700;}
+  .cwelcome b{font-size:26px;color:#1b2350;} .cwelcome span{font-size:13px;color:#5b6280;font-weight:700;}
+  .go2{width:100%;height:46px;border-radius:14px;background:#fff;color:var(--brand);border:2px solid #ffd2b8;font-weight:800;font-size:16px;}
+  .csheet.compact .nrow,.csheet.compact .ctabs,.csheet.compact .cpane{display:none;}
+  .spinhint{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-size:12px;font-weight:700;color:#5b6280;background:rgba(255,255,255,.85);padding:5px 10px;border-radius:10px;}
+  .creator:has(.csheet.compact) .spinhint{display:none;}
+  @media (max-width:899px){
+    .csheet{max-height:none;overflow:visible;gap:10px;padding-top:12px;}
+    .cpane{max-height:31vh;overflow-y:auto;overscroll-behavior:contain;padding:2px 2px 4px;}
+    .csheet:not(.compact) .acct{display:none;}   /* while editing, the room goes to the character */
+    .creator .ctop p{display:none;} .creator .ctop h1{font-size:28px;margin:6px 0 0;}
+  }
+  @media (min-width:900px){
+    .creator{background:linear-gradient(to left,rgba(255,255,255,.7),transparent 45%);}
+    .creator .ctop{position:absolute;right:48px;top:calc(var(--st) + 28px);width:420px;margin:0;padding:0;}
+    .csheet{position:absolute;right:48px;bottom:32px;top:auto;width:420px;max-height:calc(100vh - 230px);border-radius:24px;padding:18px;}
+  }
 
   /* ---------- mall directory ---------- */
   .dir{align-items:stretch;padding:calc(var(--st) + 10px) 0 0;background:rgba(8,11,28,.6);}
@@ -754,6 +797,7 @@
       <a class="cbtn" id="cardLink" target="_blank" rel="noopener" aria-label="לעמוד המוצר"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>פרטים</span></a>
     </div>
   </div>
+  <div id="camstick" aria-label="סיבוב המצלמה"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2M21 12a9 9 0 0 1-15.5 6.2"/><path d="M18.5 2v4h-4M5.5 22v-4h4"/></svg></i></div>
   <div id="joyzone" class="idle"><div id="joy"><div id="knob"></div><div id="joyTip" hidden><b>👆</b>גררו כאן<br>כדי ללכת</div></div></div>
   <div id="liftPad" class="glass" hidden role="group" aria-label="בחירת קומה"><button data-f="2">הגג<small>פודקורט</small></button><button data-f="1">1<small>לבית</small></button><button data-f="0">קרקע<small>כניסה</small></button></div>
   <button id="act" class="off" aria-label="פעולה">
@@ -769,14 +813,16 @@
     <h1>הקניון של <em>BuyToday</em></h1>
     <p>בחרו איך תיראו ותטיילו בין המחלקות. כל מוצר אמיתי, במחיר של היום באתר.</p>
   </div>
-  <div class="csheet">
+  <div class="csheet" id="csheet">
+    <div class="cwelcome" id="cwelcome" hidden><small>ברוכים השבים</small><b id="cwName"></b><span id="cwStats"></span></div>
     <div class="acct" id="acct" hidden></div>
-    <div class="nrow"><input id="optName" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="השם שלכם בקניון" dir="auto" aria-label="השם שלכם בקניון">
-      <button class="dice" id="dice" aria-label="דמות אקראית"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="16" cy="16" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="16" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="16" r="1.2" fill="currentColor"/></svg></button></div>
+    <div class="nrow"><input id="optName" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="השם שלכם בקניון" dir="auto" aria-label="השם שלכם בקניון"></div>
     <div class="ctabs" id="ctabs" role="tablist" aria-label="עריכת הדמות"></div>
     <div class="cpane" id="cpane" role="tabpanel"></div>
     <button class="go" id="startBtn">נכנסים לקניון</button>
+    <button class="go2" id="editLook" hidden>עריכת הדמות</button>
   </div>
+  <div class="spinhint" aria-hidden="true">גררו כדי לסובב את הדמות</div>
 </div>
 
 <div id="warp"></div>
@@ -1784,6 +1830,14 @@ function heroLook(o){
   return {g,head,top,legs};
 }
 const shade=(c,k)=>((Math.round((c>>16&255)*k)<<16)|(Math.round((c>>8&255)*k)<<8)|Math.round((c&255)*k));
+/* build: widen or narrow the hips, torso, arms and legs on the skeleton itself; each scale is undone one bone
+   further down (neck, shoulders, thighs) so the head stays the same and the limbs only get thicker or thinner */
+const BODY_SHAPE={regular:[1,1,1,1],slim:[.94,.88,.86,.9],full:[1.14,1.24,1.12,1.14],strong:[1.03,1.15,1.24,1.1]};   // hips, torso, arms, legs
+function heroBody(root,body){
+  const [h,t,a,l]=BODY_SHAPE[body]||BODY_SHAPE.regular, B={}; root.traverse(b=>{ if(b.isBone) B[b.name]=b; });
+  const set=(n,k)=>{ if(B[n]) B[n].scale.set(k,1,k); };
+  set('Hips',h); set('UpperLegL',l/h); set('UpperLegR',l/h); set('Abdomen',t/h); set('Neck',1/t); set('ShoulderL',a/t); set('ShoulderR',a/t);
+}
 /* show the chosen parts and paint them: skin, hair, shirt (or the merch shirt), trousers; the BuyToday wordmark on
    an orange shirt or any BuyToday merch; and the accessory on the head */
 function heroDress(model,o){
@@ -1800,22 +1854,26 @@ function heroDress(model,o){
   const col=(k,c)=>{ if(mats[k]) mats[k].color.setHex(c).convertSRGBToLinear(); };   // the swatches are sRGB, the renderer works in linear
   col('Skin',o.skin); col('Skin2',shade(o.skin,.86)); col('Hair',o.hair); col('Hair2',shade(o.hair,.7)); col('Eyebrows',shade(o.hair,.62));
   col('Top',shirt); col('Top2',m&&m.stripes?m.stripes:0x1a1c22); col('Accent',shirt===0x22305f?BRAND:0x22305f); col('Pants',o.pants);
-  col('Shirt',0xf2f2ee); col('Shoe',0xf2f2ee); col('Sole',0x1b2350); col('Logo',logoCol);
+  col('Shirt',0xf2f2ee); col('Shoe',0xf2f2ee); col('Sole',0x1b2350); col('Logo',logoCol); col('Eye',o.eyes||0x2b1b10);
+  heroBody(model,o.body);
   if(mats.Top){ mats.Top.metalness=m&&m.shiny?.6:0; mats.Top.roughness=m&&m.shiny?.32:.85; }
   heroAccessory(model,o,headNode&&headNode.userData);
 }
 /* hats, glasses and headphones from the rooftop shop, built to the head's measurements (stored with each haircut)
    and fixed to the head bone, so they follow every movement */
 function heroAccessory(model,o,E){
+  (model.userData.accs||[]).forEach(g=>{ if(g.parent) g.parent.remove(g); }); model.userData.accs=[];
+  [o.extra,o.eyewear].forEach(kind=>{ if(kind&&kind!=='none') heroAccessoryOne(model,o,E,kind); });   // a hat and glasses can go together
+}
+function heroAccessoryOne(model,o,E,kind){
   let sm=null; model.traverse(x=>{ if(x.isSkinnedMesh&&!sm) sm=x; });
-  const old=model.userData.acc; if(old&&old.parent) old.parent.remove(old); model.userData.acc=null;
-  if(!sm||!E||!E.eyeY||!o.extra||o.extra==='none') return;
+  if(!sm||!E||!E.eyeY) return;
   const sk=sm.skeleton, hi=sk.bones.findIndex(b=>/^head$/i.test(b.name)); if(hi<0) return;
   const g=new THREE.Group(); g.name='HeroAcc'; const r=E.halfW, cx=E.cx||0, cz=E.cz||0, sT=E.skinTop, eY=E.eyeY, fr=E.front;
   const M=(c,o2)=>{ const mt=new THREE.MeshStandardMaterial(Object.assign({roughness:.6,metalness:0},o2||{})); mt.color.setHex(c).convertSRGBToLinear(); return mt; };
   const add=(geo,mat,x,y,z,rx,ry,rz,sx,sy,sz)=>{ const me=new THREE.Mesh(geo,mat); me.position.set(x,y,z); me.rotation.set(rx||0,ry||0,rz||0); if(sx) me.scale.set(sx,sy,sz); me.castShadow=true; g.add(me); return me; };
   const capCol=o.merch&&o.merch!=='none'?BRAND:(o.shirt===BRAND?0x22305f:BRAND);
-  switch(o.extra){
+  switch(kind){
     case 'cap': add(new THREE.SphereGeometry(r*1.17,18,10,0,Math.PI*2,0,Math.PI/2),M(capCol),cx,sT-.055,cz-.006,0,0,0,1,.66,1.08);
       add(new THREE.BoxGeometry(r*1.75,.012,r*1.35),M(capCol),cx,sT-.052,cz+r*1.3,-.1); break;
     case 'beanie': add(new THREE.SphereGeometry(r*1.2,18,10,0,Math.PI*2,0,Math.PI/2),M(BRAND,{roughness:.95}),cx,sT-.04,cz,0,0,0,1,.95,1.1);
@@ -1838,7 +1896,7 @@ function heroAccessory(model,o,E){
   }
   // from the skinned mesh's bind space into the head bone's own space
   const mtx=new THREE.Matrix4().copy(sk.boneInverses[hi]).multiply(sm.bindMatrix);
-  g.applyMatrix4(mtx); sk.bones[hi].add(g); model.userData.acc=g;
+  g.applyMatrix4(mtx); sk.bones[hi].add(g); model.userData.accs.push(g);
 }
 /* Idle / Walk / Run from the player's speed. A missing clip falls back to the nearest one: no Run plays Walk
    faster, no Walk plays Run slower, no Idle holds the first frame of whichever clip there is. */
@@ -2059,7 +2117,7 @@ function npcAttach(G,gl){
   try{
     const o=npcStyle(Object.assign({},G.npcOpts)), L=heroLook(o), m=MERCH[o.merch];
     const shirt=m?m.shirt:o.shirt;
-    const ROLE={Skin:o.skin,Skin2:shade(o.skin,.86),Hair:o.hair,Hair2:shade(o.hair,.7),Eyebrows:shade(o.hair,.62),Eye:0x2b1b10,Acc:0xe7c04a,
+    const ROLE={Skin:o.skin,Skin2:shade(o.skin,.86),Hair:o.hair,Hair2:shade(o.hair,.7),Eyebrows:shade(o.hair,.62),Eye:o.eyes||0x2b1b10,Acc:0xe7c04a,
       Top:o.vest||shirt,Top2:m&&m.stripes?m.stripes:0x1a1c22,Shirt:0xf2f2ee,Accent:shirt===0x22305f?BRAND:0x22305f,Pants:o.pants,Shoe:0xf2f2ee,Sole:0x1b2350};
     const want=['P_head_'+L.head,'P_top_'+L.top,'P_legs_'+L.legs];
     let feet=null, src=null, arm=null; const parts=[];
@@ -2085,7 +2143,8 @@ function npcAttach(G,gl){
     // its own skeleton: a copy of the bones (without anything the hero carries on them)
     const root=new THREE.Group(), armC=new THREE.Object3D(); armC.position.copy(arm.position); armC.quaternion.copy(arm.quaternion); armC.scale.copy(arm.scale); root.add(armC);
     const rootBone=arm.children.find(c=>c.isBone), bones=rootBone.clone(true); armC.add(bones);
-    bones.traverse(b=>{ if(b.name==='HeroAcc') b.parent.remove(b); });
+    const acc=[]; bones.traverse(b=>{ if(b.name==='HeroAcc') acc.push(b); }); acc.forEach(b=>b.parent.remove(b));
+    heroBody(bones,o.body||pick(['regular','regular','slim','full','strong']));
     const byName={}; bones.traverse(b=>{ if(b.isBone) byName[b.name]=b; });
     const skel=new THREE.Skeleton(src.skeleton.bones.map(b=>byName[b.name]), src.skeleton.boneInverses.map(m=>m.clone()));
     if(!NPC3D.mat){ NPC3D.mat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:0}); NPC3D.mat.skinning=true; }
@@ -2544,8 +2603,13 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 
 // player
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
-const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:'',hairStyle:'',top:''};
-function loadAvatar(){ try{ const v=JSON.parse(localStorage.getItem('bt-avatar')||'null'); if(v&&typeof v==='object') return Object.assign({},AV_DEFAULT,v); }catch(e){} return Object.assign({},AV_DEFAULT); }
+const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:'',hairStyle:'',top:'',body:'regular',eyes:0x4a3222,eyewear:'none'};
+const AV_BODY=[['regular','רגיל'],['slim','רזה'],['full','מלא'],['strong','שרירי']], AV_EYEWEAR=['none','glasses','shades'];
+// was there a character on this device before this visit? (it wins over an older copy on the account)
+const HAD_LOCAL=(()=>{ try{ return !!localStorage.getItem('bt-avatar'); }catch(e){ return false; } })();
+function loadAvatar(){ try{ const v=JSON.parse(localStorage.getItem('bt-avatar')||'null'); if(v&&typeof v==='object') return avMigrate(Object.assign({},AV_DEFAULT,v)); }catch(e){} return Object.assign({},AV_DEFAULT); }
+// glasses used to share the one accessory slot with hats: they have their own now
+function avMigrate(a){ if(AV_EYEWEAR.includes(a.extra)&&a.extra!=='none'){ if(!a.eyewear||a.eyewear==='none') a.eyewear=a.extra; a.extra='none'; } if(!AV_BODY.some(b=>b[0]===a.body)) a.body='regular'; return a; }
 function saveAvatar(){ try{ localStorage.setItem('bt-avatar',JSON.stringify(avatar)); }catch(e){} }
 let avatar=loadAvatar();
 /* BuyToday merch from the rooftop shop: a shirt that replaces the chosen colour for as long as it is worn. */
@@ -2832,9 +2896,17 @@ function enterMall(){
   toast(rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
   netStart();
 }
+let menuEdit=false;
+/* a returning shopper with a character goes straight in: a welcome, the level and coins, and a button to
+   change the look; a first visit (or the edit button in the mall) opens the whole creator */
+function menuMode(){ const returning=HAD_LOCAL&&!!cleanName(avatar.name)&&G.state==='menu'&&!menuEdit;
+  $('#csheet').classList.toggle('compact',returning); $('#cwelcome').hidden=!returning; $('#editLook').hidden=!returning;
+  if(returning){ $('#cwName').textContent=cleanName(avatar.name);
+    $('#cwStats').textContent=typeof Prog!=='undefined'?`רמה ${Prog.level()} · ${Coins.n} מטבעות`:''; } }
+$('#editLook').addEventListener('click',()=>{ menuEdit=true; menuMode(); renderCreator(); buzz(8); });
 function openCreator(edit){
   G.state=edit?'edit':'menu'; G.paused=!!edit; stopAuto(); ui.hud.hidden=true; ui.card.hidden=true; shownCard=null; dirEl.hidden=true; cartEl.hidden=true;
-  cart.c.visible=false; ui.menu.hidden=false; $('#startBtn').textContent=edit?'שמירה וחזרה לקניון':'נכנסים לקניון'; renderCreator();
+  cart.c.visible=false; ui.menu.hidden=false; $('#startBtn').textContent=edit?'שמירה וחזרה לקניון':'נכנסים לקניון'; menuOrbit=0; renderCreator(); menuMode();
 }
 function openReceipt(){
   const its=CATALOG.filter(i=>i.taken);
@@ -2856,52 +2928,57 @@ function closeReceipt(){ ui.end.hidden=true; ui.hud.hidden=false; G.paused=false
 
 /* ---------- character creator ---------- */
 const AV_CHOICES={
-  skin:[0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b],
-  hair:[0x16110d,0x3a2618,0x6b4423,0xd9b36a,0xb5542a,0x9a9a9a],
+  skin:[0xfbe3d0,0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0xa8714a,0x8d5a3b,0x5c3823],
+  hair:[0x16110d,0x3a2618,0x6b4423,0xd9b36a,0xe9dcc0,0xb5542a,0x7a1f12,0x9a9a9a,0xd94f8a,0x3567c9],
+  eyes:[0x4a3222,0x1e140c,0x3f7fbf,0x4f8a4a,0x8a6a3a,0x6b7a8a],
   shirt:[0x2f7de1,BRAND,0xe63946,0x2fb592,0x9b5de5,0xfee440,0xf3f4f6,0x22305f],
   pants:[0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a,0xe8e2d6],
 };
 const hex=c=>'#'+c.toString(16).padStart(6,'0');
 const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const light=c=>{ const r=c>>16&255, g=c>>8&255, b=c&255; return .299*r+.587*g+.114*b>170; };
-let ctab='style';
+let ctab='body';
+/* the creator: four tabs, every choice shows on the character at once (it is rebuilt and saved on each tap) */
 function renderCreator(){
-  const tabs=[['style','סגנון'],['skin','עור'],['hair','שיער'],['shirt','חולצה'],['pants',avatar.bottom==='skirt'?'חצאית':'מכנסיים']];
+  const tabs=[['body','גוף'],['face','פנים ושיער'],['clothes','בגדים'],['acc','אביזרים']];
   const tb=$('#ctabs'); tb.innerHTML='';
   tabs.forEach(([k,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(k===ctab)); if(k===ctab) b.className='on';
     b.addEventListener('click',()=>{ ctab=k; renderCreator(); buzz(6); }); tb.appendChild(b); });
   const pane=$('#cpane'); pane.innerHTML='';
   const set=(key,v)=>{ const a=Object.assign({},avatar,{[key]:v}); if(key==='girl'){ a.bottom=v?'skirt':'pants'; a.hairStyle=''; a.top=''; } setAvatar(a); saveAvatar(); renderCreator(); buzz(6); };
-  if(ctab==='style'){
-    const ownedX=(typeof Coins!=='undefined'?Coins.owned:[]), SH_=typeof SHOP!=='undefined'?SHOP:[];
-    const extras=[['none','בלי'],['cap','כובע'],['glasses','משקפיים']].concat(SH_.filter(i=>i.slot==='extra'&&ownedX.includes(i.id)).map(i=>[i.id,i.icon]));
-    const rows=[['דמות','girl',[[false,'בן'],[true,'בת']]]].concat(USE_3D_HERO?[]:[['תחתון','bottom',[['pants','מכנסיים'],['skirt','חצאית']]]]).concat([['אביזר','extra',extras]]);
-    const merch=SH_.filter(i=>i.slot==='merch'&&ownedX.includes(i.id)); if(merch.length) rows.push(['חולצת BT','merch',[['none','בלי']].concat(merch.map(i=>[i.id,i.icon]))]);
-    rows.forEach(([label,key,vals])=>{
-      const row=document.createElement('div'); row.className='srow'; row.innerHTML='<span></span><div class="segc"></div>'; row.firstChild.textContent=label;
-      vals.forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('aria-pressed',String(avatar[key]===v)); if(avatar[key]===v) b.className='on'; b.addEventListener('click',()=>set(key,v)); row.lastChild.appendChild(b); });
-      pane.appendChild(row); });
+  const row=label=>{ const r=document.createElement('div'); r.className='crow'; const sp=document.createElement('span'); sp.textContent=label; r.appendChild(sp); pane.appendChild(r); return r; };
+  const seg=(label,key,vals,cur)=>{ const r=row(label), c=document.createElement('div'); c.className='segc'; r.appendChild(c);
+    vals.forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t; const on=cur===v; b.setAttribute('aria-pressed',String(on)); if(on) b.className='on'; b.addEventListener('click',()=>set(key,v)); c.appendChild(b); }); };
+  const sw=(label,key)=>{ const r=row(label), c=document.createElement('div'); c.className='tiles'; r.appendChild(c);
+    AV_CHOICES[key].forEach(col=>{ const b=document.createElement('button'); b.style.background=hex(col); b.style.color=light(col)?'#161a2b':'#fff'; b.innerHTML=CHECK;
+      b.setAttribute('aria-label',hex(col)); const on=avatar[key]===col; b.setAttribute('aria-pressed',String(on)); if(on) b.className='on'; b.addEventListener('click',()=>set(key,col)); c.appendChild(b); }); };
+  const S=HERO_STYLES[avatar.girl?'f':'m'], L=heroLook(avatar);
+  const owned=(typeof Coins!=='undefined'?Coins.owned:[]), SH_=typeof SHOP!=='undefined'?SHOP:[];
+  const mine=slot=>SH_.filter(i=>i.slot===slot&&owned.includes(i.id));
+  if(ctab==='body'){
+    seg('דמות','girl',[[false,'בן'],[true,'בת']],!!avatar.girl);
+    seg('מבנה גוף','body',AV_BODY,avatar.body||'regular');
+    sw('צבע עור','skin');
+  } else if(ctab==='face'){
+    seg('תספורת','hairStyle',S.head,L.head);
+    sw('צבע שיער','hair');
+    sw('צבע עיניים','eyes');
+  } else if(ctab==='clothes'){
+    seg('חולצה','top',S.top,L.top);
+    sw('צבע חולצה','shirt');
+    seg(avatar.girl?'תחתון':'מכנסיים','bottom',avatar.girl?[['pants','מכנסיים'],['skirt','חצאית']]:[['pants','ארוכים'],['shorts','קצרים']],avatar.bottom==='skirt'||avatar.bottom==='shorts'?avatar.bottom:'pants');
+    sw(avatar.bottom==='skirt'?'צבע חצאית':'צבע מכנסיים','pants');
+    const m=mine('merch'); if(m.length) seg('חולצת BuyToday','merch',[['none','בלי']].concat(m.map(i=>[i.id,i.icon])),avatar.merch||'none');
   } else {
-    // the 3D wardrobe: haircut, shirt style, long or short / skirt
-    const S=HERO_STYLES[avatar.girl?'f':'m'], L=USE_3D_HERO?heroLook(avatar):null;
-    const styleRow=USE_3D_HERO&&{hair:['תספורת','hairStyle',S.head,L.head],shirt:['סגנון','top',S.top,L.top],
-      pants:['סוג','bottom',avatar.girl?[['pants','מכנסיים'],['skirt','חצאית']]:[['pants','ארוכים'],['shorts','קצרים']],avatar.bottom==='skirt'||avatar.bottom==='shorts'?avatar.bottom:'pants']}[ctab];
-    if(styleRow){ const [label,key,vals,cur]=styleRow; const r2=document.createElement('div'); r2.className='srow'; r2.innerHTML='<span></span><div class="segc"></div>'; r2.firstChild.textContent=label;
-      vals.forEach(([v,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('aria-pressed',String(cur===v)); if(cur===v) b.className='on'; b.addEventListener('click',()=>set(key,v)); r2.lastChild.appendChild(b); });
-      pane.appendChild(r2); }
-    const row=document.createElement('div'); row.className='tiles';
-    AV_CHOICES[ctab].forEach(c=>{ const b=document.createElement('button'); b.style.background=hex(c); b.style.color=light(c)?'#161a2b':'#fff'; b.innerHTML=CHECK;
-      b.setAttribute('aria-label',hex(c)); b.setAttribute('aria-pressed',String(avatar[ctab]===c)); if(avatar[ctab]===c) b.className='on';
-      b.addEventListener('click',()=>set(ctab,c)); row.appendChild(b); });
-    pane.appendChild(row);
+    const glasses=['shades'];
+    seg('כובע','extra',[['none','בלי'],['cap','כובע מצחייה']].concat(mine('extra').filter(i=>!glasses.includes(i.id)).map(i=>[i.id,i.icon])),AV_EYEWEAR.includes(avatar.extra)?'none':avatar.extra||'none');
+    seg('משקפיים','eyewear',[['none','בלי'],['glasses','משקפי ראייה']].concat(mine('extra').filter(i=>glasses.includes(i.id)).map(i=>[i.id,i.icon])),avatar.eyewear||'none');
+    const p=document.createElement('p'); p.style.cssText='margin:0;font-size:12.5px;color:#5b6280'; p.textContent='עוד כובעים, משקפי שמש וחולצות של BuyToday בחנות שעל הגג';
+    pane.appendChild(p);
   }
   const nm=$('#optName'); if(document.activeElement!==nm) nm.value=avatar.name||'';
 }
-$('#dice').addEventListener('click',()=>{ const girl=Math.random()<.5;
-  const S3=HERO_STYLES[girl?'f':'m'];
-  setAvatar(Object.assign({},avatar,{girl,bottom:girl?(Math.random()<.65?'skirt':'pants'):(Math.random()<.3?'shorts':'pants'),hairStyle:pick(S3.head)[0],top:pick(S3.top)[0],extra:pick(['none','none','cap','glasses']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}));
-  renderCreator(); buzz(12); });
-$('#optName').addEventListener('input',e=>{ avatar.name=e.target.value; });
+$('#optName').addEventListener('input',e=>{ avatar.name=e.target.value; saveAvatar(); });   // kept as typed: entering the mall is not the only way out of this screen
 $('#optName').addEventListener('change',e=>{ avatar.name=cleanName(e.target.value); e.target.value=avatar.name; });
 $('#optName').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') e.target.blur(); });
 $('#optName').addEventListener('keyup',e=>e.stopPropagation());
@@ -2915,7 +2992,7 @@ $('#optName').addEventListener('keyup',e=>e.stopPropagation());
 const ACCT_API='https://buytoday.co.il/api/game/profile', LOGIN_URL='https://buytoday.co.il/login?redirect=/api/game/return';
 const Acct={state:'unknown',first:null,saved:''};
 const acctEl=$('#acct');
-function profileOf(a){ return {name:cleanName(a.name),girl:!!a.girl,skin:a.skin,hair:a.hair,shirt:a.shirt,pants:a.pants,bottom:a.bottom==='skirt'?'skirt':'pants',extra:['none','cap','glasses'].includes(a.extra)?a.extra:'none'}; }
+function profileOf(a){ return {name:cleanName(a.name),girl:!!a.girl,skin:a.skin,hair:a.hair,shirt:a.shirt,pants:a.pants,bottom:a.bottom==='skirt'?'skirt':'pants',extra:a.extra==='cap'?'cap':a.eyewear==='glasses'?'glasses':'none'}; }
 function renderAcct(){
   if(Acct.state!=='in'&&Acct.state!=='out'){ acctEl.hidden=true; return; }
   acctEl.hidden=false;
@@ -2928,11 +3005,12 @@ async function acctLoad(){
   try{ const r=await fetch(ACCT_API,{credentials:'include',cache:'no-store'}); if(!r.ok) throw 0; const j=await r.json();
     if(j.signedIn){ Acct.state='in'; Acct.first=j.firstName||null;
       const pr=j.profile&&typeof j.profile==='object'?j.profile:null;
-      if(pr){ const a=unpackAv([pr.girl?1:0,pr.skin,pr.hair,pr.shirt,pr.pants,AV_BOTTOM.indexOf(pr.bottom),AV_EXTRA.indexOf(pr.extra)]);
-        const keep=AV_EXTRA.indexOf(avatar.extra)>2?{extra:avatar.extra}:{};
-        // the account keeps the classic fields; the 3D haircut, shirt style and shorts live on this device
-        if(a.girl===!!avatar.girl) Object.assign(keep,{hairStyle:avatar.hairStyle||'',top:avatar.top||''}, !a.girl&&a.bottom==='pants'&&avatar.bottom==='shorts'?{bottom:'shorts'}:{});
-        setAvatar(Object.assign({},a,{name:cleanName(pr.name)||avatar.name,merch:avatar.merch||'none'},keep)); saveAvatar(); Acct.saved=JSON.stringify(profileOf(avatar)); if(G.state!=='play') renderCreator(); }
+      if(pr){
+        if(!HAD_LOCAL){   // a new device: the account's character, with this device's 3D extras at their defaults
+          const a=unpackAv([pr.girl?1:0,pr.skin,pr.hair,pr.shirt,pr.pants,AV_BOTTOM.indexOf(pr.bottom),AV_EXTRA.indexOf(pr.extra)]);
+          setAvatar(avMigrate(Object.assign({},avatar,a,{name:cleanName(pr.name)||avatar.name,merch:avatar.merch||'none'}))); saveAvatar(); }
+        else if(!cleanName(avatar.name)&&cleanName(pr.name)){ avatar.name=cleanName(pr.name); saveAvatar(); }   // never let an older copy rename or redress
+        if(G.state!=='play'){ renderCreator(); menuMode(); } }
       adoptProgress(j.progress); if(j.purchases) setPurchases(j.purchases); acctSave(); }
     else Acct.state='out'; }
   catch(e){ Acct.state='none'; }
@@ -2968,14 +3046,23 @@ zone.addEventListener('pointermove',e=>{ if(e.pointerId===joy.id) moveJoy(e); })
 let joyTaught=false; try{ joyTaught=localStorage.getItem('bt-joy-ok')==='1'; }catch(e){}
 function joyTeach(){ if(joyTaught) return;
   if(PHONE.matches||matchMedia('(pointer:coarse)').matches){ $('#joyTip').hidden=false; zone.classList.add('teach'); }
-  else setTimeout(()=>toast('הולכים עם החצים או W A S D · גוררים את המסך כדי להסתכל מסביב'),900); }
+  else setTimeout(()=>toast('הולכים עם החצים או W A S D · Q / E או גרירה מסובבים את המצלמה'),900); }
 function joyLearned(){ if(joyTaught) return; joyTaught=true; $('#joyTip').hidden=true; zone.classList.remove('teach'); try{ localStorage.setItem('bt-joy-ok','1'); }catch(e){} }
 function endJoy(e){ if(e.pointerId!==joy.id) return; joy.id=null; joy.x=joy.y=0; knob.style.transform=''; zone.classList.add('idle'); joyHome(); }
 zone.addEventListener('pointerup',endJoy); zone.addEventListener('pointercancel',endJoy);
 function moveJoy(e){ let dx=e.clientX-joyC.x, dy=e.clientY-joyC.y; const R=PHONE.matches?36:46, d=Math.hypot(dx,dy); if(d>R){ dx*=R/d; dy*=R/d; } joy.x=dx/R; joy.y=dy/R; knob.style.transform=`translate(${dx}px,${dy}px)`; if(d>R*.6) joyLearned(); }
-let camYaw=0, dragT=0, moveRef=null, moveStick=0; const drag={id:null,x:0,x0:0,y0:0,t0:0,moved:0};
+let camYaw=0, dragT=0, moveRef=null, moveStick=0;
+const camStick={x:0,id:null,cx:0}, camEl=$('#camstick'), camKnob=camEl.querySelector('i');
+camEl.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); if(camStick.id!==null) return; camStick.id=e.pointerId; try{camEl.setPointerCapture(e.pointerId);}catch(_){}
+  const r=camEl.getBoundingClientRect(); camStick.cx=r.left+r.width/2; camMove(e); });
+function camMove(e){ let dx=e.clientX-camStick.cx; const R=34; dx=clamp(dx,-R,R); camStick.x=dx/R; camKnob.style.transform=`translateX(${dx}px)`; }
+camEl.addEventListener('pointermove',e=>{ if(e.pointerId===camStick.id) camMove(e); });
+const camEnd=e=>{ if(e.pointerId!==camStick.id) return; camStick.id=null; camStick.x=0; camKnob.style.transform=''; };
+camEl.addEventListener('pointerup',camEnd); camEl.addEventListener('pointercancel',camEnd); const drag={id:null,x:0,x0:0,y0:0,t0:0,moved:0};
 canvas.addEventListener('pointerdown',e=>{ if(drag.id!==null) return; drag.id=e.pointerId; drag.x=drag.x0=e.clientX; drag.y0=e.clientY; drag.t0=performance.now(); drag.moved=0; try{canvas.setPointerCapture(e.pointerId);}catch(_){} });
-canvas.addEventListener('pointermove',e=>{ if(e.pointerId!==drag.id) return; drag.moved=Math.max(drag.moved,Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)); if(drag.moved<8) return; camYaw-=(e.clientX-drag.x)*.0075; drag.x=e.clientX; dragT=1.4; });
+canvas.addEventListener('pointermove',e=>{ if(e.pointerId!==drag.id) return; drag.moved=Math.max(drag.moved,Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)); if(drag.moved<8) return;
+  if(G.state==='menu'||G.state==='edit'){ menuOrbit-=(e.clientX-drag.x)*.012; drag.x=e.clientX; return; }
+  camYaw-=(e.clientX-drag.x)*.0075; drag.x=e.clientX; dragT=1.4; });
 const endDrag=e=>{ if(e.pointerId!==drag.id) return; drag.id=null; // tap-to-walk on a computer only: on a phone a tap meant to look around or to reach a button sent the shopper off somewhere
   if(e.type==='pointerup'&&e.pointerType==='mouse'&&drag.moved<8&&performance.now()-drag.t0<400) tapWorld(e.clientX,e.clientY); };
 /* One hand: a tap on the floor walks there, a tap on a product walks up to it. */
@@ -3501,8 +3588,9 @@ const SHOP=[
   {id:'crown',slot:'extra',name:'כתר',desc:'מלך הקניון',price:300,icon:'👑'},
 ];
 const shopEl=$('#shopp');
-function wearing(it){ return avatar[it.slot]===it.id; }
-function wear(it,on){ const a=Object.assign({},avatar,{[it.slot]:on?it.id:'none'}); setAvatar(a); saveAvatar(); acctSave(); netRetrack(); }
+const slotOf=it=>AV_EYEWEAR.includes(it.id)?'eyewear':it.slot;   // sunglasses go with a hat, in the glasses slot
+function wearing(it){ return avatar[slotOf(it)]===it.id; }
+function wear(it,on){ const a=Object.assign({},avatar,{[slotOf(it)]:on?it.id:'none'}); setAvatar(a); saveAvatar(); acctSave(); netRetrack(); }
 function renderShop(){
   $('#shopCoins').innerHTML=Coins.n.toLocaleString('he-IL')+' '+COIN;
   [['merch','#shopShirts'],['extra','#shopHats']].forEach(([slot,sel])=>{ const box=$(sel); box.innerHTML='';
@@ -4012,6 +4100,9 @@ function updatePlayer(dt){
   let mag=Math.hypot(ix,iy); if(mag>1){ ix/=mag; iy/=mag; mag=1; }
   if(auto.on && mag>.25) stopAuto('הנסיעה בוטלה');
   if(elev.rider) mag=0;
+  // turning the view only: the right stick on a phone, Q / E on a computer
+  const turn=camStick.x+(keys.KeyQ?-1:0)+(keys.KeyE?1:0);
+  if(Math.abs(turn)>.05){ camYaw-=turn*Math.abs(turn)*dt*2.6; dragT=Math.max(dragT,.6); }
   let fwd=-iy; const rt=ix, sa=Math.atan2(rt,fwd);
   /* the stick steers relative to where the camera was when this push started, so holding "right" walks
      straight on to the right while the camera swings round behind; a new direction or a drag re-aims it */
@@ -4039,9 +4130,24 @@ function updatePlayer(dt){
   const w=ad?1:clamp(Math.cos(sa)+.9,0,1)*mag;
   if(dragT<=0 && w>.05 && speed>.5) camYaw=lerpAngle(camYaw,player.yaw+Math.PI,1-Math.exp(-dt*CAM.follow*w));
 }
+let menuOrbit=0;   // dragging on the character turns the camera round it
+function menuRegion(W,H){ const sh=$('#csheet').getBoundingClientRect(), tp=$('.creator .ctop').getBoundingClientRect();
+  if(W>=900) return {x:0,y:0,w:Math.max(200,sh.left-24),h:H};
+  const y=Math.min(tp.bottom,H*.3); return {x:0,y,w:W,h:Math.max(180,sh.top-y)}; }
 function updateCamera(dt,menu){
-  if(menu){ const p=hero.g.position, fx=Math.sin(player.yaw), fz=Math.cos(player.yaw); tmp.set(p.x+fx*6.8,p.y+1.35,p.z+fz*6.8); look.set(p.x,p.y-.05,p.z); }
+  if(menu){
+    /* the character, whole, in the part of the screen the panel leaves free: the camera stands off just far
+       enough for its height to fill that part, and the picture is shifted so it sits in the middle of it */
+    // on the way in it poses in the open lobby, clear of the help desk; editing in the mall, it stays where it is
+    if(G.state==='menu'){ player.pos.set(0,0,9.5); player.yaw=0; hero.g.position.copy(player.pos); hero.g.rotation.y=0; }
+    const p=hero.g.position, W=innerWidth, H=innerHeight, R=menuRegion(W,H), fov=camera.fov*Math.PI/180;
+    const d=clamp(2.9/(2*Math.tan(fov/2))*(H/R.h)/.9,2.4,9), a=player.yaw+menuOrbit;
+    tmp.set(clamp(p.x+Math.sin(a)*d,-BX+.5,BX-.5),p.y+1.2,clamp(p.z+Math.cos(a)*d,-BZ+.5,BZ-.3)); look.set(p.x,p.y+1.12,p.z);
+    camera.setViewOffset(W,H,W/2-(R.x+R.w/2),H/2-(R.y+R.h/2),W,H);
+    const hint=$('.spinhint'); hint.style.left=(R.x+R.w/2)+'px'; hint.style.top=(R.y+R.h-34)+'px';
+  }
   else {
+    if(camera.view&&camera.view.enabled) camera.clearViewOffset();
     if(camYawSm===null) camYawSm=camYaw; camYawSm=lerpAngle(camYawSm,camYaw,1-Math.exp(-dt*CAM.yawRate));
     const yw=camYawSm, sy=Math.sin(yw), cy0=Math.cos(yw);
     let dist=CAM.dist; const h=CAM.h, base=player.pos.y;
@@ -4052,8 +4158,8 @@ function updateCamera(dt,menu){
     tmp.x=clamp(tmp.x,-BX+.7,BX-.7); tmp.z=clamp(tmp.z,-BZ+.7,BZ-.4);
     look.set(player.pos.x-sy*CAM.ahead,base+CAM.lookH,player.pos.z-cy0*CAM.ahead);
   }
-  camPos.lerp(tmp,1-Math.exp(-dt*(menu?1.5:CAM.posRate)));
-  lookSm.lerp(look,1-Math.exp(-dt*(menu?3:CAM.lookRate)));
+  camPos.lerp(tmp,1-Math.exp(-dt*(menu?5:CAM.posRate)));
+  lookSm.lerp(look,1-Math.exp(-dt*(menu?6:CAM.lookRate)));
   camera.position.copy(camPos); camera.lookAt(lookSm);
 }
 function wander(a,dt,speed,r){
@@ -4158,13 +4264,14 @@ function cleanName(v){ v=String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').replace
 const AV_BOTTOM=['pants','skirt','shorts'], AV_EXTRA=['none','cap','glasses','beanie','crown','headphones','shades'], AV_MERCH=['none','bt-orange','bt-navy','jersey','gold'];
 const packAv=a=>{ const S=HERO_STYLES[a.girl?'f':'m'], L=heroLook(a);
   return [a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra),Math.max(0,AV_MERCH.indexOf(a.merch||'none')),
-    S.head.findIndex(x=>x[0]===(a.hairStyle||L.head)),S.top.findIndex(x=>x[0]===L.top)]; };   // 8, 9: the 3D haircut and shirt style
+    S.head.findIndex(x=>x[0]===(a.hairStyle||L.head)),S.top.findIndex(x=>x[0]===L.top),   // 8, 9: the 3D haircut and shirt style
+    Math.max(0,AV_BODY.findIndex(b=>b[0]===a.body)),Math.max(0,AV_CHOICES.eyes.indexOf(a.eyes)),Math.max(0,AV_EYEWEAR.indexOf(a.eyewear||'none'))]; };   // 10-12: build, eyes, glasses
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
   const S=HERO_STYLES[v[0]===1?'f':'m'], st=(list,i)=>Number.isInteger(i)&&list[i]?list[i][0]:'';
   return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none',merch:AV_MERCH[v[7]]||'none',
-    hairStyle:st(S.head,v[8]),top:st(S.top,v[9])}; }
+    hairStyle:st(S.head,v[8]),top:st(S.top,v[9]),body:(AV_BODY[v[10]]||AV_BODY[0])[0],eyes:AV_CHOICES.eyes[v[11]]||AV_CHOICES.eyes[0],eyewear:AV_EYEWEAR[v[12]]||'none'}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
@@ -4432,7 +4539,7 @@ function applyTagMode(){ const ph=PHONE.matches; CATALOG.forEach(it=>{ tagTextur
 applyTagMode();
 PHONE.addEventListener&&PHONE.addEventListener('change',()=>{ applyTagMode(); syncCardSpace(); joyHome(); });
 player.pos.set(0,0,24); player.yaw=Math.PI; hero.g.position.copy(player.pos); cart.c.visible=false; renderCreator();
-$('#loading').remove(); ui.menu.hidden=false; acctLoad(); if(loadResume()) $('#startBtn').textContent='חזרה לקניון';
+$('#loading').remove(); ui.menu.hidden=false; renderCreator(); menuMode(); acctLoad(); if(loadResume()) $('#startBtn').textContent='חזרה לקניון';
 requestAnimationFrame(loop);
 });
 </script>
