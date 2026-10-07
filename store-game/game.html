@@ -4548,14 +4548,18 @@ onlineEl.addEventListener('click',()=>{ const n=Math.max(1,Net.count); toast(n>1
 // a hidden tab keeps nobody company: leave the room, and come back when the tab does
 document.addEventListener('visibilitychange',()=>{ if(!ONLINE) return; if(document.hidden) netLeave(); else if(G.state==='play'||G.state==='edit') netStart(); });
 
-const Q={max:Math.min(window.devicePixelRatio||1,2),pr:0,acc:0,n:0};
+const Q={max:Math.min(window.devicePixelRatio||1,2),pr:0,acc:0,n:0,shadow:2};
+Q.min=Math.min(Q.max,1.25);   // below this a phone screen looks pixelated: lighter shadows go first
 Q.pr=Q.max;
 function fadeTapMark(){ if(!tapMark||!tapMark.visible) return; const a=1-(performance.now()-tapMark.userData.t)/900; if(a<=0||!auto.on) tapMark.visible=false; else { tapMark.material.opacity=a; tapMark.scale.setScalar(1+(1-a)*.4); } }
 function loop(now){ fadeTapMark(); kioskGlow(now/1000);
   const raw=(now-last)/1000, dt=Math.min(.05,raw); last=now; const t=now/1000; frame++;
   if(raw<.5){ Q.acc+=raw; Q.n++; }
   if(Q.acc>2.5){ const fps=Q.n/Q.acc; Q.acc=0; Q.n=0;   // keep it smooth: trade resolution for frame rate
-    const np = fps<40 ? Math.max(.75,Q.pr-.25) : fps>57 ? Math.min(Q.max,Q.pr+.25) : Q.pr;
+    let np = fps>57 ? Math.min(Q.max,Q.pr+.25) : Q.pr;
+    if(fps<40){ if(Q.pr>Q.min) np=Math.max(Q.min,Q.pr-.25);
+      else if(Q.shadow>1){ Q.shadow=1; sun.shadow.mapSize.set(1024,1024); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; } renderer.shadowMap.type=THREE.PCFShadowMap; renderer.shadowMap.needsUpdate=true; }
+      else np=Math.max(.75,Q.pr-.25); }
     if(np!==Q.pr){ Q.pr=np; renderer.setPixelRatio(np); onResize(); } }
   // a mini-game covers the whole screen: don't spend the phone's GPU on the mall behind it
   if(G.paused && G.state!=='edit'){ if(mgEl.hidden) renderer.render(scene,camera); requestAnimationFrame(loop); return; }
