@@ -2343,7 +2343,7 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
    the city, a cinema screen playing the deals, and the outlet corner with the deals kiosk.
    Everything is baked into STATIC[2], which is only drawn while somebody is on the roof. */
 const roofLive=[];
-const GAME_SPOTS=[{id:'catch',title:'תפוס את המבצע',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',title:'צייד ההנחות',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4}];
+const GAME_SPOTS=[{id:'catch',title:'תפוס את המבצע',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',title:'צייד ההנחות',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4},{id:'claw',title:'מכונת המתנות',mx:-9.4,mz:-18.6,x:-10.9,z:-18.6}];
 const SHOP_SPOT={x:0,z:0};
 function buildRoof(){
   SG=STATIC[2]; const Y=2*FH, f=2;
@@ -2445,7 +2445,7 @@ function buildRoof(){
     m.g.position.set(sx+2.6,Y,sz+.2); m.g.rotation.y=-.5; scene.add(m.g); roofLive.push(m.g); solid(f,sx+2.6,sz+.2,.8,.8); }
 
   // --- two prize machines: play, win coins ---
-  GAME_SPOTS.forEach((gs,i)=>{ const g=new THREE.Group(), col=[0xf72585,0x4cc9f0][i];
+  GAME_SPOTS.forEach((gs,i)=>{ if(gs.id==='claw') return buildClawCabinet(gs,Y,f); const g=new THREE.Group(), col=[0xf72585,0x4cc9f0][i];
     box(1.5,2.3,1.1,mat(col,{roughness:.35}),0,1.15,0,g); box(1.3,.9,.06,new THREE.MeshBasicMaterial({map:canvasTex(256,180,(c,W,H)=>{ const gr=c.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1b1f4a'); gr.addColorStop(1,'#0b0e26'); c.fillStyle=gr; c.fillRect(0,0,W,H);
       c.font='56px sans-serif'; c.textAlign='center'; c.fillText(i?'🏷️':'🛒',W/2,86); c.fillStyle='#ffd166'; c.font='800 26px Rubik,sans-serif'; c.direction='rtl'; c.fillText('מטבעות!',W/2,140); })}),0,1.55,.56,g,false);
     box(1.5,.14,.6,M.dark,0,1,.7,g); box(.12,.12,.12,M.red,-.3,1.12,.75,g,false); box(.12,.12,.12,M.ledCyan,.3,1.12,.75,g,false);
@@ -2459,6 +2459,17 @@ function buildRoof(){
   for(let k=0;k<12;k++){ const a=k*Math.PI/6; box(.16,.08,.16,M.glowGreen,Math.sin(a)*4.9,Y+.04,-21+Math.cos(a)*4.9,null,false); }
   SG=STATIC[0];
 }
+/* the prize machine: a glass case of BuyToday capsules with a claw over them, in the arcade */
+function buildClawCabinet(gs,Y,f){ const g=new THREE.Group(), body=mat(0xf55304,{roughness:.35}), navy=mat(0x22305f,{roughness:.5});
+  box(1.6,.9,1.4,body,0,.45,0,g); box(1.62,.06,1.42,navy,0,.92,0,g);
+  const glass=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.4,1.3),M.pane); glass.position.set(0,1.65,0); g.add(glass);
+  [[-.74,-.64],[.74,-.64],[-.74,.64],[.74,.64]].forEach(([x,z])=>box(.06,1.42,.06,navy,x,1.65,z,g,false));
+  box(1.64,.36,1.44,body,0,2.53,0,g); box(1.3,.24,.02,new THREE.MeshBasicMaterial({map:canvasTex(256,48,(c,W,H)=>{ c.fillStyle='#fff'; c.fillRect(0,0,W,H); c.fillStyle='#f55304'; c.font='800 30px Rubik,sans-serif'; c.textAlign='center'; c.direction='rtl'; c.fillText('מכונת המתנות 🎁',W/2,34); })}),0,2.53,.73,g,false);
+  const cols=[0xf55304,0xffd166,0x2fb592,0x3f8fd0,0x9b5de5,0xe63946,0xffffff];
+  for(let i=0;i<22;i++){ const b=new THREE.Mesh(new THREE.SphereGeometry(.13,12,10),mat(cols[i%cols.length],{roughness:.3})); b.position.set(rand(-.6,.6),1.05+Math.floor(i/9)*.18+rand(0,.05),rand(-.5,.5)); g.add(b); }
+  box(.04,.5,.04,M.steel,.1,2.1,0,g,false); box(.26,.06,.26,M.steel,.1,1.84,0,g,false); [-1,1].forEach(s2=>{ const k=box(.03,.22,.03,M.steel,.1+s2*.1,1.72,0,g,false); k.rotation.z=s2*.35; });
+  box(1.6,.12,.5,M.dark,0,.98,.92,g); box(.1,.18,.1,M.red,-.3,1.12,.95,g,false); box(.16,.06,.16,M.ledCyan,.3,1.06,.95,g,false);
+  place(g,gs.mx,Y,gs.mz,-Math.PI/2); solid(f,gs.mx,gs.mz,1.5,1.7); }
 const KIOSK_GLOW=[];
 function kioskGlow(t){ for(let i=0;i<KIOSK_GLOW.length;i++){ const r=KIOSK_GLOW[i], k=.5+.5*Math.sin(t*2.2+i); r.material.opacity=.3+.45*k; r.scale.setScalar(1+.08*k); } }
 function buildKiosks(){
@@ -3794,7 +3805,84 @@ const MG_COIN=new Image(); MG_COIN.src=COIN_URI;
 const MG_LOGO=new Image(); MG_LOGO.src=ASSET+'merch/logo-tile.png';
 (function(){ CATALOG.filter(i=>i.img).slice(0,24).forEach(i=>{ const im=new Image(); im.src=i.img; MG.imgs.push(im); }); })();
 function mgResize(){ const r=mgC.getBoundingClientRect(); MG.dpr=Math.min(2,devicePixelRatio||1); MG.W=r.width; MG.H=r.height; mgC.width=Math.round(r.width*MG.dpr); mgC.height=Math.round(r.height*MG.dpr); mgX.setTransform(MG.dpr,0,0,MG.dpr,0,0); MG.cells=[]; }
-function openGame(gs){ if(G.state!=='play') return; stopAuto(); G.paused=true; MG.game=gs; $('#mgTitle').textContent=gs.title; mgEl.hidden=false; mgResize(); mgIntro(); }
+function openGame(gs){ if(G.state!=='play') return; stopAuto(); G.paused=true; MG.game=gs; $('#mgTitle').textContent=gs.title; mgEl.hidden=false; mgResize(); if(gs.id==='claw') clawIntro(); else mgIntro(); }
+
+/* ---------- the prize machine (claw) ----------
+   One free play a day. Aim the claw, drop it: it holds a capsule when it closes over its middle, slips
+   off one it only half caught, and misses beside it, so it is a matter of aim. Capsules hold game coins
+   (no shekel value, see the site's lib/game-wheel.ts on why chance prizes stay game coins).
+   A signed-in shopper's day is counted on the shop's server (POST /api/game/claw); a guest's here. When
+   the shop runs a prize campaign (a published, supervised promotion) its answer can carry a real gift,
+   and the machine then hands over the gold capsule. */
+const CLAW_API=(location.origin===SITE?'':SITE)+'/api/game/claw';
+const clawDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());
+const CL={phase:'',x:.5,y:0,open:1,held:null,balls:[],gift:null,result:null,plays:0};
+function clawPlayedToday(){ try{ return localStorage.getItem('bt-claw-day')===clawDay(); }catch(e){ return false; } }
+function clawPlays(){ try{ return +localStorage.getItem('bt-claw-n')||0; }catch(e){ return 0; } }
+function clawIntro(){ MG.on=false; cancelAnimationFrame(MG.raf); mgDrawBg(0,true); const done=clawPlayedToday(); $('#mgScore').textContent='🎁'; $('#mgTime').textContent='';
+  mgOver.hidden=false; mgOver.innerHTML='<h3>🎁 מכונת המתנות</h3><p>משחק חינם אחד בכל יום.<br>מזיזים את הזרוע ימינה ושמאלה (גוררים או חיצים), ולוחצים <b>"הורד"</b>.<br>הזרוע תופסת כדור רק כשהיא נסגרת בדיוק מעל האמצע שלו, אז כדאי לכוון.<br>כל כדור שווה מטבעות משחק: לבן 5 · צבעוני 10–20 · כתום 30.</p>'
+    +(done?'<p style="color:#ffd166"><b>שיחקתם היום. המשחק הבא מחר 🌙</b></p><div class="row"><button class="go2">יציאה</button></div>':'<p style="opacity:.8">שיחקתם עד היום: '+clawPlays()+' פעמים</p><div class="row"><button class="go1">משחקים!</button><button class="go2">יציאה</button></div>');
+  const g1=mgOver.querySelector('.go1'); if(g1) g1.onclick=clawStart; mgOver.querySelector('.go2').onclick=closeGame; }
+async function clawStart(){
+  // the day's play is taken first (on the server for a signed-in shopper), then the machine runs
+  let gift=null, ok=true;
+  if(typeof Acct!=='undefined'&&Acct.state==='in'){ try{ const r=await fetch(CLAW_API,{method:'POST',credentials:'include'}); if(r.status===404) throw 0; const j=await r.json();
+      if(j&&j.fresh===false){ ok=false; } else if(j&&j.gift) gift=j.gift; }catch(e){ /* the shop does not count it yet: this device does */ } }
+  if(!ok||clawPlayedToday()){ try{ localStorage.setItem('bt-claw-day',clawDay()); }catch(e){} return clawIntro(); }
+  try{ localStorage.setItem('bt-claw-day',clawDay()); localStorage.setItem('bt-claw-n',String(clawPlays()+1)); }catch(e){}
+  mgOver.hidden=true; Object.assign(CL,{phase:'aim',x:.5,y:0,open:1,held:null,gift,result:null,t:0});
+  const vals=[[5,'#ffffff'],[10,'#3f8fd0'],[10,'#2fb592'],[15,'#9b5de5'],[20,'#ffd166'],[20,'#e63946'],[30,'#f55304']];
+  // three rows of capsules, a little jumbled
+  CL.balls=[]; [[9,0],[8,1],[6,2]].forEach(([n,row])=>{ for(let i=0;i<n;i++){ const [v,c]=pick(vals); CL.balls.push({x:.27+(.64/(n-1))*i+(row%2?.035:0)+rand(-.012,.012),y:row,r:.058,v,c}); } });
+  if(gift) Object.assign(CL.balls[9+((Math.random()*8)|0)],{v:0,c:'gold',gift:true});
+  MG.on=true; MG.last=performance.now(); MG.fx=[]; MG.pops=[]; MG.raf=requestAnimationFrame(clawLoop);
+  $('#mgScore').textContent='🎁'; $('#mgTime').textContent='';
+}
+function clawDrop(){ if(CL.phase==='aim'){ CL.phase='down'; buzz(12); Sound.tone(520,.08,'square',.06); } }
+function clawLoop(now){ if(!MG.on||MG.game.id!=='claw') return; const dt=Math.min(.05,(now-MG.last)/1000); MG.last=now;
+  const X=mgX, W=MG.W, H=MG.H; mgDrawBg(now/1000,true);
+  // the case
+  const bw=Math.min(W-24,520), bh=Math.min(H-150,560), bx=(W-bw)/2, by=60, floor=by+bh-18, chute=bx+bw*.13;
+  X.fillStyle='rgba(255,255,255,.06)'; rr(bx,by,bw,bh,18); X.fill(); X.strokeStyle='rgba(255,255,255,.25)'; X.lineWidth=2; rr(bx,by,bw,bh,18); X.stroke();
+  X.fillStyle='#f55304'; rr(bx,by-14,bw,22,10); X.fill(); X.fillStyle='#2b2f45'; X.fillRect(bx+8,by+bh*.62,bw*.2,bh*.38-18); X.fillStyle='#fff'; X.textAlign='center'; X.textBaseline='middle'; mgText('פרסים',bx+8+bw*.1,by+bh*.62+18,14,'#fff','rtl',800);
+  const bx0=bx+bw*.24, bx1=bx+bw*.9;
+  // capsules on the pile
+  CL.balls.forEach(b=>{ if(b===CL.held) return; const x=bx0+(b.x-.24)/.7*(bx1-bx0), y=floor-b.r*bw-(b.y*b.r*bw*1.62); b.px=x; b.py=y; drawBall(x,y,b.r*bw,b.c); });
+  // the claw
+  const top=by+12, minX=bx+bw*.06, maxX=bx+bw*.94;
+  if(CL.phase==='aim'){ const k=(keys.ArrowLeft||keys.KeyA?-1:0)+(keys.ArrowRight||keys.KeyD?1:0); CL.x=clamp(CL.x+k*dt*.5,.06,.94); }
+  const cx=bx+bw*CL.x; let cy=top+CL.y*(bh-40);
+  if(CL.phase==='down'){ CL.y+=dt*.55; const below=CL.balls.filter(b=>Math.abs(b.px-cx)<b.r*bw*1.05).reduce((m,b)=>Math.min(m,b.py-b.r*bw),floor-6);
+    if(top+CL.y*(bh-40)+30>=below){ CL.phase='close'; CL.t=0; } }
+  else if(CL.phase==='close'){ CL.t+=dt; CL.open=Math.max(0,1-CL.t*2.4); if(CL.open<=0){ // did it close over the middle of one?
+      let best=null, bd=1e9; CL.balls.forEach(b=>{ const d=Math.abs(b.px-cx)/(b.r*bw); if(d<bd&&Math.abs(b.py-(top+CL.y*(bh-40)+30))<b.r*bw*1.8){ bd=d; best=b; } });
+      if(best&&(bd<.42||(bd<.8&&Math.random()<.5))){ CL.held=best; CL.slip=bd>=.42?CL.y*rand(.3,.75):-1; } CL.phase='up'; Sound.tone(300,.1,'square',.05); } }
+  else if(CL.phase==='up'){ CL.y=Math.max(0,CL.y-dt*.45); if(CL.held&&CL.y<CL.slip){ const b=CL.held; CL.held=null; b.y=0; popText(cx,cy+40,'אופס! החליק','#ff8a8a'); Sound.bad(); } if(CL.y<=0) CL.phase='carry'; }
+  else if(CL.phase==='carry'){ CL.x+= (0.13-CL.x)*Math.min(1,dt*2.5); if(Math.abs(CL.x-.13)<.01){ CL.phase='drop'; CL.t=0; } }
+  else if(CL.phase==='drop'){ CL.t+=dt; CL.open=Math.min(1,CL.t*3); if(CL.t>.5&&!CL.result){ CL.result=CL.held||'none'; const b=CL.held; CL.held=null; if(b) CL.balls.splice(CL.balls.indexOf(b),1); setTimeout(clawEnd,700); } }
+  cy=top+CL.y*(bh-40);
+  X.strokeStyle='#c9ced6'; X.lineWidth=4; X.beginPath(); X.moveTo(cx,by); X.lineTo(cx,cy); X.stroke();
+  X.fillStyle='#8a90a3'; rr(cx-16,cy-6,32,14,5); X.fill();
+  const sp=8+CL.open*14; X.strokeStyle='#e6e9ef'; X.lineWidth=5; X.lineCap='round';
+  [-1,1].forEach(s2=>{ X.beginPath(); X.moveTo(cx+s2*8,cy+6); X.lineTo(cx+s2*sp,cy+22); X.lineTo(cx+s2*(sp-10+CL.open*2),cy+36); X.stroke(); });
+  if(CL.held) drawBall(cx,cy+30,CL.held.r*bw,CL.held.c);
+  // effects and the buttons
+  for(let i=MG.pops.length-1;i>=0;i--){ const q=MG.pops[i]; q.age+=dt; if(q.age>q.life){ MG.pops.splice(i,1); continue; } X.globalAlpha=1-q.age/q.life; X.textAlign='center'; mgText(q.t,q.x,q.y-q.age*60,22,q.c,'rtl',900); } X.globalAlpha=1;
+  for(let i=MG.fx.length-1;i>=0;i--){ const f=MG.fx[i]; f.t+=dt; if(f.t>f.life){ MG.fx.splice(i,1); continue; } f.vy+=420*dt; f.x+=f.vx*dt; f.y+=f.vy*dt; X.globalAlpha=1-f.t/f.life; X.fillStyle=f.c; X.beginPath(); X.arc(f.x,f.y,f.r,0,7); X.fill(); } X.globalAlpha=1;
+  const btnY=by+bh+18; CL.btn={x:W/2-90,y:btnY,w:180,h:56};
+  if(CL.phase==='aim'){ X.fillStyle='#f55304'; rr(CL.btn.x,CL.btn.y,CL.btn.w,CL.btn.h,16); X.fill(); X.textAlign='center'; X.textBaseline='middle'; mgText('הורד ⬇',W/2,btnY+29,22,'#fff','rtl',900);
+    mgText('גררו לכוון · או חיצים ורווח',W/2,btnY+76,13,'rgba(255,255,255,.7)','rtl',700); }
+  MG.raf=requestAnimationFrame(clawLoop); }
+function drawBall(x,y,r,c){ const X=mgX; if(c==='gold'){ const g=X.createRadialGradient(x-r*.3,y-r*.3,2,x,y,r); g.addColorStop(0,'#fff6c2'); g.addColorStop(1,'#d6a400'); X.fillStyle=g; X.beginPath(); X.arc(x,y,r,0,7); X.fill(); X.textAlign='center'; X.textBaseline='middle'; mgText('🎁',x,y+1,r,'#000','ltr',400); return; }
+  X.fillStyle=c; X.beginPath(); X.arc(x,y,r,0,7); X.fill(); X.fillStyle='rgba(255,255,255,.85)'; X.beginPath(); X.arc(x,y,r,Math.PI,0); X.fill(); X.strokeStyle='rgba(0,0,0,.18)'; X.lineWidth=2; X.beginPath(); X.moveTo(x-r,y); X.lineTo(x+r,y); X.stroke();
+  X.fillStyle='rgba(255,255,255,.6)'; X.beginPath(); X.arc(x-r*.35,y-r*.45,r*.18,0,7); X.fill(); }
+function clawEnd(){ MG.on=false; cancelAnimationFrame(MG.raf); const b=CL.result&&CL.result!=='none'?CL.result:null;
+  let html;
+  if(b&&b.gift&&CL.gift){ html=`<h3>🎉 זכיתם במתנה!</h3><p>${CL.gift.label||'שובר לקנייה'}<br>הקוד: <b>${CL.gift.code||''}</b><br>נמצא גם בחשבון שלכם באתר.</p>`; Sound.cash(); }
+  else if(b){ addCoins(b.v); Sound.cash(); html=`<h3>תפסתם! 🎉</h3><div class="big">+${b.v} ${COIN}</div><p>נתראה מחר במשחק החינמי הבא</p>`; }
+  else html='<h3>כמעט! 😅</h3><p>הזרוע לא תפסה הפעם. כוונו בדיוק מעל האמצע של הכדור.<br>מחר יש עוד משחק חינם.</p>'
+    +(CL.gift?`<p style="color:#ffd166">ואגב, היום זכיתם במתנה: ${CL.gift.label} · ${CL.gift.code}</p>`:'');
+  mgOver.hidden=false; mgOver.innerHTML=html+'<div class="row"><button class="go2">יציאה</button></div>'; mgOver.querySelector('.go2').onclick=closeGame; }
 function mgIntro(){ const gs=MG.game; MG.on=false; cancelAnimationFrame(MG.raf); mgDrawBg(0); let best=0; try{ best=+localStorage.getItem('bt-best-'+gs.id)||0; }catch(e){}
   mgOver.hidden=false; mgOver.innerHTML=(gs.id==='catch'
     ?'<h3>🛒 תפוס את המבצע</h3><p>גררו את העגלה ותפסו מה שנופל: מוצר = 1, תגית מבצע = 3, מטבע = 5.<br>תגית "מחיר מלא" לוקחת לב, ושלושה לבבות וזה נגמר. רצף תפיסות מכפיל נקודות!</p>'
@@ -3809,7 +3897,7 @@ function mgEnd(){ MG.on=false; cancelAnimationFrame(MG.raf); const coins=Math.ma
   mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':MG.lives<=0?'אוי, נגמרו הלבבות':'נגמר הזמן'}</h3>${stars}<p>${MG.score} נקודות · צברתם</p><div class="big">+${coins} ${COIN}</div><p>יש לכם ${Coins.n} מטבעות. חנות BuyToday מחכה בפינת האאוטלט.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
   mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
 function closeGame(){ MG.on=false; cancelAnimationFrame(MG.raf); mgEl.hidden=true; G.paused=false; last=performance.now(); }
-$('#mgClose').addEventListener('click',()=>{ if(MG.on&&MG.phase==='play') mgEnd(); else closeGame(); });
+$('#mgClose').addEventListener('click',()=>{ if(MG.game&&MG.game.id==='claw'){ if(MG.on&&CL.phase!=='aim') return; return closeGame(); } if(MG.on&&MG.phase==='play') mgEnd(); else closeGame(); });
 addEventListener('resize',()=>{ if(!mgEl.hidden) mgResize(); });
 
 // ---- drawing helpers
@@ -3867,7 +3955,14 @@ function mgPointer(e){ const r=mgC.getBoundingClientRect(), x=(e.clientX-r.left)
     c.state='hit'; c.anim=0;
     if(c.kind==='bad'){ MG.combo=0; MG.score=Math.max(0,MG.score-2); MG.shake=.3; buzz(50); Sound.bad(); popText(c.cx,c.cy-c.h*.4,'-2','#ff6b6b'); burst(c.cx,c.cy,['#8a90a3','#ff6b6b'],10); }
     else { MG.combo++; const v=(c.kind==='coin'?3:1)*mult(); MG.score+=v; buzz(10); Sound.pickup(); popText(c.cx,c.cy-c.h*.4,'+'+v,c.kind==='coin'?'#ffd166':'#7bff9b'); burst(c.cx,c.cy,c.kind==='coin'?['#ffd166','#fff2a8','#f2a900']:['#e63946','#ffd166','#fff','#7bff9b']); } } }
-mgC.addEventListener('pointerdown',e=>{ mgC.setPointerCapture&&mgC.setPointerCapture(e.pointerId); mgPointer(e); });
+mgC.addEventListener('pointerdown',e=>{ mgC.setPointerCapture&&mgC.setPointerCapture(e.pointerId);
+  if(MG.game&&MG.game.id==='claw'){ const r=mgC.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top, B=CL.btn;
+    if(B&&x>B.x&&x<B.x+B.w&&y>B.y&&y<B.y+B.h) clawDrop(); else if(CL.phase==='aim'){ CL.dragX=x; } return; }
+  mgPointer(e); });
+mgC.addEventListener('pointermove',e=>{ if(!(MG.game&&MG.game.id==='claw'&&CL.phase==='aim'&&CL.dragX!=null&&e.buttons)) return; const r=mgC.getBoundingClientRect(), x=e.clientX-r.left;
+  const bw=Math.min(MG.W-24,520); CL.x=clamp(CL.x+(x-CL.dragX)/bw,.06,.94); CL.dragX=x; });
+mgC.addEventListener('pointerup',()=>{ CL.dragX=null; });
+addEventListener('keydown',e=>{ if(MG.on&&MG.game&&MG.game.id==='claw'&&(e.code==='Space'||e.code==='Enter'||e.code==='ArrowDown')){ e.preventDefault(); clawDrop(); } });
 mgC.addEventListener('pointermove',e=>{ if(MG.game&&MG.game.id==='catch') mgPointer(e); });
 function mgLoop(now){
   if(!MG.on) return; const dt=Math.min(.05,(now-MG.last)/1000); MG.last=now;
@@ -4416,7 +4511,7 @@ function updateNear(){
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית','בחרו קומה, או '+(near.to>elev.floor?'למעלה':'למטה')+' ל'+FLOOR_SHORT[near.to],false,near.to>elev.floor?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
-  else if(near.type==='game') setHint(near.gs.title,'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
+  else if(near.type==='game') setHint(near.gs.title,near.gs.id==='claw'?(clawPlayedToday()?'שיחקתם היום · משחק חינם הבא מחר':'משחק חינם אחד ביום · תופסים כדור ומקבלים מטבעות'):'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
   else if(near.type==='exit') setHint('יציאה לרחוב','הרכב של BuyToday מחכה בחוץ · נסיעה ל־BuyToday Kids',false,'יציאה');
   else if(near.type==='enter') setHint('קניון BuyToday','חזרה פנימה, לכל המחלקות',false,'כניסה');
   else if(near.type==='car') setHint(OUT.parked==='home'?'נסיעה ל־BuyToday Kids 🚗':'חזרה לקניון BuyToday 🚗',OUT.parked==='home'?'הקניון החדש לילדים, ממש בהמשך הרחוב':'נוסעים בחזרה לכניסה',false,'נסיעה');
