@@ -480,6 +480,9 @@
   .sum{border-radius:18px;background:#161a2b;color:#fff;padding:14px;display:grid;gap:10px;}
   .sum .r{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13.5px;color:#aab1c8;}
   .sum .r b{font-size:22px;font-weight:800;color:#fff;}
+  .wallet{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:16px;background:#fff4ec;border:1.5px solid #ffd2b8;margin-top:10px;}
+  .wallet div{display:grid;gap:1px;} .wallet small{font-size:12px;font-weight:800;color:#a14a14;} .wallet b{font-size:20px;color:#1b2350;} .wallet span{font-size:12px;color:#7a5a48;}
+  .wallet a{flex:none;height:40px;padding:0 14px;border-radius:12px;background:var(--brand);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;text-decoration:none;box-shadow:0 2px 0 var(--brand-deep);}
   /* two tones: white surfaces, orange actions */
   .sum{background:#fff;color:#1b2350;border:2px solid #ffd2b8;box-shadow:0 2px 10px rgba(245,83,4,.08);}
   .sum .r{color:#5b6280;} .sum .r b{color:#1b2350;} .sum .cnote{color:#7a5a48!important;}
@@ -2506,7 +2509,10 @@ function buildKiosks(){
     solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
   });
 }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildFronts(); buildWayfinding(); buildOutside(); buildKiosks(); buildJumbo(); buildAdBoard();
+/* what follows the catalogue (plinths, kiosks, the fronts' columns, signs and bins placed round them) moves
+   when the catalogue does: it is kept apart from the fixed building, which is all the baked lighting covers */
+function markDyn(fn){ const n=STATIC.map(g=>g.children.length); fn(); STATIC.forEach((g,i)=>{ for(let k=n[i];k<g.children.length;k++) g.children[k].userData.dyn=true; }); }
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -2523,10 +2529,11 @@ function bake(group){
   group.updateMatrixWorld(true);
   const buckets=new Map(), list=[];
   group.traverse(o=>{ if(o.isMesh && !o.isInstancedMesh) list.push(o); });
-  list.forEach(o=>{ const key=o.material.uuid+'|'+(o.castShadow?1:0); if(!buckets.has(key)) buckets.set(key,{mat:o.material,cast:o.castShadow,g:[]});
+  const dynOf=o=>{ for(let q=o;q&&q!==group;q=q.parent) if(q.userData.dyn) return true; return false; };
+  list.forEach(o=>{ const dyn=dynOf(o), key=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+(dyn?1:0); if(!buckets.has(key)) buckets.set(key,{mat:o.material,cast:o.castShadow,dyn,g:[]});
     const gg=o.geometry.clone(); gg.applyMatrix4(o.matrixWorld); buckets.get(key).g.push(gg); });
   while(group.children.length) group.remove(group.children[0]);
-  buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.mat); m.castShadow=b.cast; m.receiveShadow=true; m.userData.c=b.cast; group.add(m); });
+  buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.mat); m.castShadow=b.cast; m.receiveShadow=true; m.userData.c=b.cast; m.userData.dyn=b.dyn; group.add(m); });
 }
 /* ---------- department fronts ----------
    The departments are open floor zones (walls would block walking, the bots and the auto-route), so a front
@@ -2745,6 +2752,36 @@ function loadBakedShade(){
   }
 }
 setTimeout(loadBakedShade,0);
+/* lighting baked onto the building itself (walls, columns, counters, ceilings): Blender unwrapped each
+   floor's fixed architecture into one atlas and Cycles baked the ceiling light lines, the LED coves and the
+   sky into it. Per floor: lm/fN.json (which merged mesh, how many triangles), lm/fN.uv (a second UV per
+   triangle corner) and lm/fN.jpg (the light, /1.6 so it can brighten as well as darken). A mesh whose
+   triangle count does not match (the building changed since the bake) is left as it is. */
+const BAKED_LM=true, LM_SCALE=1.6, LM_MATS=new Map();
+function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) return LM_MATS.get(k);
+  const c=m.clone(); c.aoMap=tex; c.aoMapIntensity=1;
+  c.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <aomap_fragment>',`#ifdef USE_AOMAP
+      float lmv = texture2D( aoMap, vUv2 ).r * ${LM_SCALE.toFixed(2)};
+      reflectedLight.indirectDiffuse *= lmv; reflectedLight.directDiffuse *= mix(1.0, lmv, .75);
+      reflectedLight.indirectSpecular *= lmv; reflectedLight.directSpecular *= mix(1.0, lmv, .75);
+    #endif`); };
+  c.customProgramCacheKey=()=>'lm'; LM_MATS.set(k,c); return c; }
+function loadLightmaps(){
+  if(!BAKED_LM) return;
+  for(let f=0;f<=TOP;f++){
+    Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l1').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l1').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
+      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+'.jpg?v=l1'); tex.flipY=true;
+      const meshes=STATIC[f].children.filter(o=>o.isMesh); let off=0, used=0;
+      idx.forEach(e=>{ const m=meshes[e.i], n=e.tris*3;
+        if(m&&!m.userData.dyn){ const g=m.geometry, tris=(g.index?g.index.count:g.attributes.position.count)/3;
+          if(tris===e.tris){ const g2=g.index?g.toNonIndexed():g, a=new Float32Array(n*2); for(let k=0;k<n*2;k++) a[k]=uv[off*2+k]/65535;
+            g2.setAttribute('uv2',new THREE.BufferAttribute(a,2)); if(g2!==g) g.dispose(); m.geometry=g2; m.material=lmMaterial(m.material,tex); used++; } }
+        off+=n; });
+      if(used<idx.length) console.warn('lightmap f'+f+': '+used+'/'+idx.length+' meshes matched');
+    }).catch(()=>{});
+  }
+}
+setTimeout(loadLightmaps,0);
 bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
 OUT.backdrop=STATIC[0].children.find(m=>m.material===OUT_BACKDROP)||null;
 STATIC[1].children.forEach(m=>floorCasters.push(m));
@@ -3523,6 +3560,13 @@ function clearTrolley(){ let ch=0; cartItems().forEach(it=>{ it.taken=false; it.
 function updateCartBadge(bump){ const n=SC.ok?SC.count:cartItems().length; $('#cartCount').textContent=n?String(n):''; $('#actCount').textContent=n?String(n):''; if(bump){ const b=$('#cartBtn'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } }
 function rebuildCart(){ while(cart.load.children.length) cart.load.remove(cart.load.children[0]); cart.count=0; cartItems().forEach(it=>{ if(!flyers.some(f=>f.it===it)) addToCart(it); }); }
 function returnItem(it){ if(!it.taken) return; if(SC.ok&&it.slug) scPost('remove',it.slug); it.taken=false; it.model.visible=true; it.ring.visible=it.wanted; rebuildCart(); renderMoney(); renderList(); updateCartBadge(); renderCart(); toast(it.name+' חזר למדף'); }
+/* the BuyToday balance: shekels topped up on the site (with a bonus) to pay for orders without a card.
+   It is money and lives only on the site; it has nothing to do with the game's coins. The cart shows it
+   once the site has it switched on (GET /api/wallet answers enabled). */
+const WALLET={enabled:false,signedIn:false,balance:0,url:SITE+'/account/wallet',packages:[]};
+function walletLoad(){ return fetch((location.origin===SITE?'':SITE)+'/api/wallet',{credentials:'include',cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j) return;
+    WALLET.enabled=!!j.enabled; WALLET.signedIn=!!j.signedIn; WALLET.balance=+j.balance||0; if(j.walletUrl) WALLET.url=j.walletUrl; WALLET.packages=j.packages||[]; }).catch(()=>{}); }
+setTimeout(walletLoad,2500);
 function renderCart(){
   const body=$('#cartBody'); body.innerHTML='';
   const site=SC.ok, rows=site?SC.items:cartItems().map(it=>({slug:it.slug,title:it.full,brand:it.brand,image:it.img,price:it.price,qty:1,max:1,it}));
@@ -3536,6 +3580,12 @@ function renderCart(){
     const u=site?utm(SITE+'/checkout','cart'):buyUrl(cartItems(),'cart'); if(site) clearTrolley();
     if(CO_INSIDE) openCheckout(u); else { handOff(u); open(u,IN_APP?'_self':'_blank'); } });
   sum.appendChild(go); body.appendChild(sum);
+  if(WALLET.enabled){ const w=document.createElement('div'); w.className='wallet';
+    const best=WALLET.packages.length?WALLET.packages[WALLET.packages.length-1]:null;
+    w.innerHTML='<div><small>יתרה לקניות</small><b class="num"></b><span></span></div><a target="_blank" rel="noopener"></a>';
+    w.querySelector('b').textContent=WALLET.signedIn?shekel(WALLET.balance):'—';
+    w.querySelector('span').textContent=WALLET.signedIn?(WALLET.balance>=total&&count?'אפשר לשלם מהיתרה, בלי כרטיס':'טוענים ומקבלים בונוס, עד ₪200 מתנה'):'מתחברים וטוענים יתרה עם בונוס';
+    const a=w.querySelector('a'); a.textContent='טעינת יתרה'; a.href=WALLET.signedIn?WALLET.url:LOGIN_URL; body.appendChild(w); }
   rows.forEach(r=>{ const el=document.createElement('div'); el.className='citem';
     el.innerHTML=(r.image?'<img alt="" referrerpolicy="no-referrer">':'<div class="ph"></div>')+'<div class="t"><small style="font-size:11px;color:#8a90a3;font-weight:700"></small><b dir="auto"></b><em class="num"></em></div><div class="acts"><div class="qty"><button class="qm" aria-label="הפחתה"></button><span class="num"></span><button class="qp" aria-label="הוספה">+</button></div><a class="lnk" target="_blank" rel="noopener">פרטים</a></div>';
     if(r.image) el.querySelector('img').src=r.image; else el.querySelector('.ph').textContent=r.brand||'BuyToday';
@@ -4026,7 +4076,7 @@ async function shareMallDone(){
   try{ if(navigator.share){ await navigator.share(data); return true; } }catch(e){ if(e&&e.name==='AbortError') return false; }
   try{ await navigator.clipboard.writeText(data.url); toast('הקישור הועתק. שלחו לחברים','good'); return true; }catch(e){ toast(SHARE_URL); return false; }
 }
-function openCart(){ if(G.state!=='play') return; G.paused=true; renderCart(); cartEl.hidden=false; $('#cartScroll').scrollTop=0; }
+function openCart(){ if(G.state!=='play') return; G.paused=true; renderCart(); walletLoad().then(()=>{ if(!cartEl.hidden) renderCart(); }); cartEl.hidden=false; $('#cartScroll').scrollTop=0; }
 function closeCart(){ G.paused=false; cartEl.hidden=true; last=performance.now(); }
 $('#cartBtn').addEventListener('click',openCart); $('#cartClose').addEventListener('click',closeCart);
 cartEl.addEventListener('click',e=>{ if(e.target===cartEl) closeCart(); });
