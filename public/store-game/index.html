@@ -2614,8 +2614,9 @@ function bin(f,x,z){ const P=STATIC[f], b=f*FH;
   solid(f,x,z,.55,.55); }
 function buildWayfinding(){
   // front: seen walking in (towards -z), where left is -x; back: seen walking out
-  hangSign(0,0,12.6,['טלוויזיות · סטריאו','מטבח · תנורים','↑ הדיל החם · מעלית'],['מטבח · טיפוח','קופות · סטריאו','↑ יציאה']);
-  hangSign(1,0,10.2,['מקררים · כביסה','חשמל לבית · מיזוג',''],['חשמל לבית · מיזוג','מקררים · כביסה','↑ חימום ואוורור']);
+  // the hanging direction signs came out in front of the help desk's board and the atrium screen, one sign over
+  // another: the department signs and the map do that job, so they stay switched off (hangSign is kept for a
+  // place with a clear background)
   [[0,-5.8,5.9],[0,5.8,5.9],[0,-3.8,17.6],[0,3.8,17.6],[1,-5,-12],[1,5,-12]].forEach(([f,x,z])=>{ if(walkable(x,z,.4,f)) bin(f,x,z); });
 }
 
