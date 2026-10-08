@@ -1255,6 +1255,8 @@ function gondola(x,y,z0,z1,pal,f){ const L=z1-z0, zc=(z0+z1)/2;
 const floorCasters=[];
 
 /* ---------- building shell ---------- */
+let OUT_BACKDROP=null;
+const OUT={door:{x:0,z:BZ+2.4}, home:{x:5.6,z:BZ+7.2}, kids:{x:5.6,z:100}, front:112, car:null, wheels:[], solid:null, drive:null, parked:'home', backdrop:null};
 function buildShell(){
   SG=STATIC[0];
   const s0=stoneTex('#c3bbaf','#a0988c',11), s1=stoneTex('#c8c1b6','#a69e92',23);
@@ -1281,7 +1283,7 @@ function buildShell(){
   const outTex=canvasTex(1024,300,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#a9cbe9'); gr.addColorStop(.7,'#e7eef5'); gr.addColorStop(1,'#f3ece2'); g.fillStyle=gr; g.fillRect(0,0,W,H);
     for(let i=0;i<17;i++){ const x=i*62-10, h=90+Math.random()*120; g.fillStyle=i%2?'#a7b6c8':'#b9c5d3'; g.fillRect(x,H-60-h,54,h); for(let k=0;k<14;k++){ g.fillStyle=Math.random()<.5?'#e3ebf3':'#93a4b8'; g.fillRect(x+6+(k%3)*16,H-52-h+12+((k/3)|0)*20,8,10);} }
     g.fillStyle='#8f949e'; g.fillRect(0,H-60,W,60); g.fillStyle='#f1f2f4'; for(let i=0;i<20;i++) g.fillRect(20+i*52,H-32,26,4); });
-  plane(70,16,new THREE.MeshBasicMaterial({map:outTex}),0,6,BZ+9,Math.PI);
+  OUT_BACKDROP=new THREE.MeshBasicMaterial({map:outTex}); plane(70,16,OUT_BACKDROP,0,6,BZ+9,Math.PI);   // seen through the glass; hidden when you are really outside
   box(.3,2.2,.8,M.steel,-2.4,1.1,BZ-1.6); box(.3,2.2,.8,M.steel,2.4,1.1,BZ-1.6);
   box(.05,1.6,.5,M.glowGreen,-2.22,1.3,BZ-1.6,null,false); box(.05,1.6,.5,M.glowGreen,2.22,1.3,BZ-1.6,null,false);
   floorPlane(-2.5,2.5,BZ-3,BZ-.2,.012,mat(0x2b2f3d,overlay({roughness:1})));
@@ -2493,7 +2495,7 @@ function buildKiosks(){
     solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
   });
 }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildFronts(); buildWayfinding(); buildKiosks(); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); buildItems(); buildFronts(); buildWayfinding(); buildOutside(); buildKiosks(); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -2582,6 +2584,89 @@ function buildWayfinding(){
   [[0,-5.8,5.9],[0,5.8,5.9],[0,-3.8,17.6],[0,3.8,17.6],[1,-5,-12],[1,5,-12]].forEach(([f,x,z])=>{ if(walkable(x,z,.4,f)) bin(f,x,z); });
 }
 
+/* ---------- outside: the street, the BuyToday car, and BuyToday Kids (opening soon) ----------
+   Out of the front door: a pavement, a road, and an orange BuyToday car. Get in and it drives you up the
+   road to BuyToday Kids, the children's mall that is still to open; walk round it, and drive back. All of
+   it is on the ground floor's plane, in front of the building, so the mall's own rules (collisions,
+   camera, the action button) carry on outside. */
+const isOut=()=>player.floor===0&&player.pos.z>BZ+.1;
+function carTex(){ return canvasTex(512,128,(g,W,H)=>{ g.fillStyle='#fff'; g.font='800 70px Rubik, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',W/2,H/2+4); }); }
+function mkCar(){
+  const c=new THREE.Group(), body=mat(BRAND,{roughness:.32,metalness:0}), dark=mat(0x14161c,{roughness:.2,metalness:.5}), white=mat(0xf6f6f2,{roughness:.4});
+  box(1.9,.6,4.2,body,0,.62,0,c); box(1.86,.12,4.1,mat(0x22305f,{roughness:.5}),0,.3,0,c);
+  box(1.66,.56,2.1,dark,0,1.2,-.25,c); box(1.74,.09,2.2,white,0,1.52,-.25,c); [-1,1].forEach(z=>box(1.7,.56,.08,white,0,1.2,-.25+z*.55,c,false));   // glass all round, a white roof and pillars
+  box(1.6,.06,.2,mat(0xfff2c0),0,.78,2.11,c,false); box(1.6,.06,.12,mat(0xe63946),0,.78,-2.11,c,false);   // lights
+  [-1,1].forEach(sd=>{ const t=new THREE.Mesh(new THREE.PlaneGeometry(1.7,.42),new THREE.MeshBasicMaterial({map:carTex(),transparent:true})); t.position.set(sd*.96,.66,.15); t.rotation.y=sd*Math.PI/2; c.add(t); });
+  const wheels=[]; [[-1,1.35],[1,1.35],[-1,-1.35],[1,-1.35]].forEach(([sx,sz])=>{ const w=new THREE.Group(); w.position.set(sx*.9,.36,sz);
+    const tyre=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.26,18),M.black); tyre.rotation.z=Math.PI/2; w.add(tyre);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.28,10),M.steel); hub.rotation.z=Math.PI/2; w.add(hub); c.add(w); wheels.push(w); });
+  c.traverse(o=>{ if(o.isMesh){ o.castShadow=true; } });
+  return {g:c,wheels};
+}
+function kidsLogo(){ return canvasTex(1024,320,(g,W,H)=>{ g.fillStyle='#fff'; rrect(g,6,6,W-12,H-12,60); g.fill();
+  const cols=['#f55304','#ffb800','#2fb592','#3f8fd0','#9b5de5','#e63946'], t='Kids';
+  g.font='900 120px Rubik, sans-serif'; g.textBaseline='middle'; g.textAlign='left'; g.fillStyle='#22305f'; g.fillText('BuyToday',60,H/2+6);
+  let x=60+g.measureText('BuyToday ').width; [...t].forEach((ch,i)=>{ g.fillStyle=cols[i%cols.length]; g.save(); g.translate(x,H/2+6+(i%2?-10:8)); g.rotate((i%2?-1:1)*.08); g.fillText(ch,0,0); g.restore(); x+=g.measureText(ch).width+6; }); }); }
+function soonTex(){ return canvasTex(1024,300,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,W,0); gr.addColorStop(0,'#ff7a1a'); gr.addColorStop(1,'#f04e00'); g.fillStyle=gr; rrect(g,6,6,W-12,H-12,48); g.fill();
+  g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff'; g.font='900 120px Rubik, sans-serif'; g.fillText('נפתח בקרוב!',W/2,H/2-30);
+  g.font='600 46px Rubik, sans-serif'; g.fillText('צעצועים · תינוקות · משחקים · ריהוט לחדר ילדים',W/2,H/2+70); }); }
+function buildOutside(){
+  const keep=SG; SG=STATIC[0];
+  const pave=mat(0xd9d6cf,{roughness:.85}), asph=mat(0x3b3f48,{roughness:.9}), grass=mat(0x86b86a,{roughness:1}), line=mat(0xf4f4f0,{roughness:.6});
+  floorPlane(-70,70,BZ+.25,190,-.02,grass,null,8);
+  floorPlane(-40,40,BZ+.25,BZ+5,.004,pave,null,2);                       // pavement along the front
+  floorPlane(-40,40,BZ+5,BZ+12,.006,asph,null,4);                        // the street
+  for(let x=-38;x<=38;x+=4) floorPlane(x,x+2,BZ+8.4,BZ+8.6,.009,line,null,1);
+  floorPlane(1.5,9.7,BZ+12,OUT.front-8,.006,asph,null,4);                // the road to Kids
+  [1.7,9.5].forEach(x=>floorPlane(x-.08,x+.08,BZ+12,OUT.front-8,.009,line,null,1));
+  for(let z=BZ+14;z<OUT.front-9;z+=4) floorPlane(5.5,5.7,z,z+2,.009,line,null,1);
+  floorPlane(-22,22,OUT.front-8,OUT.front,.007,mat(0xf3e6d6,{roughness:.8}),null,2);   // the plaza
+  [[-12,'#ffb800'],[-4,'#2fb592'],[4,'#3f8fd0'],[12,'#e63946']].forEach(([x,c])=>{ const d=new THREE.Mesh(new THREE.CircleGeometry(1.6,32),mat(new THREE.Color(c).getHex(),overlay({roughness:.7}))); d.rotation.x=-Math.PI/2; d.position.set(x,.012,OUT.front-4); SG.add(d); });
+  // street lamps up the road
+  for(let z=BZ+16;z<OUT.front-8;z+=12) [0,11.2].forEach(x=>{ cyl(.07,.09,4.4,M.dark,x,2.2,z,null,8); box(.9,.08,.18,M.dark,x+(x?-.4:.4),4.38,z,null,false); box(.4,.05,.16,M.ledWarm,x+(x?-.7:.7),4.33,z,null,false); solid(0,x,z,.3,.3); });
+  // BuyToday Kids: playful blocks in the family colours, the logo, and "opening soon" over closed doors
+  const F=OUT.front, kb=[[0,0xfff4e6,40,9,26],[-13,0xffd166,12,12,20],[13,0x8ecae6,12,11,20]];
+  kb.forEach(([x,c,w,h,d])=>box(w,h,d,mat(c,{roughness:.8}),x,h/2,F+d/2+.01));
+  box(40.4,.5,26.4,mat(0xf55304,{roughness:.6}),0,9.25,F+13);
+  [[-15,12.5,0xe63946],[-11,12.3,0x2fb592],[11,11.5,0x9b5de5],[15,11.6,0xffb800]].forEach(([x,y,c])=>box(1.6,1.6,1.6,mat(c,{roughness:.6}),x,y,F+4));
+  plane(12,3.75,new THREE.MeshBasicMaterial({map:kidsLogo()}),0,7.35,F-.05,Math.PI);
+  plane(9.6,2.8,new THREE.MeshBasicMaterial({map:soonTex()}),0,4.05,F-.06,Math.PI);
+  box(7,2.4,.1,M.glass,0,1.2,F-.03,null,false); box(.12,2.5,.14,M.dark,0,1.25,F-.06,null,false); box(7.3,.14,.16,M.dark,0,2.45,F-.06,null,false);
+  solidR(0,-20.2,20.2,F,F+26.2);
+  // balloons by the doors
+  [[-6.8,0xe63946],[-6.2,0xffb800],[6.2,0x3f8fd0],[6.8,0x9b5de5]].forEach(([x,c],i)=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(.42,16,12),mat(c,{roughness:.3})); b.scale.set(1,1.15,1); b.position.set(x,3.2+(i%2)*.5,F-.8); SG.add(b);
+    box(.012,2.6,.012,M.dark,x,1.6+(i%2)*.25,F-.8,null,false); });
+  // the mall's own name over its front, seen from the street
+  plane(10,2.5,new THREE.MeshBasicMaterial({map:logoTex()}),0,7.6,BZ+.25,0);
+  // where the walk stops: the end of the grass
+  solidR(0,-41,-40,BZ,191); solidR(0,40,41,BZ,191); solidR(0,-41,41,190,191);
+  SG=keep;
+  const car=mkCar(); car.g.position.set(OUT.home.x,0,OUT.home.z); scene.add(car.g); OUT.car=car.g; OUT.wheels=car.wheels;
+  OUT.solid=solid(0,OUT.home.x,OUT.home.z,2.1,4.4,'car');
+}
+function carSolid(){ const p=OUT.car.position, s=OUT.solid, along=Math.abs(Math.cos(OUT.car.rotation.y))>.5; const w=along?2.1:4.4, d=along?4.4:2.1;
+  s.minX=p.x-w/2; s.maxX=p.x+w/2; s.minZ=p.z-d/2; s.maxZ=p.z+d/2; }
+/* inside ⇄ outside through the front doors, with the same flash as a jump to a department */
+function outWarp(out){ const w=$('#warp'); w.classList.add('on'); buzz(12);
+  setTimeout(()=>{ stopAuto(); if(out){ player.pos.set(OUT.door.x,0,OUT.door.z); player.yaw=0; camYaw=Math.PI; } else { player.pos.set(0,0,BZ-4); player.yaw=Math.PI; camYaw=0; }
+    player.vel.set(0,0,0); camYawSm=null; hero.g.position.copy(player.pos); setOutside(out); setTimeout(()=>w.classList.remove('on'),60); },170); }
+let outsideNow=false;
+function setOutside(on){ if(outsideNow===on) return; outsideNow=on;
+  if(OUT.backdrop) OUT.backdrop.visible=!on;
+  scene.background.setHex(on?0xbfdcf2:0xe4e7ed); scene.fog.color.setHex(on?0xd4e6f4:0xe9ebf0); scene.fog.far=on?160:105; }
+/* the drive: in, up the road (or back down it), out by the car */
+function startDrive(){ if(OUT.drive) return; const toKids=OUT.parked==='home', a=toKids?OUT.home:OUT.kids, b=toKids?OUT.kids:OUT.home;
+  stopAuto(); OUT.drive={a,b,t:-.6,dur:6.5,toKids}; hero.g.visible=false; OUT.car.rotation.y=toKids?0:Math.PI; OUT.solid.off=true;
+  Sound.tone(392,.12,'square',.07); Sound.tone(392,.16,'square',.07,.18); buzz(15); }
+function driveTick(dt){ const D=OUT.drive; D.t+=dt; const u=clamp(D.t/D.dur,0,1), e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+  const z=D.a.z+(D.b.z-D.a.z)*e, x=D.a.x, prev=OUT.car.position.z; OUT.car.position.set(x,Math.abs(Math.sin(D.t*9))*.012,z);
+  const v=Math.abs(z-prev)/Math.max(dt,1e-4); OUT.wheels.forEach(w=>w.rotation.x+=v*dt/.36*(D.toKids?1:-1));
+  player.pos.set(x,0,z); player.yaw=OUT.car.rotation.y; hero.g.position.copy(player.pos); camYaw=lerpAngle(camYaw,OUT.car.rotation.y+Math.PI,1-Math.exp(-dt*3));
+  if(u>=1){ OUT.drive=null; OUT.parked=D.toKids?'kids':'home'; carSolid(); OUT.solid.off=false; hero.g.visible=true;
+    player.pos.set(x-2.3,0,z+(D.toKids?1:-1)); player.yaw=D.toKids?0:Math.PI; hero.g.position.copy(player.pos);
+    toast(D.toKids?'הגעתם ל־BuyToday Kids · נפתח בקרוב 🧸':'חזרתם לקניון BuyToday',D.toKids?'good':''); }
+}
+
 /* ---------- floor shading ----------
    Painted once into two textures per floor and laid over it as one plane each, so it costs two cheap draws:
    - contact shadow: a soft darkening round the foot of everything that stands on the floor (counters, kiosks,
@@ -2650,6 +2735,7 @@ function loadBakedShade(){
 }
 setTimeout(loadBakedShade,0);
 bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
+OUT.backdrop=STATIC[0].children.find(m=>m.material===OUT_BACKDROP)||null;
 STATIC[1].children.forEach(m=>floorCasters.push(m));
 STATIC[2].children.forEach(m=>{ m.userData.f=2; floorCasters.push(m); });
 floorCasters.forEach(m=>{ if(m.userData.c===undefined) m.userData.c=m.castShadow; });
@@ -3185,6 +3271,10 @@ const flyers=[];
 function doAction(){
   if(G.state!=='play'||G.paused||!near) return;
   if(near.type==='stop'){ stopAuto('עצרתם'); return; }
+  if(near.type==='exit'){ outWarp(true); return; }
+  if(near.type==='enter'){ outWarp(false); return; }
+  if(near.type==='car'){ startDrive(); return; }
+  if(near.type==='kids'){ try{ localStorage.setItem('bt-kids-notify','1'); }catch(e){} toast('מעולה! נעדכן אתכם כש־BuyToday Kids נפתח 🧸','good'); buzz(12); return; }
   if(near.type==='ride'){ startRide(near.to,true); return; }
   if(near.type==='call'){ startRide(player.floor,false); toast('המעלית בדרך'); return; }
   if(near.type==='item'){
@@ -3219,6 +3309,8 @@ function addToCart(it){
 
 /* ---------- directory overlay ---------- */
 const ICONS={
+  car:'<path d="M5 16V11l2-5h10l2 5v5"/><path d="M3 16h18v3H3z"/><circle cx="7.5" cy="19" r="1.6"/><circle cx="16.5" cy="19" r="1.6"/><path d="M6 11h12"/>',
+  door:'<path d="M6 21V4h10v17"/><path d="M3 21h18"/><circle cx="13" cy="12.5" r=".9"/>',
   map:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
   screens:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
   kitchen:'<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 11h2a2 2 0 0 1 0 4h-2M8 3v3M12 3v3"/>',
@@ -4180,6 +4272,8 @@ let frame=0, bubbleT=4, shopperLine=null;
 const SHOPPER_LINES=['יש לכם את זה בשחור?','רק מסתכל…','איפה המעלית?','זה במבצע?','וואו, איזה מסך','חיפשתי כבל HDMI'];
 
 function updatePlayer(dt){
+  if(OUT.drive){ driveTick(dt); return; }
+  setOutside(isOut());
   let ix=joy.x, iy=joy.y;
   if(keys.KeyA||keys.ArrowLeft) ix-=1; if(keys.KeyD||keys.ArrowRight) ix+=1; if(keys.KeyW||keys.ArrowUp) iy-=1; if(keys.KeyS||keys.ArrowDown) iy+=1;
   let mag=Math.hypot(ix,iy); if(mag>1){ ix/=mag; iy/=mag; mag=1; }
@@ -4240,7 +4334,7 @@ function updateCamera(dt,menu){
     for(;dist>2.2;dist-=.3){ const cx=player.pos.x+sy*dist, cz=player.pos.z+cy0*dist, cy=base+h*(.55+.45*dist/CAM.dist);
       if(!camBlocks.some(b=>Math.hypot(cx-b.o.position.x,cz-b.o.position.z)<b.r && Math.abs(cy-b.o.position.y)<b.hy)) break; }
     tmp.set(player.pos.x+sy*dist, base+h*(.55+.45*dist/CAM.dist), player.pos.z+cy0*dist);
-    tmp.x=clamp(tmp.x,-BX+.7,BX-.7); tmp.z=clamp(tmp.z,-BZ+.7,BZ-.4);
+    if(!outsideNow){ tmp.x=clamp(tmp.x,-BX+.7,BX-.7); tmp.z=clamp(tmp.z,-BZ+.7,BZ-.4); } else tmp.z=Math.max(tmp.z,BZ+.6);   // outside, the camera keeps off the glass
     look.set(player.pos.x-sy*CAM.ahead,base+CAM.lookH,player.pos.z-cy0*CAM.ahead);
   }
   camPos.lerp(tmp,1-Math.exp(-dt*(menu?5:CAM.posRate)));
@@ -4285,7 +4379,7 @@ function fillCard(it){
   const sp=specOf(it); $('#cardSpec').textContent=sp; $('#cardSpec').hidden=!sp;
 }
 
-const ACT_ICON={alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
+const ACT_ICON={exit:'door',enter:'door',car:'car',kids:'view',alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
 let actKind='';
 function setActKind(k){ if(k===actKind) return; actKind=k; ui.act.dataset.k=k; ui.act.querySelector('svg').innerHTML=ICONS[ACT_ICON[k]||'cart']; }
 const liftPad=$('#liftPad');
@@ -4306,6 +4400,12 @@ function updateNear(){
     if(!near&&f===TOP){ for(const gs of GAME_SPOTS){ if(Math.hypot(gs.x-p.x,gs.z-p.z)<2.1||Math.hypot(gs.x-cx,gs.z-cz)<1.6){ near={type:'game',gs}; break; } }
       if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'}; }
     if(!near){ for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.9||Math.hypot(k.x-cx,k.z-cz)<2.2)){ near={type:'kiosk',d}; break; } } }
+    if(!near && f===0){
+      if(!outsideNow&&p.z>BZ-3.4&&Math.abs(p.x)<3.2) near={type:'exit'};
+      else if(outsideNow){
+        if(p.z<BZ+3.6&&Math.abs(p.x)<3.6) near={type:'enter'};
+        else if(OUT.car&&Math.hypot(OUT.car.position.x-p.x,OUT.car.position.z-p.z)<3.4) near={type:'car'};
+        else if(p.z>OUT.front-4.5&&Math.abs(p.x)<6) near={type:'kids'}; } }
     if(!near && alfNear(p,cx,cz)) near={type:'alfred'};
     if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
@@ -4317,6 +4417,10 @@ function updateNear(){
   else if(near.type==='ride') setHint('מעלית','בחרו קומה, או '+(near.to>elev.floor?'למעלה':'למטה')+' ל'+FLOOR_SHORT[near.to],false,near.to>elev.floor?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
   else if(near.type==='game') setHint(near.gs.title,'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
+  else if(near.type==='exit') setHint('יציאה לרחוב','הרכב של BuyToday מחכה בחוץ · נסיעה ל־BuyToday Kids',false,'יציאה');
+  else if(near.type==='enter') setHint('קניון BuyToday','חזרה פנימה, לכל המחלקות',false,'כניסה');
+  else if(near.type==='car') setHint(OUT.parked==='home'?'נסיעה ל־BuyToday Kids 🚗':'חזרה לקניון BuyToday 🚗',OUT.parked==='home'?'הקניון החדש לילדים, ממש בהמשך הרחוב':'נוסעים בחזרה לכניסה',false,'נסיעה');
+  else if(near.type==='kids') setHint('BuyToday Kids · נפתח בקרוב','צעצועים, תינוקות, משחקים וחדרי ילדים. נעדכן כשנפתח',false,'עדכנו אותי');
   else if(near.type==='shop') setHint('חנות BuyToday','חולצות וכובעים למטבעות · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
