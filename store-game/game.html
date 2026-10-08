@@ -2587,7 +2587,7 @@ function buildWayfinding(){
    - contact shadow: a soft darkening round the foot of everything that stands on the floor (counters, kiosks,
      benches, planters, shelving, rails) and along the walls. It is what makes a thing stand ON the floor.
    - light pools: the glow each ceiling light line throws on a polished floor under it. */
-const SHADE={px:10, ao:.75, pool:.11};
+const SHADE={px:16, ao:.75, pool:.11, f:[]};
 function floorShade(){
   const k=SHADE.px, W=BX*2*k, H=BZ*2*k, OFF=W*3;
   const X=x=>(x+BX)*k, Z=z=>(z+BZ)*k;
@@ -2596,13 +2596,16 @@ function floorShade(){
     const ao=document.createElement('canvas'); ao.width=W; ao.height=H; const g=ao.getContext('2d');
     const stamp=(blur,a,grow)=>{ g.shadowColor='rgba(0,0,0,'+a+')'; g.shadowBlur=blur*k; g.shadowOffsetX=OFF; g.fillStyle='#000';
       solids[f].forEach(o=>{ if(o.off) return; const x0=X(o.minX)-grow*k, z0=Z(o.minZ)-grow*k; g.fillRect(x0-OFF,z0,X(o.maxX)-X(o.minX)+grow*2*k,Z(o.maxZ)-Z(o.minZ)+grow*2*k); }); };
+    const peds=solids[f].filter(o=>o.tag==='ped'&&!o.off);
     stamp(.3,.7,-.02); stamp(1.3,.45,.06);
+    SHADE.f[f]={g,ao,peds,stamp:(blur,a,grow,list)=>{ g.shadowColor='rgba(0,0,0,'+a+')'; g.shadowBlur=blur*k; g.shadowOffsetX=OFF; g.fillStyle='#000';
+      list.forEach(o=>{ const x0=X(o.minX)-grow*k, z0=Z(o.minZ)-grow*k; g.fillRect(x0-OFF,z0,X(o.maxX)-X(o.minX)+grow*2*k,Z(o.maxZ)-Z(o.minZ)+grow*2*k); }); }};
     g.shadowColor='transparent';
     // along the walls
     const edge=(x,y,w,h,gx0,gy0,gx1,gy1)=>{ const gr=g.createLinearGradient(gx0,gy0,gx1,gy1); gr.addColorStop(0,'rgba(0,0,0,.5)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(x,y,w,h); };
     const e=.7*k; edge(0,0,W,e,0,0,0,e); edge(0,H-e,W,e,0,H,0,H-e); edge(0,0,e,H,0,0,e,0); edge(W-e,0,e,H,W,0,W-e,0);
     if(f>=1) g.clearRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*k,(VOID.maxZ-VOID.minZ)*k);   // the atrium is open air
-    const tex=new THREE.CanvasTexture(ao); tex.anisotropy=4;
+    const tex=new THREE.CanvasTexture(ao); tex.anisotropy=4; SHADE.f[f].tex=tex;
     const y=f*FH+.025;
     const am=new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:SHADE.ao,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8});
     const pa=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),am); pa.rotation.x=-Math.PI/2; pa.position.set(0,y,0); pa.renderOrder=1; STATIC[f].add(pa);
@@ -2617,12 +2620,35 @@ function floorShade(){
     deptFronts().filter(o=>o.d.f===f).forEach(({d})=>{ const [x0,x1,z0,z1]=d.rect;
       for(let x=-18;x<=18;x+=6) for(let z=-24;z<=30;z+=6) if(x>x0+1&&x<x1-1&&z>z0+1&&z<z1-1) pool(x,z,1.4,2.4,.6); });
     if(f>=1) l.clearRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*k,(VOID.maxZ-VOID.minZ)*k);
-    const lt=new THREE.CanvasTexture(lc); lt.encoding=THREE.sRGBEncoding;
+    const lt=new THREE.CanvasTexture(lc); lt.encoding=THREE.sRGBEncoding; SHADE.f[f].lc=lc; SHADE.f[f].lt=lt;
     const lm=new THREE.MeshBasicMaterial({map:lt,transparent:true,opacity:SHADE.pool,blending:THREE.AdditiveBlending,depthWrite:false,fog:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8});
     const pl=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),lm); pl.rotation.x=-Math.PI/2; pl.position.set(0,y+.003,0); pl.renderOrder=1; STATIC[f].add(pl);
   }
 }
 floorShade();
+/* the lighting baked in Blender (Cycles: the ceiling light lines and LED coves as real lights, sky through
+   the atrium, two bounces, every fixed object casting): replaces the painted shading once it arrives.
+   The product plinths change with the catalogue, so they were left out of the bake and keep the live
+   contact shadow drawn here. If the files can't be had, the painted version stays. */
+const BAKED_SHADE=true;
+function loadBakedShade(){
+  if(!BAKED_SHADE) return;
+  const img=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
+  for(let f=0;f<=TOP;f++){ const F=SHADE.f[f]; if(!F) continue;
+    Promise.all([img(ASSET+'shade/f'+f+'-dark.jpg?v=b1'),f<TOP?img(ASSET+'shade/f'+f+'-light.jpg?v=b1'):null]).then(([dk,li])=>{
+      // darkness: the grey image becomes the alpha of black
+      const W=F.ao.width, H=F.ao.height, c=document.createElement('canvas'); c.width=W; c.height=H; const cg=c.getContext('2d'); cg.drawImage(dk,0,0,W,H);
+      const d=cg.getImageData(0,0,W,H), px=d.data; for(let i=0;i<px.length;i+=4){ px[i+3]=px[i]; px[i]=px[i+1]=px[i+2]=0; } cg.putImageData(d,0,0);
+      F.g.save(); F.g.shadowColor='transparent'; F.g.clearRect(0,0,W,H); F.g.drawImage(c,0,0); F.g.restore();
+      F.stamp(.3,.7,-.02,F.peds); F.stamp(1.3,.45,.06,F.peds);
+      if(f>=1) F.g.clearRect((VOID.minX+BX)*SHADE.px,(VOID.minZ+BZ)*SHADE.px,(VOID.maxX-VOID.minX)*SHADE.px,(VOID.maxZ-VOID.minZ)*SHADE.px);
+      F.tex.needsUpdate=true;
+      // light: the painted pools under the light lines stay, the baked glow of the LED lines and screens goes on top
+      if(li&&F.lt){ const lg=F.lc.getContext('2d'); lg.save(); lg.globalCompositeOperation='lighter'; lg.drawImage(li,0,0,F.lc.width,F.lc.height); lg.restore(); F.lt.needsUpdate=true; }
+    }).catch(()=>{});
+  }
+}
+setTimeout(loadBakedShade,0);
 bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
 STATIC[1].children.forEach(m=>floorCasters.push(m));
 STATIC[2].children.forEach(m=>{ m.userData.f=2; floorCasters.push(m); });
