@@ -434,6 +434,25 @@
   .cwelcome b{font-size:26px;color:#1b2350;} .cwelcome span{font-size:13px;color:#5b6280;font-weight:700;}
   .go2{width:100%;height:46px;border-radius:14px;background:#fff;color:var(--brand);border:2px solid #ffd2b8;font-weight:800;font-size:16px;}
   .csheet.compact .nrow,.csheet.compact .ctabs,.csheet.compact .cpane{display:none;}
+  /* selfie: a card in the face tab, and the framing screen */
+  .scard{display:flex;align-items:center;gap:10px;padding:10px;border-radius:16px;background:#fff4ec;border:1px solid #ffd9c2;}
+  .scard .ph{flex:none;width:52px;height:52px;border-radius:50%;background:#ffe3d1 center/cover;display:grid;place-items:center;color:var(--brand);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);}
+  .scard .ph svg{width:24px;height:24px;}
+  .scard .t{flex:1;min-width:0;display:grid;gap:1px;} .scard b{font-size:14px;color:#1b2350;} .scard small{font-size:12px;color:#7a5a48;line-height:1.35;}
+  .scard .bs{display:grid;gap:4px;flex:none;}
+  .scard button{height:34px;padding:0 12px;border-radius:11px;background:var(--brand);color:#fff;font-weight:800;font-size:13px;}
+  .scard button.lite{background:#fff;color:#7a5a48;border:1px solid #ffd9c2;height:28px;font-size:12px;}
+  .selfie{position:fixed;inset:0;z-index:60;background:rgba(12,14,32,.74);display:grid;place-items:center;padding:16px;}
+  .selfie[hidden]{display:none;}
+  .selfie .sbox{width:min(100%,420px);background:#fff;color:#1b2350;border-radius:22px;padding:16px;display:grid;gap:10px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .selfie .sbox > b{font-size:16px;text-align:center;}
+  .selfie canvas{width:100%;aspect-ratio:1;border-radius:16px;background:#1b2350;touch-action:none;cursor:grab;display:block;}
+  .selfie label{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:#5b6280;} .selfie input[type=range]{flex:1;accent-color:var(--brand);}
+  .selfie .srow{display:grid;grid-template-columns:2fr 1fr;gap:8px;} .selfie .srow .go,.selfie .srow .go2{margin:0;}
+  .selfie small{font-size:12px;color:#5b6280;text-align:center;line-height:1.4;}
+  .selfie .res{display:grid;justify-items:center;gap:6px;} .selfie .res img{width:150px;height:150px;border-radius:50%;}
+  #meBtn.face{background:center/cover;padding:0;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);} #meBtn.face svg{display:none;}
+  .cwelcome .wph{justify-self:center;width:64px;height:64px;border-radius:50%;background:center/cover;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);margin-bottom:4px;}
   .spinhint{position:absolute;left:50%;top:60%;transform:translateX(-50%);font-size:12px;font-weight:700;color:#5b6280;background:rgba(255,255,255,.85);padding:5px 10px;border-radius:10px;}
   .creator:has(.csheet.compact) .spinhint{display:none;}
   @media (max-width:899px){
@@ -867,7 +886,7 @@
     <p>בחרו איך תיראו ותטיילו בין המחלקות. כל מוצר אמיתי, במחיר של היום באתר.</p>
   </div>
   <div class="csheet" id="csheet">
-    <div class="cwelcome" id="cwelcome" hidden><small>ברוכים השבים</small><b id="cwName"></b><span id="cwStats"></span></div>
+    <div class="cwelcome" id="cwelcome" hidden><i class="wph" id="cwPhoto" hidden></i><small>ברוכים השבים</small><b id="cwName"></b><span id="cwStats"></span></div>
     <div class="acct" id="acct" hidden></div>
     <div class="nrow"><input id="optName" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="השם שלכם בקניון" dir="auto" aria-label="השם שלכם בקניון"></div>
     <div class="ctabs" id="ctabs" role="tablist" aria-label="עריכת הדמות"></div>
@@ -877,6 +896,17 @@
   </div>
   <div class="spinhint" aria-hidden="true">גררו כדי לסובב את הדמות</div>
 </div>
+<div class="selfie" id="selfie" hidden role="dialog" aria-modal="true" aria-label="דמות מסלפי">
+  <div class="sbox">
+    <b id="selfieTitle">הזיזו את התמונה כך שהפנים בתוך המסגרת</b>
+    <canvas id="selfieCv" width="600" height="600"></canvas>
+    <label>זום<input type="range" id="selfieZoom" min="1" max="4" step=".01" value="1" aria-label="זום"></label>
+    <div class="res" id="selfieRes" hidden><img id="selfieImg" alt="הפרצוף המצויר שלכם"><span id="selfieSum"></span></div>
+    <div class="srow"><button class="go" id="selfieOk">יוצרים את הדמות</button><button class="go2" id="selfieNo">ביטול</button></div>
+    <small>התמונה לא עולה לשום מקום. היא מעובדת רק במכשיר שלכם, ונשמר ממנה רק הפרצוף המצויר.</small>
+  </div>
+</div>
+<input type="file" id="selfieFile" accept="image/*" hidden>
 
 <div id="warp"></div>
 <div class="screen dir" id="dir" hidden>
@@ -1835,7 +1865,43 @@ const GLTF_CACHE = {};
 function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
-  return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)));
+  return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)) smoothGLTF(gl); return gl; });
+}
+/* The wardrobe is modelled low-poly and exported flat-shaded: every face its own normal, so a cheek or a sleeve
+   reads as a row of facets. Smooth shading across any edge gentler than SMOOTH_ANGLE, keeping real creases
+   (a collar, a shoe's sole, the tip of a strand of hair) sharp. Once per file, before anyone is dressed in it. */
+const SMOOTH_ANGLE=58*Math.PI/180;
+function smoothGLTF(gl){
+  if(gl.userData.smooth) return; gl.userData.smooth=true;
+  const done=new Set();
+  gl.scene.traverse(m=>{ if(!m.isMesh||done.has(m.geometry)) return; done.add(m.geometry);
+    const nm=m.material&&m.material.name||''; if(nm==='R_Eye'||nm==='R_Eyebrows'||nm==='R_Logo') return;
+    try{ creaseNormals(m.geometry,SMOOTH_ANGLE); }catch(e){ console.warn('smooth',e); } });
+  // skin with a little sheen, cloth matte
+  const mats=new Set(); gl.scene.traverse(m=>{ if(m.isMesh) (Array.isArray(m.material)?m.material:[m.material]).forEach(x=>mats.add(x)); });
+  mats.forEach(mt=>{ if(/^R_Skin/.test(mt.name)) mt.roughness=.58; else if(/^R_Hair/.test(mt.name)) mt.roughness=.62; });
+}
+function creaseNormals(geo,ang){
+  const pos=geo.attributes.position, nrm=geo.attributes.normal; if(!nrm) return;
+  const ix=geo.index?geo.index.array:null, tc=(ix?ix.length:pos.count)/3, cos=Math.cos(ang);
+  const FN=new Float32Array(tc*3), ref=new Float32Array(pos.count*3), byKey=new Map(), K=new Array(pos.count);
+  for(let i=0;i<pos.count;i++) K[i]=Math.round(pos.getX(i)*1e4)+','+Math.round(pos.getY(i)*1e4)+','+Math.round(pos.getZ(i)*1e4);
+  const key=i=>K[i];
+  const a=new THREE.Vector3(), b=new THREE.Vector3(), c=new THREE.Vector3();
+  for(let t=0;t<tc;t++){ const i0=ix?ix[t*3]:t*3, i1=ix?ix[t*3+1]:t*3+1, i2=ix?ix[t*3+2]:t*3+2;
+    a.fromBufferAttribute(pos,i0); b.fromBufferAttribute(pos,i1); c.fromBufferAttribute(pos,i2);
+    b.sub(a); c.sub(a); b.cross(c);   // length = twice the area: bigger faces weigh more
+    FN[t*3]=b.x; FN[t*3+1]=b.y; FN[t*3+2]=b.z;
+    [i0,i1,i2].forEach(i=>{ ref[i*3]+=b.x; ref[i*3+1]+=b.y; ref[i*3+2]+=b.z; const k=key(i); let l=byKey.get(k); if(!l) byKey.set(k,l=[]); l.push(t); }); }
+  const out=new Float32Array(pos.count*3), n=new THREE.Vector3(), f=new THREE.Vector3(), r=new THREE.Vector3();
+  for(let i=0;i<pos.count;i++){
+    r.set(ref[i*3],ref[i*3+1],ref[i*3+2]); if(r.lengthSq()===0){ out[i*3]=nrm.getX(i); out[i*3+1]=nrm.getY(i); out[i*3+2]=nrm.getZ(i); continue; } r.normalize();
+    n.set(0,0,0); const seen=new Set();
+    (byKey.get(key(i))||[]).forEach(t=>{ if(seen.has(t)) return; seen.add(t); f.set(FN[t*3],FN[t*3+1],FN[t*3+2]); const L=f.length(); if(L===0) return;
+      if(f.dot(r)/L>=cos) n.add(f); });
+    if(n.lengthSq()===0) n.copy(r); n.normalize(); out[i*3]=n.x; out[i*3+1]=n.y; out[i*3+2]=n.z; }
+  geo.setAttribute('normal',new THREE.BufferAttribute(out,3));
 }
 /* For now the model is used once, by the hero alone, and simply moves to the new figure when setAvatar
    rebuilds it. A skinned scene can't be shared between figures by reference: when NPCs get GLBs too,
@@ -1924,6 +1990,105 @@ function heroDress(model,o){
   heroBody(model,o.body);
   if(mats.Top){ mats.Top.metalness=m&&m.shiny?.6:0; mats.Top.roughness=m&&m.shiny?.32:.85; }
   heroAccessory(model,o,headNode&&headNode.userData);
+  try{ heroFace(model,o,headNode); }catch(e){ console.warn('face: keeping the blocks',e); }
+}
+/* the face: painted, not modelled. The wardrobe's faces are two dark blocks for eyes and two for brows; they are
+   hidden and a face is painted onto a copy of the front of the head's own skin (same vertices, same bones, so it
+   moves with every frame of every clip): eyes with a white, a coloured iris, a pupil and a glint, lids, brows in
+   the hair colour, a nose, a smile, a little colour in the cheeks. Positions come from the blocks it replaces. */
+const FACE={S:.25, PX:512};   // metres of face the texture covers, and its size in pixels
+function heroFace(model,o,headNode){
+  (model.userData.faces||[]).forEach(m=>{ if(m.parent) m.parent.remove(m); m.geometry.dispose(); }); model.userData.faces=[];
+  if(!headNode) return;
+  const E=headNode.userData, cx=E.cx||0; let skin=null; const eye=[], brow=[];
+  headNode.traverse(m=>{ if(!m.isSkinnedMesh) return; const n=m.material.name;
+    if(n==='R_Skin'&&!skin) skin=m; if(n==='R_Eye'){ eye.push(m); m.visible=false; } if(n==='R_Eyebrows'){ brow.push(m); m.visible=false; } });
+  if(!skin||!eye.length) return;
+  const sa=skin.geometry.attributes, sp=sa.position;
+  // the eyes: the blocks' centre on each side (a merged eye-and-brow block is cut at its middle)
+  let ex=0, ey=0, ew=0, n=0;
+  eye.forEach(m=>{ const a=m.geometry.attributes.position; let mn=9, mx=-9, y0=9, y1=-9, xs=0, c=0;
+    for(let i=0;i<a.count;i++){ const x=a.getX(i); if(x>cx){ mn=Math.min(mn,x); mx=Math.max(mx,x); xs+=x; c++; } y0=Math.min(y0,a.getY(i)); y1=Math.max(y1,a.getY(i)); }
+    ex+=xs/c; ew+=mx-mn; ey+=(y0+y1)/2; n++; });
+  ex=ex/n-cx; ew/=n; ey/=n; if(eye[0].geometry.attributes.position.count>60){ ey-=.005; ew*=.55; }   // eye and brow in one block
+  // the nose tip (the furthest point forward under the eyes) and the chin (lowest point of the front of the face)
+  let nose=ey-.05, nz=-9, chin=ey-.14;
+  for(let i=0;i<sp.count;i++){ const x=sp.getX(i)-cx, y=sp.getY(i), z=sp.getZ(i);
+    if(Math.abs(x)<.02&&y<ey-.02&&y>ey-.09&&z>nz){ nz=z; nose=y; } }
+  for(let i=0;i<sp.count;i++){ const x=sp.getX(i)-cx, y=sp.getY(i), z=sp.getZ(i); if(Math.abs(x)<.03&&z>nz-.06&&y<nose&&y<chin+.08&&y>ey-.2) chin=Math.min(chin,y); }
+  const yc=ey-.04, K=FACE.PX/FACE.S;
+  const F={ex:ex*K, ey:FACE.PX/2-(ey-yc)*K, ew:ew*K, nose:FACE.PX/2-(nose-yc)*K, chin:FACE.PX/2-(chin-yc)*K, girl:!!o.girl};
+  // the front of the skin, copied with its bones and pushed out a hair along its normals
+  const idx=skin.geometry.index, src=idx?idx.array:null, tc=(src?src.length:sp.count)/3, keep=[];
+  const v=i=>new THREE.Vector3(sp.getX(i),sp.getY(i),sp.getZ(i));
+  for(let t=0;t<tc;t++){ const a=src?src[t*3]:t*3, b=src?src[t*3+1]:t*3+1, c=src?src[t*3+2]:t*3+2, A=v(a), B=v(b), C=v(c);
+    const nrm=B.clone().sub(A).cross(C.clone().sub(A)).normalize(), my=(A.y+B.y+C.y)/3, mz=(A.z+B.z+C.z)/3;
+    if(nrm.z>.2&&mz>(E.cz||0)+.03&&Math.abs(my-yc)<FACE.S/2) keep.push(a,b,c); }
+  if(!keep.length) return;
+  const map=new Map(), P=[], N=[], U=[], SI=[], SW=[], I=[], sw=sa.skinWeight, wn=sw.normalized?(sw.array instanceof Uint8Array?255:sw.array instanceof Uint16Array?65535:1):1;
+  keep.forEach(i=>{ if(!map.has(i)){ map.set(i,map.size); const nx=sa.normal.getX(i), ny=sa.normal.getY(i), nz2=sa.normal.getZ(i);
+      P.push(sp.getX(i)+nx*.0012,sp.getY(i)+ny*.0012,sp.getZ(i)+nz2*.0012); N.push(nx,ny,nz2);
+      U.push(.5+(sp.getX(i)-cx)/FACE.S,.5+(sp.getY(i)-yc)/FACE.S);
+      for(let q=0;q<4;q++){ SI.push(sa.skinIndex.array[i*4+q]); SW.push(sa.skinWeight.array[i*4+q]/wn); } }
+    I.push(map.get(i)); });
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); geo.setAttribute('normal',new THREE.Float32BufferAttribute(N,3)); geo.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));
+  geo.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(SI,4)); geo.setAttribute('skinWeight',new THREE.Float32BufferAttribute(SW,4)); geo.setIndex(I);
+  const mat=new THREE.MeshStandardMaterial({map:faceTexture(o,F),transparent:true,depthWrite:false,roughness:.55,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+  mat.skinning=true;
+  const me=new THREE.SkinnedMesh(geo,mat); me.name='HeroFace'; me.frustumCulled=false; me.renderOrder=1;
+  skin.parent.add(me); me.bind(skin.skeleton,skin.bindMatrix); model.userData.faces.push(me);
+}
+const FACE_TEX={};
+function faceTexture(o,F){
+  const key=[F.girl,o.eyes,o.hair,o.skin,Math.round(F.ex),Math.round(F.ey),Math.round(F.nose),Math.round(F.chin)].join();
+  if(FACE_TEX[key]) return FACE_TEX[key];
+  const W=FACE.PX, cv=document.createElement('canvas'); cv.width=cv.height=W; const c=cv.getContext('2d');
+  const rgb=(h,k)=>{ const v=shade(h,k||1); return `rgb(${v>>16&255},${v>>8&255},${v&255})`; };
+  const mid=W/2, eyeC=o.eyes||0x4a3222, hairC=o.hair||0x3a2618, skinC=o.skin||0xf1c7a0;
+  const w=Math.max(40,F.ew*1.55), h=w*.6, lid=rgb(hairC,.45);
+  [-1,1].forEach(sd=>{
+    const x=mid+sd*F.ex, y=F.ey, x0=x-w/2, x1=x+w/2;
+    // the white of the eye, an almond lifted a little at the outer corner
+    const lift=sd*0;
+    c.save(); c.beginPath(); c.moveTo(x0,y+h*.08); c.bezierCurveTo(x0+w*.18,y-h*.78,x1-w*.18,y-h*.78,x1,y-h*.05);
+    c.bezierCurveTo(x1-w*.2,y+h*.62,x0+w*.2,y+h*.62,x0,y+h*.08); c.closePath();
+    c.fillStyle='#fbfaf6'; c.fill(); c.clip();
+    const ir=h*.56, ix=x-sd*w*.03, iy=y+h*.04;
+    const g=c.createRadialGradient(ix,iy-ir*.2,ir*.1,ix,iy,ir); g.addColorStop(0,rgb(eyeC,1.45)); g.addColorStop(.7,rgb(eyeC,1)); g.addColorStop(1,rgb(eyeC,.55));
+    c.fillStyle=g; c.beginPath(); c.arc(ix,iy,ir,0,Math.PI*2); c.fill();
+    c.fillStyle='#0d0b0c'; c.beginPath(); c.arc(ix,iy,ir*.46,0,Math.PI*2); c.fill();
+    c.fillStyle='rgba(255,255,255,.95)'; c.beginPath(); c.arc(ix-ir*.32,iy-ir*.36,ir*.24,0,Math.PI*2); c.fill();
+    c.fillStyle='rgba(255,255,255,.6)'; c.beginPath(); c.arc(ix+ir*.3,iy+ir*.3,ir*.1,0,Math.PI*2); c.fill();
+    const sh=c.createLinearGradient(0,y-h*.6,0,y); sh.addColorStop(0,'rgba(40,20,10,.35)'); sh.addColorStop(1,'rgba(40,20,10,0)'); c.fillStyle=sh; c.fillRect(x0,y-h,w,h);
+    c.restore();
+    // the upper lid and lashes; a softer lower lid
+    c.lineCap='round'; c.strokeStyle=lid; c.lineWidth=h*(F.girl?.2:.15);
+    c.beginPath(); c.moveTo(x0-1,y+h*.08); c.bezierCurveTo(x0+w*.18,y-h*.78,x1-w*.18,y-h*.78,x1,y-h*.05);
+    if(F.girl) c.quadraticCurveTo(x1+w*.08,y-h*.16,x1+w*.15,y-h*.42);
+    c.stroke();
+    c.lineWidth=h*.05; c.strokeStyle='rgba(60,30,20,.35)'; c.beginPath(); c.moveTo(x0+w*.12,y+h*.3); c.bezierCurveTo(x0+w*.3,y+h*.55,x1-w*.3,y+h*.55,x1-w*.08,y+h*.26); c.stroke();
+    // the brow
+    const by=y-h*1.25, bw=w*1.05;
+    c.strokeStyle=rgb(hairC,.85); c.lineWidth=h*(F.girl?.18:.26);
+    c.beginPath(); c.moveTo(x-sd*bw*.5,by+h*.12); c.quadraticCurveTo(x+sd*bw*.02,by-h*.28,x+sd*bw*.55,by+h*.14); c.stroke();
+    // a little colour in the cheek
+    const cy=F.ey+(F.nose-F.ey)*1.15, bl=c.createRadialGradient(x+sd*w*.1,cy,0,x+sd*w*.1,cy,w*.75);
+    bl.addColorStop(0,F.girl?'rgba(240,110,120,.32)':'rgba(220,110,100,.16)'); bl.addColorStop(1,'rgba(240,110,120,0)'); c.fillStyle=bl; c.fillRect(x-w,cy-w,w*2,w*2);
+  });
+  // the nose: a shadow under the tip and a soft line on one side
+  const ny=F.nose, nw=F.ex*.42;
+  c.strokeStyle=rgb(skinC,.62); c.globalAlpha=.55; c.lineWidth=h*.12; c.lineCap='round';
+  c.beginPath(); c.moveTo(mid-nw*.55,ny+h*.1); c.quadraticCurveTo(mid,ny+h*.42,mid+nw*.55,ny+h*.1); c.stroke();
+  c.globalAlpha=.25; c.beginPath(); c.moveTo(mid+nw*.32,ny-h*1.1); c.quadraticCurveTo(mid+nw*.5,ny-h*.4,mid+nw*.42,ny); c.stroke(); c.globalAlpha=1;
+  // the mouth: a smile, a darker inner line and the lower lip catching the light
+  const my=ny+(F.chin-ny)*.42, mw=F.ex*(F.girl?.82:.9);
+  if(F.girl){ c.fillStyle='rgba(200,80,95,.75)'; c.beginPath(); c.moveTo(mid-mw/2,my); c.quadraticCurveTo(mid,my-h*.22,mid+mw/2,my); c.quadraticCurveTo(mid,my+h*.62,mid-mw/2,my); c.fill(); }
+  c.strokeStyle=F.girl?'#7a2b35':rgb(skinC,.42); c.lineWidth=h*.13;
+  c.beginPath(); c.moveTo(mid-mw/2,my-h*.04); c.quadraticCurveTo(mid,my+h*.38,mid+mw/2,my-h*.04); c.stroke();
+  c.strokeStyle='rgba(255,255,255,.18)'; c.lineWidth=h*.08; c.beginPath(); c.moveTo(mid-mw*.2,my+h*.52); c.quadraticCurveTo(mid,my+h*.6,mid+mw*.2,my+h*.52); c.stroke();
+  const t=new THREE.CanvasTexture(cv); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
+  return FACE_TEX[key]=t;
 }
 /* hats, glasses and headphones from the rooftop shop, built to the head's measurements (stored with each haircut)
    and fixed to the head bone, so they follow every movement */
@@ -1949,8 +2114,8 @@ function heroAccessoryOne(model,o,E,kind){
       add(new THREE.CylinderGeometry(r*.78,r*.72,.05,12,1,true),Object.assign(gm,{side:THREE.DoubleSide}),cx,y,cz);
       for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; add(new THREE.ConeGeometry(.02,.055,4),gm,cx+Math.sin(a)*r*.78,y+.05,cz+Math.cos(a)*r*.78); }
       add(new THREE.SphereGeometry(.015,8,6),M(0xe63946,{roughness:.2}),cx,y,cz+r*.8); break; }
-    case 'glasses': { const fm=M(0x16181d,{roughness:.4}), lm=M(0x9fc4e8,{roughness:.1,transparent:true,opacity:.45});
-      [-1,1].forEach(sd=>{ add(new THREE.TorusGeometry(.028,.005,6,18),fm,cx+sd*.044,eY,fr+.012); add(new THREE.CircleGeometry(.026,16),lm,cx+sd*.044,eY,fr+.011); });
+    case 'glasses': { const fm=M(0x16181d,{roughness:.4}), lm=M(0x9fc4e8,{roughness:.1,transparent:true,opacity:.22});
+      [-1,1].forEach(sd=>{ add(new THREE.TorusGeometry(.028,.005,6,18),fm,cx+sd*.044,eY,fr+.012); add(new THREE.CircleGeometry(.026,16),lm,cx+sd*.044,eY,fr+.011).renderOrder=2; });   // drawn after the painted face
       add(new THREE.BoxGeometry(.03,.006,.006),fm,cx,eY+.008,fr+.012); break; }
     case 'shades': { const sm2=M(0x0b0c10,{roughness:.2});
       [-1,1].forEach(sd=>add(new THREE.BoxGeometry(.062,.032,.008),sm2,cx+sd*.043,eY,fr+.013));
@@ -3172,6 +3337,7 @@ function renderCreator(){
     seg('מבנה גוף','body',AV_BODY,avatar.body||'regular');
     sw('צבע עור','skin');
   } else if(ctab==='face'){
+    pane.appendChild(selfieCard());
     seg('תספורת','hairStyle',S.head,L.head);
     sw('צבע שיער','hair');
     sw('צבע עיניים','eyes');
@@ -3194,6 +3360,146 @@ $('#optName').addEventListener('input',e=>{ avatar.name=e.target.value; saveAvat
 $('#optName').addEventListener('change',e=>{ avatar.name=cleanName(e.target.value); e.target.value=avatar.name; });
 $('#optName').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') e.target.blur(); });
 $('#optName').addEventListener('keyup',e=>e.stopPropagation());
+
+/* ---------- selfie: a photo becomes a cartoon portrait and the character's colours ----------
+   Everything happens in this browser: the photo is never sent anywhere and never kept. The shopper frames
+   their face in an oval; the skin is read from the cheeks and forehead, the hair from the top and sides of
+   the oval, each matched to the nearest colour in the creator so the character stays in the game's style.
+   What is kept, on this device only, is a small painted portrait (bt-selfie): it shows on the character
+   button, the welcome card and the creator. */
+const SELFIE={img:null, x:0, y:0, s:1, base:1, OV:{cx:300,cy:285,rx:150,ry:196}, ptr:new Map(), pinch:null, result:null};
+const selfieUrl=()=>{ try{ return localStorage.getItem('bt-selfie')||''; }catch(e){ return ''; } };
+const CAMERA_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+function selfieCard(){
+  const u=selfieUrl(), d=document.createElement('div'); d.className='scard';
+  d.innerHTML=`<i class="ph">${u?'':CAMERA_SVG}</i><div class="t"><b>${u?'הפרצוף המצויר שלכם':'דמות מסלפי'}</b><small>${u?'הצבעים של הדמות נלקחו מהתמונה':'מצלמים, והדמות מקבלת את הצבעים שלכם ופרצוף מצויר'}</small></div><div class="bs"><button>${u?'צילום חדש':'צילום סלפי'}</button>${u?'<button class="lite">הסרה</button>':''}</div>`;
+  if(u) d.querySelector('.ph').style.backgroundImage=`url(${u})`;
+  d.querySelector('button').addEventListener('click',()=>{ buzz(6); $('#selfieFile').value=''; $('#selfieFile').click(); });
+  const rm=d.querySelector('.lite'); if(rm) rm.addEventListener('click',()=>{ try{ localStorage.removeItem('bt-selfie'); }catch(e){} selfieBadges(); renderCreator(); buzz(6); });
+  return d;
+}
+function selfieBadges(){
+  const u=selfieUrl(), me=$('#meBtn'), w=$('#cwPhoto');
+  if(me){ me.classList.toggle('face',!!u); me.style.backgroundImage=u?`url(${u})`:''; }
+  if(w){ w.hidden=!u; w.style.backgroundImage=u?`url(${u})`:''; }
+}
+$('#selfieFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const url=URL.createObjectURL(f), im=new Image();
+  im.onload=()=>{ URL.revokeObjectURL(url); selfieOpen(im); };
+  im.onerror=()=>{ URL.revokeObjectURL(url); toast('לא הצלחנו לפתוח את התמונה','bad'); };
+  im.src=url;
+});
+function selfieOpen(im){
+  SELFIE.img=im; SELFIE.result=null; const W=600;
+  SELFIE.base=W/Math.min(im.naturalWidth,im.naturalHeight); SELFIE.s=1; SELFIE.x=W/2; SELFIE.y=W/2;
+  $('#selfieZoom').value='1'; $('#selfieRes').hidden=true; $('#selfieCv').hidden=false; $('#selfieZoom').parentNode.hidden=false;
+  $('#selfieTitle').textContent='הזיזו את התמונה כך שהפנים בתוך המסגרת'; $('#selfieOk').textContent='יוצרים את הדמות';
+  $('#selfie').hidden=false; selfieDraw();
+  // where the browser can find the face itself, frame it for them
+  if('FaceDetector' in window){ try{ new FaceDetector({fastMode:true,maxDetectedFaces:1}).detect(im).then(fs=>{ const b=fs&&fs[0]&&fs[0].boundingBox; if(!b||SELFIE.img!==im) return;
+    const k=(SELFIE.OV.rx*2*.82)/(b.width*SELFIE.base); SELFIE.s=clamp(k,1,4); $('#selfieZoom').value=String(SELFIE.s);
+    const sc=SELFIE.base*SELFIE.s; SELFIE.x=SELFIE.OV.cx-(b.x+b.width/2-im.naturalWidth/2)*sc; SELFIE.y=SELFIE.OV.cy+SELFIE.OV.ry*.08-(b.y+b.height/2-im.naturalHeight/2)*sc; selfieDraw(); }).catch(()=>{}); }catch(e){} }
+}
+// the photo, centred at (x, y) on the 600px stage, scaled base*s
+function selfieDrawImg(g,k,ox,oy){ const im=SELFIE.img, sc=SELFIE.base*SELFIE.s*k; g.drawImage(im,(SELFIE.x-ox)*k-im.naturalWidth*sc/2,(SELFIE.y-oy)*k-im.naturalHeight*sc/2,im.naturalWidth*sc,im.naturalHeight*sc); }
+function selfieDraw(){
+  const cv=$('#selfieCv'), g=cv.getContext('2d'), O=SELFIE.OV; g.fillStyle='#1b2350'; g.fillRect(0,0,600,600); selfieDrawImg(g,1,0,0);
+  g.save(); g.beginPath(); g.rect(0,0,600,600); g.ellipse(O.cx,O.cy,O.rx,O.ry,0,0,Math.PI*2); g.fillStyle='rgba(12,14,32,.55)'; g.fill('evenodd'); g.restore();
+  g.lineWidth=5; g.strokeStyle='#f55304'; g.setLineDash([16,10]); g.beginPath(); g.ellipse(O.cx,O.cy,O.rx,O.ry,0,0,Math.PI*2); g.stroke(); g.setLineDash([]);
+  // where the eyes go
+  g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=2; g.beginPath(); g.moveTo(O.cx-O.rx*.62,O.cy-O.ry*.12); g.lineTo(O.cx+O.rx*.62,O.cy-O.ry*.12); g.stroke();
+}
+(()=>{ const cv=$('#selfieCv');
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)*600/r.width, y:(e.clientY-r.top)*600/r.height}; };
+  cv.addEventListener('pointerdown',e=>{ if(!SELFIE.img||SELFIE.result) return; cv.setPointerCapture(e.pointerId); SELFIE.ptr.set(e.pointerId,pos(e));
+    if(SELFIE.ptr.size===2){ const [a,b]=[...SELFIE.ptr.values()]; SELFIE.pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s:SELFIE.s}; } });
+  cv.addEventListener('pointermove',e=>{ const p0=SELFIE.ptr.get(e.pointerId); if(!p0) return; const p=pos(e);
+    if(SELFIE.ptr.size===1){ SELFIE.x+=p.x-p0.x; SELFIE.y+=p.y-p0.y; }
+    SELFIE.ptr.set(e.pointerId,p);
+    if(SELFIE.ptr.size===2&&SELFIE.pinch){ const [a,b]=[...SELFIE.ptr.values()]; selfieZoomTo(SELFIE.pinch.s*Math.hypot(a.x-b.x,a.y-b.y)/SELFIE.pinch.d); }
+    selfieDraw(); });
+  const up=e=>{ SELFIE.ptr.delete(e.pointerId); if(SELFIE.ptr.size<2) SELFIE.pinch=null; };
+  cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{ e.preventDefault(); selfieZoomTo(SELFIE.s*Math.exp(-e.deltaY*.0015)); selfieDraw(); },{passive:false});
+  $('#selfieZoom').addEventListener('input',e=>{ selfieZoomTo(+e.target.value); selfieDraw(); });
+})();
+// zoom about the oval's centre, so the face stays where it is
+function selfieZoomTo(s){ s=clamp(s,1,4); const O=SELFIE.OV, k=s/SELFIE.s; SELFIE.x=O.cx+(SELFIE.x-O.cx)*k; SELFIE.y=O.cy+(SELFIE.y-O.cy)*k; SELFIE.s=s; $('#selfieZoom').value=String(s); }
+$('#selfieNo').addEventListener('click',()=>{ $('#selfie').hidden=true; SELFIE.img=null; SELFIE.result=null; buzz(6); });
+$('#selfieOk').addEventListener('click',()=>{
+  if(!SELFIE.img) return;
+  if(SELFIE.result){   // second press: keep it
+    const R=SELFIE.result; try{ localStorage.setItem('bt-selfie',R.url); }catch(e){}
+    const a=Object.assign({},avatar); if(R.skin!=null) a.skin=R.skin; if(R.hair!=null) a.hair=R.hair; if(R.eyes!=null) a.eyes=R.eyes;
+    setAvatar(a); saveAvatar(); $('#selfie').hidden=true; SELFIE.img=null; SELFIE.result=null; selfieBadges(); ctab='face'; renderCreator(); buzz(12);
+    toast('הדמות קיבלה את הצבעים שלכם'); return; }
+  try{ SELFIE.result=selfieMake(); }catch(e){ console.warn('selfie',e); toast('משהו השתבש בעיבוד התמונה. נסו תמונה אחרת','bad'); return; }
+  const R=SELFIE.result; $('#selfieImg').src=R.url; $('#selfieCv').hidden=true; $('#selfieZoom').parentNode.hidden=true; $('#selfieRes').hidden=false;
+  $('#selfieSum').textContent=R.hair==null?'צבע העור מהתמונה. את צבע השיער אפשר לבחור למטה':'צבע העור והשיער מהתמונה';
+  $('#selfieTitle').textContent='ככה תיראו בקניון'; $('#selfieOk').textContent='שומרים'; buzz(10);
+});
+/* colour, the way people see it: CIE Lab, to find the nearest swatch */
+function toLab(r,g,b){ const f=c=>{ c/=255; return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4); }, R=f(r), G=f(g), B=f(b);
+  let x=(R*.4124+G*.3576+B*.1805)/.95047, y=R*.2126+G*.7152+B*.0722, z=(R*.0193+G*.1192+B*.9505)/1.08883;
+  const h=t=>t>.008856?Math.cbrt(t):7.787*t+16/116; x=h(x); y=h(y); z=h(z); return [116*y-16,500*(x-y),200*(y-z)]; }
+function nearestSwatch(list,rgb,wL){ const L=toLab(...rgb); let best=list[0], bd=1e9;
+  list.forEach(c=>{ const M=toLab(c>>16&255,c>>8&255,c&255), d=Math.hypot((L[0]-M[0])*(wL||1),L[1]-M[1],L[2]-M[2]); if(d<bd){ bd=d; best=c; } }); return best; }
+function selfieMake(){
+  const O=SELFIE.OV;
+  // 1. read the colours, from the oval at 240 x 312
+  const A=document.createElement('canvas'), aw=240, ah=312, ak=aw/(O.rx*2); A.width=aw; A.height=ah;
+  const ag=A.getContext('2d',{willReadFrequently:true}); selfieDrawImg(ag,ak,O.cx-O.rx,O.cy-O.ry); const D=ag.getImageData(0,0,aw,ah).data;
+  const px=(u,v)=>{ const x=Math.round(u*(aw-1)), y=Math.round(v*(ah-1)), i=(y*aw+x)*4; return [D[i],D[i+1],D[i+2]]; };
+  const lum=p=>.299*p[0]+.587*p[1]+.114*p[2];
+  const region=(u,v,r,out)=>{ for(let dv=-r;dv<=r;dv+=.012) for(let du=-r;du<=r;du+=.012){ if(du*du+dv*dv>r*r) continue; const U=u+du, V=v+dv; if(U<0||U>1||V<0||V>1) continue; out.push(px(U,V)); } return out; };
+  const median=arr=>{ if(!arr.length) return null; const m=k=>arr.map(p=>p[k]).sort((a,b)=>a-b)[arr.length>>1]; return [m(0),m(1),m(2)]; };
+  let sk=[]; [[.3,.6,.08],[.7,.6,.08],[.5,.28,.07],[.5,.52,.04]].forEach(([u,v,r])=>region(u,v,r,sk));
+  sk=sk.filter(p=>{ const l=lum(p); return l>40&&l<248; });
+  // the middle half by brightness: no shadow under the nose, no shine on the forehead
+  sk.sort((a,b)=>lum(a)-lum(b)); const skMid=sk.slice(sk.length>>2,(sk.length*3)>>2), skinRGB=median(skMid);
+  if(!skinRGB) throw new Error('no skin');
+  const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+  let hairS=[]; for(let v=.0;v<=.13;v+=.012) for(let u=.25;u<=.75;u+=.012) hairS.push(px(u,v));
+  for(let v=.12;v<=.45;v+=.012){ for(let u=.03;u<=.12;u+=.012) hairS.push(px(u,v)); for(let u=.88;u<=.97;u+=.012) hairS.push(px(u,v)); }
+  const hairP=hairS.filter(p=>dist(p,skinRGB)>55), hairRGB=hairP.length>hairS.length*.3?median(hairP):null;
+  // a photo's light darkens and warms everything a little: lift the skin before matching it
+  const lift=skinRGB.map(c=>Math.min(255,c*1.08+6));
+  const skin=nearestSwatch(AV_CHOICES.skin,lift,.8), hair=hairRGB?nearestSwatch(AV_CHOICES.hair,hairRGB,1.2):null;
+  // 2. the portrait: the face and a little around it, painted
+  const N=200, P=document.createElement('canvas'); P.width=P.height=N; const pg=P.getContext('2d',{willReadFrequently:true});
+  const side=O.ry*2*1.08, pk=N/side; pg.fillStyle='#fff'; pg.fillRect(0,0,N,N); selfieDrawImg(pg,pk,O.cx-side/2,O.cy-side/2);
+  const url=cartoonize(pg,N,skin);
+  return {skin,hair,eyes:null,url};
+}
+/* painted look: an edge-keeping smoothing (Kuwahara) flattens skin and hair into patches, the light is cut into
+   a few bands, the colours are lifted, and the outlines are inked from the edges of the smoothed picture */
+function cartoonize(g,N){
+  const src=g.getImageData(0,0,N,N), d=src.data, out=new Uint8ClampedArray(d.length), R=3;
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    let best=1e18, br=0, bg=0, bb=0;
+    for(let q=0;q<4;q++){ const x0=q&1?x:x-R, y0=q&2?y:y-R; let sr=0,sg=0,sb=0,sl=0,sl2=0,n=0;
+      for(let yy=y0;yy<=y0+R;yy++){ if(yy<0||yy>=N) continue; for(let xx=x0;xx<=x0+R;xx++){ if(xx<0||xx>=N) continue; const i=(yy*N+xx)*4, l=d[i]*.299+d[i+1]*.587+d[i+2]*.114;
+        sr+=d[i]; sg+=d[i+1]; sb+=d[i+2]; sl+=l; sl2+=l*l; n++; } }
+      if(!n) continue; const v=sl2/n-(sl/n)*(sl/n); if(v<best){ best=v; br=sr/n; bg=sg/n; bb=sb/n; } }
+    const i=(y*N+x)*4; out[i]=br; out[i+1]=bg; out[i+2]=bb; out[i+3]=255; }
+  // bands of light, colour lifted
+  const L=new Float32Array(N*N);
+  for(let k=0;k<N*N;k++){ const i=k*4; let r=out[i],gg=out[i+1],b=out[i+2]; const l=r*.299+gg*.587+b*.114;
+    const lq=Math.min(255,(Math.round(l/255*6)/6)*255*.55+l*.45+8), f=l>0?lq/l:1; r*=f; gg*=f; b*=f;
+    const m=(r+gg+b)/3; r=m+(r-m)*1.3; gg=m+(gg-m)*1.3; b=m+(b-m)*1.3;
+    out[i]=r; out[i+1]=gg; out[i+2]=b; L[k]=l; }
+  // ink
+  for(let y=1;y<N-1;y++) for(let x=1;x<N-1;x++){ const k=y*N+x;
+    const gx=-L[k-N-1]-2*L[k-1]-L[k+N-1]+L[k-N+1]+2*L[k+1]+L[k+N+1], gy=-L[k-N-1]-2*L[k-N]-L[k-N+1]+L[k+N-1]+2*L[k+N]+L[k+N+1];
+    const m=Math.hypot(gx,gy), a=clamp((m-100)/110,0,.85); if(a>0){ const i=k*4; out[i]=out[i]*(1-a)+38*a; out[i+1]=out[i+1]*(1-a)+26*a; out[i+2]=out[i+2]*(1-a)+22*a; } }
+  src.data.set(out); g.putImageData(src,0,0);
+  // round, on white, ready for the badges
+  const C=document.createElement('canvas'); C.width=C.height=N; const c=C.getContext('2d');
+  c.fillStyle='#fff'; c.fillRect(0,0,N,N); c.save(); c.beginPath(); c.arc(N/2,N/2,N/2,0,Math.PI*2); c.clip(); c.drawImage(g.canvas,0,0); c.restore();
+  return C.toDataURL('image/jpeg',.86);
+}
+selfieBadges();
 
 
 /* ---------- BuyToday account: the character is kept on the shopper's own account ----------
@@ -4204,7 +4510,7 @@ function alfReal(a,gl){
   const model=gl.scene;
   model.scale.setScalar(HERO_MODEL_SCALE); model.rotation.y=HERO_MODEL_ROTATION_OFFSET;
   model.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } });
-  heroDress(model,ALF_LOOK);
+  smoothGLTF(gl); heroDress(model,ALF_LOOK);
   const mixer=new THREE.AnimationMixer(model), actions={};
   ['Idle','Walk','Run','Wave','Interact'].forEach(n=>{ const c=gl.animations.find(x=>x.name===n); if(c){ const x=mixer.clipAction(c); x.setLoop(THREE.LoopRepeat,Infinity); actions[n]=x; } });
   const ik=heroFindArms(model); if(!actions.Idle||!actions.Walk||!ik) return;
