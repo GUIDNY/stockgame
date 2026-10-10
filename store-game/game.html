@@ -1919,7 +1919,7 @@ function buildItems(){
       const tx=new THREE.TextureLoader().load(it.cut); tx.encoding=THREE.sRGBEncoding; tx.anisotropy=4;
       const c=new THREE.Group(); c.position.y=.85; c.userData.face=true;
       const pl=new THREE.Mesh(new THREE.PlaneGeometry(Wd,H),new THREE.MeshBasicMaterial({map:tx,transparent:true,alphaTest:.08,side:THREE.DoubleSide,color:0xf4f4f4}));
-      pl.position.y=H/2+.005; c.add(pl);
+      pl.position.y=H/2+.005; c.add(pl); it.cutPlane=pl; it.cutSize=[Wd,H];
       const sh=new THREE.Mesh(blobGeo,BLOB); sh.rotation.x=-Math.PI/2; sh.scale.set(Math.min(1,Wd*.8),.45,1); sh.position.y=.004; sh.renderOrder=1; c.add(sh);
       m=c; }
     g.add(m); g.updateMatrixWorld(true);
@@ -1933,6 +1933,36 @@ function buildItems(){
   });
 }
 
+/* Products in relief (store-game/prodfx.py): each cut-out photo again at 512 px and a depth map of it from
+   Depth Anything V2. Once both have loaded, the flat card is swapped for a grid raised by the depth map and
+   lit by the mall (a little of the photo kept as its own light, so it never goes darker than the picture),
+   which casts a real shadow. It still turns to face the shopper, so the relief is always seen from the side
+   it was measured from. Products without files, or whose files fail, keep the card. */
+const PROD_V='r2';
+function loadProductRelief(){
+  fetch(ASSET+'prod/manifest.json?v='+PROD_V).then(r=>r.ok?r.json():Promise.reject()).then(man=>{
+    const L=new THREE.TextureLoader(); L.setCrossOrigin('anonymous');
+    const img=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
+    CATALOG.forEach(it=>{ const e=man[it.slug]; if(!e||!it.cutPlane) return;
+      Promise.all([new Promise((res,rej)=>L.load(ASSET+'prod/'+it.slug+'.webp?v='+PROD_V,res,undefined,rej)),img(ASSET+'prod/'+it.slug+'-d.png?v='+PROD_V)]).then(([tx,dimg])=>{
+        tx.encoding=THREE.sRGBEncoding; tx.anisotropy=renderer.capabilities.getMaxAnisotropy();
+        const [Wd,H]=it.cutSize, cv=document.createElement('canvas'); cv.width=dimg.width; cv.height=dimg.height;
+        const g=cv.getContext('2d'); g.drawImage(dimg,0,0); const D=g.getImageData(0,0,cv.width,cv.height).data;
+        const nx=Math.max(8,Math.round(56*Math.min(1,Wd/H))), ny=Math.max(8,Math.round(56*Math.min(1,H/Wd)));
+        const geo=new THREE.PlaneGeometry(Wd,H,nx,ny), pos=geo.attributes.position, uv=geo.attributes.uv, depth=Math.min(Wd,H)*.42+Math.max(Wd,H)*.08;
+        let sum=0; const zs=new Float32Array(pos.count);
+        for(let i=0;i<pos.count;i++){ const u=uv.getX(i), v=uv.getY(i), px=Math.min(cv.width-1,Math.round(u*(cv.width-1))), py=Math.min(cv.height-1,Math.round((1-v)*(cv.height-1)));
+          zs[i]=D[(py*cv.width+px)*4]/255*depth; sum+=zs[i]; }
+        const mid=sum/pos.count; for(let i=0;i<pos.count;i++) pos.setZ(i,zs[i]-mid);
+        geo.computeVertexNormals();
+        const m=new THREE.MeshStandardMaterial({map:tx,alphaTest:.5,side:THREE.DoubleSide,roughness:.4,metalness:.08,color:0xc4c4c4,emissive:0xffffff,emissiveMap:tx,emissiveIntensity:.42,envMapIntensity:.8});
+        const pl=it.cutPlane, old=pl.material; pl.geometry.dispose(); pl.geometry=geo; pl.material=m; if(old.map) old.map.dispose(); old.dispose();
+        pl.castShadow=true;
+      }).catch(()=>{});
+    });
+  }).catch(()=>{});
+}
+setTimeout(loadProductRelief,1200);
 const faceCache={};
 const hx=c=>'#'+c.toString(16).padStart(6,'0');
 function faceMat(o){
