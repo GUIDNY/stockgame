@@ -1126,6 +1126,137 @@ const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 180);
   [[0,-39.5],[0,39.5]].forEach(([x,z])=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(14,.5,.5),org); b.position.set(x,3,z); es.add(b); });
   scene.environment=pm.fromScene(es,.04).texture; pm.dispose(); })();
 
+/* ---------- picture quality: post-processing ----------
+   On a device that can afford it, the frame is drawn into an off-screen buffer (multisampled, so edges stay
+   clean) and finished in three passes: a soft bloom that lets the light lines, screens and signs glow, then a
+   grade (a touch more contrast and colour, a warm cast, a gentle vignette, dithering against banding) that
+   also writes the picture out in sRGB. Materials keep their own tone mapping, so a device without it (or
+   one that turns out too slow: the frame-rate watcher in the loop drops it before lowering resolution) sees
+   exactly the picture it always had. ?fx=0 / ?fx=1 forces it off or on. */
+const GFX={on:false, composer:null, bloom:null, grade:null, want:false, failed:false};
+(function(){
+  const q=new URLSearchParams(location.search).get('fx');
+  const gl2=renderer.capabilities.isWebGL2;
+  GFX.want = q==='1' ? gl2 : q==='0' ? false : gl2;
+})();
+const GRADE_SHADER={
+  uniforms:{tDiffuse:{value:null}, uSat:{value:1.08}, uContrast:{value:1.07}, uVig:{value:.2}, uWarm:{value:new THREE.Vector3(1.012,1.0,.982)}, uSeed:{value:0}},
+  vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader:`uniform sampler2D tDiffuse; uniform float uSat, uContrast, uVig, uSeed; uniform vec3 uWarm; varying vec2 vUv;
+    vec3 toSRGB(vec3 c){ return mix(c*12.92, 1.055*pow(c,vec3(1.0/2.4))-0.055, step(vec3(0.0031308),c)); }
+    float hash(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233))+uSeed)*43758.5453); }
+    void main(){
+      vec3 c=toSRGB(clamp(texture2D(tDiffuse,vUv).rgb,0.0,1.0));
+      float l=dot(c,vec3(.299,.587,.114));
+      c=mix(vec3(l),c,uSat);
+      c=(c-.5)*uContrast+.5;
+      c*=uWarm;
+      vec2 d=vUv-.5; float v=smoothstep(.35,.95,length(d*vec2(1.15,1.0))*1.35);
+      c*=1.0-uVig*v;
+      c+=(hash(vUv*1024.0)-.5)/255.0;
+      gl_FragColor=vec4(clamp(c,0.0,1.0),1.0);
+    }`
+};
+function gfxLoad(){
+  if(!GFX.want||GFX.failed) return Promise.resolve(false);
+  if(THREE.EffectComposer) return Promise.resolve(true);
+  return new Promise(res=>{ const sc=document.createElement('script'); sc.src=ASSET+'post.js?v=p1'; sc.onload=()=>res(!!THREE.EffectComposer); sc.onerror=()=>{ GFX.failed=true; res(false); }; document.head.appendChild(sc); });
+}
+function gfxBuild(){
+  try{
+    const w=innerWidth, h=innerHeight, pr=renderer.getPixelRatio();
+    const rt=new THREE.WebGLMultisampleRenderTarget(w*pr,h*pr,{format:THREE.RGBAFormat,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+    rt.samples=4;
+    // r128 gives an off-screen buffer 16-bit depth unless it has a depth texture: 24-bit, or every screen hung a
+    // centimetre off a wall flickers against it from across the floor
+    rt.depthTexture=new THREE.DepthTexture(); rt.depthTexture.type=THREE.UnsignedIntType;
+    const C=new THREE.EffectComposer(renderer,rt);
+    C.addPass(new THREE.RenderPass(scene,camera));
+    // bloom on the brightest things only, at half resolution: the white mall must not turn into fog
+    GFX.bloom=new THREE.UnrealBloomPass(new THREE.Vector2(w/2,h/2),.32,.55,.86); C.addPass(GFX.bloom);
+    GFX.grade=new THREE.ShaderPass(GRADE_SHADER); C.addPass(GFX.grade);
+    GFX.composer=C; GFX.on=true; C.setSize(w,h);
+    if(!matchMedia('(pointer:coarse)').matches&&new URLSearchParams(location.search).get('refl')!=='0') reflEnable(true);
+  }catch(e){ console.warn('fx: keeping the plain renderer',e); GFX.failed=true; GFX.on=false; GFX.composer=null; }
+}
+function gfxOff(){ reflEnable(false); if(!GFX.composer) return; GFX.on=false; try{ GFX.composer.renderTarget1.dispose(); GFX.composer.renderTarget2.dispose(); }catch(e){} GFX.composer=null; }
+function gfxRender(){
+  if(GFX.on&&GFX.composer){ try{ GFX.grade.uniforms.uSeed.value=(GFX.grade.uniforms.uSeed.value+.618)%10; if(REFL.on) reflRender(player.floor*FH+.002); GFX.composer.render(); return; }catch(e){ console.warn('fx: off',e); GFX.failed=true; gfxOff(); } }
+  renderer.render(scene,camera);
+}
+gfxLoad().then(ok=>{ if(ok) gfxBuild(); });
+
+/* Polished floor: on a computer with the post-processing on, the floor the shopper stands on mirrors the mall.
+   Each frame the scene is drawn once more, at half resolution, from the camera mirrored in the floor's plane
+   (an oblique clip plane cuts everything below it; the floor itself, its painted shading and the blob shadows
+   are left out). The floor's material reads that picture through the same projection, nudged by its normal map
+   and blurred by its roughness, and adds it on the glossy stone and not on the matt grout, stronger at a
+   glancing angle. Only the floor at the shopper's own height reflects. First to go if the frame rate drops. */
+const REFL={on:false, rt:null, cam:new THREE.PerspectiveCamera(), hide:[], hideT:0,
+  U:{tRefl:{value:null}, uReflMat:{value:new THREE.Matrix4()}, uReflY:{value:0}, uReflOn:{value:0}, uReflStr:{value:1.1}, uReflPx:{value:new THREE.Vector2(1,1)}}};
+function reflPatch(sh){
+  Object.assign(sh.uniforms,REFL.U);
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vReflW;')
+    .replace('#include <project_vertex>','#include <project_vertex>\n  vReflW=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+    varying vec3 vReflW; uniform sampler2D tRefl; uniform mat4 uReflMat; uniform float uReflY, uReflOn, uReflStr; uniform vec2 uReflPx;`)
+    .replace('vec3 outgoingLight =',`if(uReflOn>.5&&abs(vReflW.y-uReflY)<.06){
+      vec4 rp=uReflMat*vec4(vReflW,1.0); vec2 ruv=rp.xy/rp.w+normal.xy*.005;
+      // a polished floor smears a reflection along the line of sight: blur more up and down than across
+      float rr=clamp(roughnessFactor,0.0,1.0), bl=1.0+rr*9.0;
+      vec2 bx=vec2(bl*.7,0.0)*uReflPx, by=vec2(0.0,bl*2.4)*uReflPx;
+      vec3 rc=texture2D(tRefl,ruv).rgb*.28;
+      rc+=(texture2D(tRefl,ruv+bx).rgb+texture2D(tRefl,ruv-bx).rgb)*.12;
+      rc+=(texture2D(tRefl,ruv+by).rgb+texture2D(tRefl,ruv-by).rgb)*.14;
+      rc+=(texture2D(tRefl,ruv+by*2.0).rgb+texture2D(tRefl,ruv-by*2.0).rgb)*.1;
+      float nv=clamp(dot(normalize(vViewPosition),normal),0.0,1.0), fr=.32+.68*pow(1.0-nv,3.0);
+      float k=clamp(uReflStr*(1.0-smoothstep(.2,.6,rr))*fr,0.0,.85);
+      // what the stone mirrors it does not also scatter: the reflection replaces part of the diffuse light
+      reflectedLight.directDiffuse*=1.0-k*.55; reflectedLight.indirectDiffuse*=1.0-k*.55;
+      reflectedLight.indirectSpecular=reflectedLight.indirectSpecular*(1.0-k)+rc*k;
+    }
+    vec3 outgoingLight =`);
+}
+function reflFloorList(){
+  const L=[]; scene.traverse(o=>{ if(!o.isMesh) return; const m=o.material; if((m&&m.userData&&m.userData.floor!==undefined)||o.userData.floorFx) L.push(o); });
+  REFL.hide=L;
+}
+function reflEnable(on){
+  REFL.on=on; REFL.U.uReflOn.value=on?1:0;
+  if(on&&!REFL.rt){ const w=Math.max(2,Math.round(innerWidth*renderer.getPixelRatio()*.5)), h=Math.max(2,Math.round(innerHeight*renderer.getPixelRatio()*.5));
+    REFL.rt=new THREE.WebGLRenderTarget(w,h,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat});
+    REFL.rt.depthTexture=new THREE.DepthTexture(); REFL.rt.depthTexture.type=THREE.UnsignedIntType;
+    REFL.U.tRefl.value=REFL.rt.texture; REFL.U.uReflPx.value.set(1/w,1/h); }
+  if(!on&&REFL.rt){ REFL.rt.dispose(); REFL.rt=null; REFL.U.tRefl.value=null; }
+}
+function reflResize(){ if(REFL.rt){ REFL.rt.dispose(); REFL.rt=null; reflEnable(true); } }
+const _rv={p:new THREE.Vector3(), c:new THREE.Vector3(), n:new THREE.Vector3(0,1,0), v:new THREE.Vector3(), t:new THREE.Vector3(), la:new THREE.Vector3(), rm:new THREE.Matrix4(), pl:new THREE.Plane(), cp:new THREE.Vector4(), q:new THREE.Vector4()};
+function reflRender(y){
+  if(!REFL.on||!REFL.rt) return;
+  const V=_rv, cam=camera, vc=REFL.cam; cam.updateMatrixWorld();   // this frame's camera, not last frame's
+  V.p.set(0,y,0); V.c.setFromMatrixPosition(cam.matrixWorld);
+  V.v.subVectors(V.p,V.c); if(V.v.dot(V.n)>0){ REFL.U.uReflOn.value=0; return; }   // under the floor: nothing to mirror
+  REFL.U.uReflOn.value=1; REFL.U.uReflY.value=y;
+  V.v.reflect(V.n).negate().add(V.p);
+  V.rm.extractRotation(cam.matrixWorld); V.la.set(0,0,-1).applyMatrix4(V.rm).add(V.c);
+  V.t.subVectors(V.p,V.la).reflect(V.n).negate().add(V.p);
+  vc.position.copy(V.v); vc.up.set(0,1,0).applyMatrix4(V.rm).reflect(V.n); vc.lookAt(V.t); vc.far=cam.far;
+  vc.updateMatrixWorld(); vc.projectionMatrix.copy(cam.projectionMatrix);
+  const M=REFL.U.uReflMat.value; M.set(.5,0,0,.5, 0,.5,0,.5, 0,0,.5,.5, 0,0,0,1); M.multiply(vc.projectionMatrix); M.multiply(vc.matrixWorldInverse);
+  V.pl.setFromNormalAndCoplanarPoint(V.n,V.p); V.pl.applyMatrix4(vc.matrixWorldInverse);
+  V.cp.set(V.pl.normal.x,V.pl.normal.y,V.pl.normal.z,V.pl.constant);
+  const e=vc.projectionMatrix.elements;
+  V.q.set((Math.sign(V.cp.x)+e[8])/e[0],(Math.sign(V.cp.y)+e[9])/e[5],-1,(1+e[10])/e[14]);
+  V.cp.multiplyScalar(2/V.cp.dot(V.q)); e[2]=V.cp.x; e[6]=V.cp.y; e[10]=V.cp.z+1; e[14]=V.cp.w;
+  if(!REFL.hide.length||++REFL.hideT>240){ REFL.hideT=0; reflFloorList(); }
+  const vis=REFL.hide.map(o=>o.visible); REFL.hide.forEach(o=>o.visible=false);
+  const bv=BLOB.visible; BLOB.visible=false;
+  const sau=renderer.shadowMap.autoUpdate; renderer.shadowMap.autoUpdate=false;
+  const prev=renderer.getRenderTarget(); renderer.setRenderTarget(REFL.rt); renderer.state.buffers.depth.setMask(true); renderer.clear(); renderer.render(scene,vc);
+  renderer.setRenderTarget(prev); renderer.shadowMap.autoUpdate=sau;
+  REFL.hide.forEach((o,i)=>o.visible=vis[i]); BLOB.visible=bv;
+}
+
 /* ---------- helpers ---------- */
 /* The follow camera: close behind the shopper and a little above the head, looking at chest height a step
    ahead, so the mall is seen at a person's eye line rather than from a level editor. It moves WITH the
@@ -1243,6 +1374,27 @@ function stoneTex(base,grout,seed){
   [map,rm].forEach(t=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); });
   return {map,rm};
 }
+/* The real floor, once it has loaded: polished marble (ambientCG Marble014, CC0) cut into the same 1.5 m tiles,
+   each tile a different piece of the slab turned a different way, with a bevelled grout line, a normal map
+   for the veins and the bevels, and a roughness map that keeps the stone glossy and the grout matt. Built
+   offline into tex/floor-*. The painted stone above stays until then, and for good if the files can't be had.
+   Phones get the 1024 colour map, larger screens the 2048 one. Lightmapped copies of these materials
+   (lmMaterial clones them) are found by their userData.floor and updated too. */
+const FLOOR_MATS=[], FLOOR_TEX_V='f1';
+function loadFloorTex(){
+  const big=!PHONE.matches&&!matchMedia('(pointer:coarse)').matches;
+  const L=new THREE.TextureLoader(); L.setCrossOrigin('anonymous');
+  const ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v='+FLOOR_TEX_V,res,undefined,rej));
+  Promise.all([ld(big?'floor-c2.jpg':'floor-c1.jpg'),ld('floor-n.jpg'),ld('floor-r.jpg')]).then(([c,n,r])=>{
+    c.encoding=THREE.sRGBEncoding;
+    [c,n,r].forEach(t=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); });
+    const mats=new Set(FLOOR_MATS); scene.traverse(o=>{ if(o.isMesh) (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m&&m.userData&&m.userData.floor!==undefined) mats.add(m); }); });
+    mats.forEach(m=>{ m.map=c; m.normalMap=n; m.roughnessMap=r; m.roughness=1; m.envMapIntensity=m.userData.floor?.85:.9;
+      m.color.setHex(m.userData.floor?0xe9e4dc:0xe2dcd2); m.needsUpdate=true; });
+    FLOOR_TEX.loaded={c,n,r};
+  }).catch(e=>console.warn('floor textures: keeping the painted stone',e));
+}
+const FLOOR_TEX={loaded:null};
 function woodTex(){ const t=canvasTex(256,256,(g)=>{ for(let i=0;i<8;i++){ g.fillStyle=['#b98457','#a8744a','#c28f60','#9d6b43'][i%4]; g.fillRect(0,i*32,256,32);
   g.fillStyle='rgba(60,35,15,.35)'; g.fillRect(0,i*32,256,2); g.fillRect(((i*97)%200)+20,i*32,2,32); for(let k=0;k<30;k++){ g.fillStyle='rgba(80,45,20,.12)'; g.fillRect(Math.random()*256,i*32+Math.random()*30,30+Math.random()*50,1.5); } } });
   t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; }
@@ -1323,6 +1475,7 @@ function buildShell(){
   const s0=stoneTex('#c3bbaf','#a0988c',11), s1=stoneTex('#c8c1b6','#a69e92',23);
   const fm0=new THREE.MeshStandardMaterial({map:s0.map,roughnessMap:s0.rm,roughness:1,metalness:0,envMapIntensity:.75});
   const fm1=new THREE.MeshStandardMaterial({map:s1.map,roughnessMap:s1.rm,roughness:1,metalness:0,envMapIntensity:.7});
+  fm0.userData.floor=0; fm1.userData.floor=1; [fm0,fm1].forEach(m=>{ m.onBeforeCompile=reflPatch; m.customProgramCacheKey=()=>'floor'; }); FLOOR_MATS.push(fm0,fm1); setTimeout(loadFloorTex,0);
   floorPlane(-BX,BX,-BZ,BZ,0,fm0,null,6);
   // floor 1 slab around the atrium, plus the bridge to the elevator's back door
   const slabs=[[-BX,VOID.minX,-BZ,BZ],[VOID.maxX,BX,-BZ,BZ],[VOID.minX,VOID.maxX,-BZ,VOID.minZ],[VOID.minX,VOID.maxX,VOID.maxZ,BZ],[SH.x0,SH.x1,VOID.minZ,SH.z0]];
@@ -2894,7 +3047,7 @@ function floorShade(){
     const tex=new THREE.CanvasTexture(ao); tex.anisotropy=4; SHADE.f[f].tex=tex;
     const y=f*FH+.025;
     const am=new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:SHADE.ao,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8});
-    const pa=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),am); pa.rotation.x=-Math.PI/2; pa.position.set(0,y,0); pa.renderOrder=1; STATIC[f].add(pa);
+    const pa=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),am); pa.rotation.x=-Math.PI/2; pa.position.set(0,y,0); pa.renderOrder=1; pa.userData.floorFx=true; STATIC[f].add(pa);
     if(f===TOP) continue;   // the roof has sky, not ceiling lights
     // light pools under the ceiling light lines (the same grid the ceilings use), and a wide one under the atrium halo
     const lc=document.createElement('canvas'); lc.width=W; lc.height=H; const l=lc.getContext('2d');
@@ -2908,7 +3061,7 @@ function floorShade(){
     if(f>=1) l.clearRect(X(VOID.minX),Z(VOID.minZ),(VOID.maxX-VOID.minX)*k,(VOID.maxZ-VOID.minZ)*k);
     const lt=new THREE.CanvasTexture(lc); lt.encoding=THREE.sRGBEncoding; SHADE.f[f].lc=lc; SHADE.f[f].lt=lt;
     const lm=new THREE.MeshBasicMaterial({map:lt,transparent:true,opacity:SHADE.pool,blending:THREE.AdditiveBlending,depthWrite:false,fog:true,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8});
-    const pl=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),lm); pl.rotation.x=-Math.PI/2; pl.position.set(0,y+.003,0); pl.renderOrder=1; STATIC[f].add(pl);
+    const pl=new THREE.Mesh(new THREE.PlaneGeometry(BX*2,BZ*2),lm); pl.rotation.x=-Math.PI/2; pl.position.set(0,y+.003,0); pl.renderOrder=1; pl.userData.floorFx=true; STATIC[f].add(pl);
   }
 }
 floorShade();
@@ -2947,8 +3100,8 @@ function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) retu
       float lmv = texture2D( aoMap, vUv2 ).r * ${LM_SCALE.toFixed(2)};
       reflectedLight.indirectDiffuse *= lmv; reflectedLight.directDiffuse *= mix(1.0, lmv, .75);
       reflectedLight.indirectSpecular *= lmv; reflectedLight.directSpecular *= mix(1.0, lmv, .75);
-    #endif`); };
-  c.customProgramCacheKey=()=>'lm'; LM_MATS.set(k,c); return c; }
+    #endif`); if(c.userData.floor!==undefined) reflPatch(sh); };
+  c.customProgramCacheKey=()=>c.userData.floor!==undefined?'lmfloor':'lm'; LM_MATS.set(k,c); return c; }
 function loadLightmaps(){
   if(!BAKED_LM) return;
   for(let f=0;f<=TOP;f++){
@@ -5202,13 +5355,15 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
   if(raw<.5){ Q.acc+=raw; Q.n++; }
   if(Q.acc>2.5){ const fps=Q.n/Q.acc; Q.acc=0; Q.n=0;   // keep it smooth: trade resolution for frame rate
     let np = fps>57 ? Math.min(Q.max,Q.pr+.25) : Q.pr;
-    if(fps<40){ if(Q.pr>Q.min) np=Math.max(Q.min,Q.pr-.25);
+    if(fps<40&&REFL.on){ reflEnable(false); console.info('reflections: off for frame rate',fps.toFixed(0)); }
+    else if(fps<40&&GFX.on){ gfxOff(); console.info('fx: off for frame rate',fps.toFixed(0)); }
+    else if(fps<40){ if(Q.pr>Q.min) np=Math.max(Q.min,Q.pr-.25);
       else if(Q.shadow>1){ Q.shadow=1; sun.shadow.mapSize.set(1024,1024); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; } renderer.shadowMap.type=THREE.PCFShadowMap; renderer.shadowMap.needsUpdate=true; }
       else np=Math.max(.75,Q.pr-.25); }
     if(np!==Q.pr){ Q.pr=np; renderer.setPixelRatio(np); onResize(); } }
   // a mini-game covers the whole screen: don't spend the phone's GPU on the mall behind it
-  if(CLAW3.on){ claw3Tick(dt); renderer.render(scene,camera); requestAnimationFrame(loop); return; }
-  if(G.paused && G.state!=='edit'){ if(mgEl.hidden) renderer.render(scene,camera); requestAnimationFrame(loop); return; }
+  if(CLAW3.on){ claw3Tick(dt); gfxRender(); requestAnimationFrame(loop); return; }
+  if(G.paused && G.state!=='edit'){ if(mgEl.hidden) gfxRender(); requestAnimationFrame(loop); return; }
   if(frame%3===0) drawScreen(screens[(frame/3)%3|0],t);
   if(frame%10===0){ const menu=G.state!=='play', ph=PHONE.matches;
     CATALOG.forEach(it=>{ it.dist=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); const near=menu||(it.f===player.floor&&it.dist<24); it.tag.visible=!it.taken&&near&&!ph; it.near=near; });
@@ -5239,10 +5394,10 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false); if(hero.h3d) heroAnimTick(hero,0,dt);
   }
   updateNPCs(dt,t); netUpdate(dt,now); botsUpdate(dt,now);
-  renderer.render(scene,camera);
+  gfxRender();
   requestAnimationFrame(loop);
 }
-function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.fov=w<h?62:50; CAM.dist=w<h?6.7:5.8; CAM.h=w<h?3.2:2.85;   /* a tall phone screen needs a little more room round the figure */ camera.updateProjectionMatrix(); joyHome(); }
+function onResize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.fov=w<h?62:50; CAM.dist=w<h?6.7:5.8; CAM.h=w<h?3.2:2.85;   /* a tall phone screen needs a little more room round the figure */ camera.updateProjectionMatrix(); if(GFX.composer){ GFX.composer.setPixelRatio(renderer.getPixelRatio()); GFX.composer.setSize(w,h); GFX.bloom.resolution.set(w/2,h/2); reflResize(); } joyHome(); }
 addEventListener('resize',onResize); onResize();
 function applyTagMode(){ const ph=PHONE.matches; CATALOG.forEach(it=>{ tagTexture(it); if(it.tag){ it.tag.scale.set(ph?1.25:2.05,ph?.49:.8,1); it.tag.position.y=(it.tag.userData.top||1)+(ph?.42:.62); } }); }
 applyTagMode();

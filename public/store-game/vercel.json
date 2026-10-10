@@ -40,7 +40,7 @@
       ]
     },
     {
-      "source": "/(alfred.glb|hero.glb|hero-m.glb|hero-w.glb|gltf-loader.js)",
+      "source": "/(alfred.glb|hero.glb|hero-m.glb|hero-w.glb|gltf-loader.js|post.js)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
@@ -62,6 +62,19 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/tex/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800, immutable"
         }
       ]
     }
