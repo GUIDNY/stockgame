@@ -2080,7 +2080,40 @@ function smoothGLTF(gl){
     try{ creaseNormals(m.geometry,SMOOTH_ANGLE); }catch(e){ console.warn('smooth',e); } });
   // skin with a little sheen, cloth matte
   const mats=new Set(); gl.scene.traverse(m=>{ if(m.isMesh) (Array.isArray(m.material)?m.material:[m.material]).forEach(x=>mats.add(x)); });
-  mats.forEach(mt=>{ if(/^R_Skin/.test(mt.name)) mt.roughness=.58; else if(/^R_Hair/.test(mt.name)) mt.roughness=.62; });
+  mats.forEach(mt=>{ if(/^R_Skin/.test(mt.name)) mt.roughness=.58; else if(/^R_Hair/.test(mt.name)) mt.roughness=.6;
+    const k=/^R_(Top|Top2|Shirt|Accent)$/.test(mt.name)?'knit':/^R_Pants$/.test(mt.name)?'denim':/^R_Hair/.test(mt.name)?'hair':/^R_Skin/.test(mt.name)?'skin':/^R_(Shoe|Sole)$/.test(mt.name)?'shoe':null;
+    if(k) charSurface(mt,k); });
+}
+/* Close up, the wardrobe's flat colours become cloth, hair and skin, without textures: the shader draws a
+   pattern from each point's place on the body in its rest pose (so it stays put as the figure moves) and
+   tilts the surface by it. Knit on tops, a diagonal twill on trousers, strands round the head for hair, a
+   fine grain on shoes; skin gets a warm glow at its edges, the light that passes through it. Each pattern
+   fades out as it gets smaller than a pixel, so nothing shimmers from across the mall. */
+const CHAR_SURF={
+  knit:'float cs_h(vec3 p){ vec3 q=p*vec3(260.,170.,260.); float r=sin(q.y+sin((q.x+q.z)*.9)*1.6); return r*r; }',
+  denim:'float cs_h(vec3 p){ float d=dot(p,vec3(.6,.75,.6))*420.; return .55*sin(d)+.45*sin(dot(p,vec3(-.7,.1,.7))*900.); }',
+  hair:'float cs_h(vec3 p){ float a=atan(p.x,p.z-.04); return sin(a*150.+sin(p.y*55.)*2.4+sin(a*13.)*3.)*(.6+.4*sin(a*37.)); }',
+  shoe:'float cs_h(vec3 p){ return sin(p.x*900.)*sin(p.y*700.)*sin(p.z*800.); }',
+  skin:'float cs_h(vec3 p){ return 0.0; }'};
+const CHAR_BUMP={knit:.32,denim:.35,hair:.28,shoe:.2,skin:0};
+function charSurface(mt,kind){
+  mt.extensions=Object.assign({},mt.extensions,{derivatives:true});
+  mt.onBeforeCompile=sh=>{
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vCs;').replace('#include <begin_vertex>','#include <begin_vertex>\n  vCs=position;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+      varying vec3 vCs; ${CHAR_SURF[kind]}
+      vec3 cs_bump(vec3 sp,vec3 n,vec2 dH){ vec3 sx=dFdx(sp), sy=dFdy(sp), r1=cross(sy,n), r2=cross(n,sx); float det=dot(sx,r1);
+        return normalize(abs(det)*n-sign(det)*(dH.x*r1+dH.y*r2)); }`)
+    .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+      { float fw=length(fwidth(vCs))*${kind==='denim'?'420.':kind==='knit'?'240.':kind==='hair'?'190.':'800.'};
+        float k=${CHAR_BUMP[kind].toFixed(2)}*(1.0-smoothstep(.35,1.1,fw));
+        if(k>0.001){ float h=cs_h(vCs)*k*.0025; normal=cs_bump(-vViewPosition,normal,vec2(dFdx(h),dFdy(h))); } }`)
+    .replace('vec3 outgoingLight =',`${kind==='skin'?`{ float rim=pow(1.0-clamp(dot(normal,normalize(vViewPosition)),0.0,1.0),2.5);
+        reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(1.0,.55,.42)*rim*.35; }`:kind==='knit'?`{ float rim=pow(1.0-clamp(dot(normal,normalize(vViewPosition)),0.0,1.0),3.0);
+        reflectedLight.indirectDiffuse+=diffuseColor.rgb*rim*.18; }`:''}
+      vec3 outgoingLight =`);
+  };
+  mt.customProgramCacheKey=()=>'cs-'+kind; mt.needsUpdate=true;
 }
 function creaseNormals(geo,ang){
   const pos=geo.attributes.position, nrm=geo.attributes.normal; if(!nrm) return;
