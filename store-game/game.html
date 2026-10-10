@@ -1395,6 +1395,23 @@ function loadFloorTex(){
   }).catch(e=>console.warn('floor textures: keeping the painted stone',e));
 }
 const FLOOR_TEX={loaded:null};
+/* The departments' own floors, the same way: oak planks (ambientCG WoodFloor051) and a fine low carpet
+   (ambientCG Carpet016, turned grey so each department tints it its own colour), with normal maps. */
+const SURF_MATS=[];
+function surfMat(kind,tint,m){ m.userData.surf={kind,tint}; SURF_MATS.push(m); return m; }
+function loadSurfaces(){
+  const L=new THREE.TextureLoader(); L.setCrossOrigin('anonymous');
+  const ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v='+FLOOR_TEX_V,res,undefined,rej));
+  Promise.all(['wood-c.jpg','wood-n.jpg','wood-r.jpg','carpet-c.jpg','carpet-n.jpg'].map(ld)).then(([wc,wn,wr,cc,cn])=>{
+    wc.encoding=cc.encoding=THREE.sRGBEncoding;
+    [wc,wn,wr,cc,cn].forEach(t=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); });
+    const mats=new Set(SURF_MATS); scene.traverse(o=>{ if(o.isMesh&&o.material&&o.material.userData&&o.material.userData.surf) mats.add(o.material); });
+    mats.forEach(m=>{ const S=m.userData.surf;
+      if(S.kind==='wood'){ m.map=wc; m.normalMap=wn; m.roughnessMap=wr; m.roughness=1; m.color.setHex(0xffffff); }
+      else { m.map=cc; m.normalMap=cn; m.normalScale.set(.8,.8); m.roughness=1; m.color.set(S.tint).convertSRGBToLinear().multiplyScalar(1.08); }
+      m.needsUpdate=true; });
+  }).catch(e=>console.warn('department floors: keeping the painted ones',e));
+}
 function woodTex(){ const t=canvasTex(256,256,(g)=>{ for(let i=0;i<8;i++){ g.fillStyle=['#b98457','#a8744a','#c28f60','#9d6b43'][i%4]; g.fillRect(0,i*32,256,32);
   g.fillStyle='rgba(60,35,15,.35)'; g.fillRect(0,i*32,256,2); g.fillRect(((i*97)%200)+20,i*32,2,32); for(let k=0;k<30;k++){ g.fillStyle='rgba(80,45,20,.12)'; g.fillRect(Math.random()*256,i*32+Math.random()*30,30+Math.random()*50,1.5); } } });
   t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; }
@@ -1475,7 +1492,7 @@ function buildShell(){
   const s0=stoneTex('#c3bbaf','#a0988c',11), s1=stoneTex('#c8c1b6','#a69e92',23);
   const fm0=new THREE.MeshStandardMaterial({map:s0.map,roughnessMap:s0.rm,roughness:1,metalness:0,envMapIntensity:.75});
   const fm1=new THREE.MeshStandardMaterial({map:s1.map,roughnessMap:s1.rm,roughness:1,metalness:0,envMapIntensity:.7});
-  fm0.userData.floor=0; fm1.userData.floor=1; [fm0,fm1].forEach(m=>{ m.onBeforeCompile=reflPatch; m.customProgramCacheKey=()=>'floor'; }); FLOOR_MATS.push(fm0,fm1); setTimeout(loadFloorTex,0);
+  fm0.userData.floor=0; fm1.userData.floor=1; [fm0,fm1].forEach(m=>{ m.onBeforeCompile=reflPatch; m.customProgramCacheKey=()=>'floor'; }); FLOOR_MATS.push(fm0,fm1); setTimeout(loadFloorTex,0); setTimeout(loadSurfaces,0);
   floorPlane(-BX,BX,-BZ,BZ,0,fm0,null,6);
   // floor 1 slab around the atrium, plus the bridge to the elevator's back door
   const slabs=[[-BX,VOID.minX,-BZ,BZ],[VOID.maxX,BX,-BZ,BZ],[VOID.minX,VOID.maxX,-BZ,VOID.minZ],[VOID.minX,VOID.maxX,VOID.maxZ,BZ],[SH.x0,SH.x1,VOID.minZ,SH.z0]];
@@ -1612,7 +1629,7 @@ function updateElevator(dt){
 function buildGround(){
   SG=STATIC[0];
   // --- TV & multimedia (left, back) ---
-  floorPlane(-BX,-8.5,-BZ,-9,.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#2a3150','#323a5c'),roughness:1})),null,3);
+  floorPlane(-BX,-8.5,-BZ,-9,.01,surfMat('carpet','#2a3150',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#2a3150','#323a5c'),roughness:1}))),null,3);
   const tvw=[-21.3,-17.8,-14.3,-10.8]; let n=0;
   tvw.forEach(x=>[1.4,3,4.6].forEach(y=>{ box(3.3,1.55,.12,M.black,x,y,-BZ+.1,null,false); plane(3.12,1.4,new THREE.MeshBasicMaterial({map:screens[n++%3].tex}),x,y,-BZ+.17,0); }));
   sofa(-19,0,-26,Math.PI,0x2f3547); sofa(-13,0,-26,Math.PI,0x2f3547); solid(0,-19,-26,3.4,1.2); solid(0,-13,-26,3.4,1.2);
@@ -1620,12 +1637,12 @@ function buildGround(){
   [-15,-11].forEach(z=>{ box(1,.5,2.6,M.dark,-BX+.8,.25,z); box(1.02,.04,2.62,M.led,-BX+.8,.52,z,null,false); place(mkTV(),-BX+.9,.5,z,Math.PI/2,1.9); solid(0,-BX+.8,z,1.2,2.8); });
   neon('טלוויזיות ומולטימדיה',-16,4.5,-9.3,0,6.8,true,'מסכים · מקרנים · מתקני תלייה');
   // --- stereo & home theatre (left, front) ---
-  floorPlane(-BX,-8.5,-9,13,.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#3a3d4a','#434757'),roughness:1})),null,3);
+  floorPlane(-BX,-8.5,-9,13,.01,surfMat('carpet','#3a3d4a',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#3a3d4a','#434757'),roughness:1}))),null,3);
   [-6,-1.5,3,7.5].forEach(z=>{ [-1,1].forEach(s=>{ const t=mkSpeakerTower(); place(t,-BX+.7,0,z+s*1.1,Math.PI/2,2.1); }); box(.9,.5,1.1,M.dark,-BX+.8,.25,z); place(mkReceiver(),-BX+.8,.5,z,Math.PI/2,1.1); solidR(0,-BX,-BX+1.5,z-1.6,z+1.6); });
   sofa(-16.5,0,11.6,0,0x4a3b5c,3.6); solid(0,-16.5,11.6,3.8,1.2);
   neon('סטריאו וקולנוע ביתי',-16,4.5,13.5,0,6.8,true,'רמקולים · רסיברים · מגברים');
   // --- small kitchen appliances (right, back) ---
-  floorPlane(8.5,BX,-BZ,-9,.01,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.55})),null,3);
+  floorPlane(8.5,BX,-BZ,-9,.01,surfMat('wood','',new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.55}))),null,3);
   box(10,1.05,1.2,M.navyDeep,16,.53,-BZ+1); box(10.2,.06,1.35,M.quartz,16,1.08,-BZ+1); box(9.8,.03,.02,M.ledWarm,16,.06,-BZ+1.61,null,false); box(9.8,.03,.02,M.ledWarm,16,1.02,-BZ+1.68,null,false); solid(0,16,-BZ+1,10.4,1.5);
   [12.5,16,19.5].forEach(x=>place(mkCoffee(),x,1.11,-BZ+1.1,0,1.1));
   const menu=canvasTex(1024,400,(g,W,H)=>{ g.fillStyle='#1b1f2b'; rrect(g,4,4,W-8,H-8,30); g.fill(); g.direction='rtl'; g.textAlign='right'; g.fillStyle='#ff8a4c'; g.font='90px "Secular One", sans-serif'; g.fillText('מכונות קפה ב־BuyToday',W-60,120);
@@ -1652,7 +1669,7 @@ function buildGround(){
   solid(0,0,-19,3.5,3.5);
   const cone=new THREE.Mesh(new THREE.ConeGeometry(2.3,5.4,40,1,true),new THREE.MeshBasicMaterial({color:0xff9a4a,transparent:true,opacity:.09,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
   cone.position.set(0,3,-19); scene.add(cone);
-  floorPlane(-7.5,7.5,-30.5,-9.5,.011,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#273058','#2f3866'),roughness:1})),null,3);
+  floorPlane(-7.5,7.5,-30.5,-9.5,.011,surfMat('carpet','#273058',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#273058','#2f3866'),roughness:1}))),null,3);
   neon('הדיל החם',0,4.35,-26.6,0,4.4,true,'ההנחות הגדולות באתר עכשיו');
   plane(10,2.5,new THREE.MeshBasicMaterial({map:logoTex()}),0,3.1,-BZ+.06,0);
   planter(-6.6,0,-29.2,0); planter(6.6,0,-29.2,0);
@@ -1678,7 +1695,7 @@ function buildGround(){
   floorPlane(-21,-9,20.9,21.15,.013,mat(BRAND,overlay()));
   neon('קופות',-15,4.3,20.8,0,3.6,true);
   // --- personal care (front right) ---
-  floorPlane(8.5,BX,14,BZ-.3,.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#ece2dc','#e4d8d1'),roughness:.9})),null,3);
+  floorPlane(8.5,BX,14,BZ-.3,.01,surfMat('carpet','#ece2dc',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#ece2dc','#e4d8d1'),roughness:.9}))),null,3);
   box(1,.9,13,M.white,BX-.6,.45,23); box(1.1,.05,13.2,M.quartz,BX-.6,.92,23); box(.02,.03,12.6,M.ledWarm,BX-1.11,.06,23,null,false); solidR(0,BX-1.2,BX,16.3,29.7);
   for(let z=17.5;z<=28.5;z+=2.75){ plane(1.7,1.4,mat(0xdfe8f2,{roughness:.05,metalness:.8}),BX-.08,2.1,z,-Math.PI/2);
     for(let k=-2;k<=2;k++){ const b=new THREE.Mesh(new THREE.SphereGeometry(.05,8,6),M.glowWhite); b.position.set(BX-.12,2.95,z+k*.35); SG.add(b); }
@@ -1694,7 +1711,7 @@ function buildUpper(){
   SG=STATIC[1];
   const Y=FH;
   // --- refrigeration (left, back) ---
-  floorPlane(-BX,-8.5,-BZ,-9,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dde6f0','#d2dce8'),roughness:.9})),null,3);
+  floorPlane(-BX,-8.5,-BZ,-9,Y+.01,surfMat('carpet','#dde6f0',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dde6f0','#d2dce8'),roughness:.9}))),null,3);
   const cols=[0xc3c9d1,0xf3f4f6,0x2b2e35,0xc3c9d1,0xe8e2d6];
   for(let z=-29,i=0;z<=-10;z+=1.25,i++){ const c=cols[i%cols.length], m=c===0xc3c9d1?M.steel:mat(c,{roughness:.35});
     box(1.15,2.35,1.1,m,-BX+.7,Y+1.175,z); box(.02,.02,1.05,M.dark,-BX+1.29,Y+1.55,z,null,false); box(.05,.7,.05,M.dark,-BX+1.32,Y+1.95,z+.4,null,false); box(.05,.55,.05,M.dark,-BX+1.32,Y+.95,z+.4,null,false); }
@@ -1705,14 +1722,14 @@ function buildUpper(){
   solidR(1,-21.3,-9.2,-17.2,-14.8);
   neon('מקררים וקירור',-16,Y+4.4,-9.3,0,6.8,true,'מקררים · מקפיאים · מקררי יין');
   // --- laundry & dishwashers (left, front) ---
-  floorPlane(-BX,-8.5,-9,13,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dcdee6','#d2d5de'),roughness:.9})),null,3);
+  floorPlane(-BX,-8.5,-9,13,Y+.01,surfMat('carpet','#dcdee6',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dcdee6','#d2d5de'),roughness:.9}))),null,3);
   for(let z=-7.5,i=0;z<=11.5;z+=1.2,i++){ [0,1.08].forEach(h=>{ const m=(i+h)%3===2?M.dark:M.white; box(1.05,1.05,1.1,m,-BX+.7,Y+.525+h,z);
       const d=new THREE.Mesh(new THREE.CircleGeometry(.3,24),mat(0x2a4a7a,{roughness:.1,metalness:.3})); d.position.set(-BX+1.26,Y+.5+h,z); d.rotation.y=Math.PI/2; SG.add(d);
       const r=new THREE.Mesh(new THREE.TorusGeometry(.31,.04,8,24),M.steel); r.position.set(-BX+1.27,Y+.5+h,z); r.rotation.y=Math.PI/2; SG.add(r); }); }
   solidR(1,-BX,-BX+1.4,-8.3,12.3);
   neon('כביסה, ייבוש ומדיחים',-16,Y+4.4,12.6,0,6.8,true,'מכונות כביסה · מייבשים · מדיחים');
   // --- home appliances (right, back) ---
-  floorPlane(8.5,BX,-BZ,-1,Y+.01,new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.55})),null,3);
+  floorPlane(8.5,BX,-BZ,-1,Y+.01,surfMat('wood','',new THREE.MeshStandardMaterial(overlay({map:woodTex(),roughness:.55}))),null,3);
   const ax0=12, ax1=20, az0=-30, az1=-25;
   box(ax1-ax0,.3,.12,M.yellow,(ax0+ax1)/2,Y+.15,az0); box(ax1-ax0,.3,.12,M.yellow,(ax0+ax1)/2,Y+.15,az1); box(.12,.3,az1-az0,M.yellow,ax0,Y+.15,(az0+az1)/2); box(.12,.3,az1-az0,M.yellow,ax1,Y+.15,(az0+az1)/2);
   floorPlane(ax0,ax1,az0,az1,Y+.015,mat(0x9aa3b5,overlay({roughness:.6})));
@@ -1723,14 +1740,14 @@ function buildUpper(){
   solidR(1,BX-1.2,BX,-28.5,-3.5);
   neon('מוצרי חשמל לבית',16,Y+4.4,-1.4,0,6.2,true,'שואבים · מגהצים · ניקיון');
   // --- air conditioning (right, middle) ---
-  floorPlane(8.5,BX,-1,13,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dfe5ea','#d5dce2'),roughness:.9})),null,3);
+  floorPlane(8.5,BX,-1,13,Y+.01,surfMat('carpet','#dfe5ea',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dfe5ea','#d5dce2'),roughness:.9}))),null,3);
   for(let z=1;z<=11.5;z+=3.5){ box(.3,.42,1.7,M.white,BX-.18,Y+3.5,z); box(.02,.06,1.5,M.dark,BX-.34,Y+3.33,z,null,false); box(.02,.03,.12,M.ledCyan,BX-.34,Y+3.62,z+.6,null,false);
     box(.9,.85,1.2,mat(0xe8eaee),BX-.65,Y+.43,z); const fg=new THREE.Mesh(new THREE.CircleGeometry(.32,24),M.dark); fg.position.set(BX-1.11,Y+.45,z); fg.rotation.y=-Math.PI/2; SG.add(fg);
     for(let k=-2;k<=2;k++) box(.01,.6,.02,M.steel,BX-1.12,Y+.45,z+k*.12,null,false); }
   solidR(1,BX-1.2,BX,.2,12.3);
   neon('מיזוג אוויר',16,Y+4.4,12.6,0,5,true,'מזגנים עיליים · אינוורטר');
   // --- heating & ventilation (front) ---
-  floorPlane(-BX,BX,13.5,BZ,Y+.01,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#f1e3d3','#e8d6c2'),roughness:.9})),null,3);
+  floorPlane(-BX,BX,13.5,BZ,Y+.01,surfMat('carpet','#f1e3d3',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#f1e3d3','#e8d6c2'),roughness:.9}))),null,3);
   box(48,.02,.18,M.navyDeep,0,Y+.012,13.5,null,false);
   for(let x=-18;x<=18;x+=4.5){ if(Math.abs(x)<3) continue; place(mkHeater(),x,Y,BZ-.8,Math.PI,1.3); }
   solidR(1,-19,19,BZ-1.3,BZ);
@@ -2772,7 +2789,7 @@ function buildRoof(){
   neon('קולנוע גג',-16,Y+3.9,8.6,0,5.6,true,'המבצעים של היום על מסך ענק',true);
 
   // --- outlet corner (right, middle) with the deals kiosk ---
-  floorPlane(8.8,BX-.3,-8.8,8.8,Y+.012,new THREE.MeshStandardMaterial(overlay({map:carpetTex('#5a1f2c','#6a2533'),roughness:.95})),null,3);
+  floorPlane(8.8,BX-.3,-8.8,8.8,Y+.012,surfMat('carpet','#5a1f2c',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#5a1f2c','#6a2533'),roughness:.95}))),null,3);
   [[10.5,6.5],[11.3,7.2],[10,7.6]].forEach(([x,z],i)=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(.38,14,10),new THREE.MeshStandardMaterial({color:[0xe63946,0xff9f1c,0xfee440][i],roughness:.25,metalness:.1})); b.scale.set(1,1.2,1); b.position.set(x,Y+2.9+i*.25,z); SG.add(b);
     box(.01,2.4+i*.25,.01,M.white,x,Y+1.4+i*.12,z,null,false); });
   box(.5,.3,.5,M.dark,10.6,Y+.15,7.1); solid(f,10.6,7.1,.8,.8);
