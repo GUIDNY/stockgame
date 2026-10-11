@@ -5359,13 +5359,15 @@ function updateArrow(t){ arrow.visible=false; return;
 /* ---------- online: the other people in the mall right now ----------
    Supabase Realtime, broadcast + presence only: nothing is stored and no table is touched.
    Presence says who is in the room and how they look; broadcast carries where they are,
-   about three times a second while they move and every twelve seconds while they stand.
+   about twice a second while they move and every twelve seconds while they stand.
    Rooms hold ROOM_CAP people each, so a phone never draws more than that. */
 /* 0-5 the emoji tray, 6 a dance, 7+ ready-made phrases. Free text has its own event and its own guards (the
    players' chat, below). */
 const EMOJI=['👋','👍','🔥','😂','😍','🛒','💃','היי! 👋','בואו לכאן!','מצאתי מבצע 🔥','תודה!','כל הכבוד! 👏','נתראה בקופות 🛒'];
 const PHRASES=[7,8,9,10,11,12];
-const ROOM_CAP=12, ROOMS=8, SEND_EVERY=1/3, IDLE_EVERY=12, INTERP=420;
+// 8 to a room and two updates a second: every move reaches 7 others instead of 11, sent a third less often, so the
+// same Realtime quota carries about twice the players. INTERP stays a little above the send interval.
+const ROOM_CAP=8, ROOMS=12, SEND_EVERY=1/2, IDLE_EVERY=12, INTERP=650;
 const BAD_NAME=/(זונה|שרמוט|כוס|זין|מניאק|הומו|נאצי|fuck|shit|bitch|dick|cunt|porn|sex|nazi|hitler)/i;
 function cleanName(v){ v=String(v||'').replace(/[^\p{L}\p{N} ._-]/gu,'').replace(/\s+/g,' ').trim().slice(0,12); return BAD_NAME.test(v)?'':v; }
 const AV_BOTTOM=['pants','skirt','shorts'], AV_EXTRA=['none','cap','glasses','beanie','crown','headphones','shades'], AV_MERCH=['none','bt-orange','bt-navy','jersey','gold'];
