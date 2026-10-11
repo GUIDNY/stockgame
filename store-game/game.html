@@ -2635,7 +2635,7 @@ function npcAttach(G,gl){
    carried onto each character by its rest pose (mixRetarget), so the same clips drive every one of them.
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
-const PEOPLE={names:['Ch03','Remy','Ch02','Ch07','Ch12','Ch21','Ch22','Ch26','Ch27','Ch33','Ch01'], tpl:[], cands:[], next:0, started:false, V:'p2'};
+const PEOPLE={names:['Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27','Ch33','Ch22','Ch01','Remy'], weight:{Ch03:3}, tpl:[], cands:[], started:false, ready:false, V:'p2'};
 PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:11;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
@@ -2644,8 +2644,9 @@ const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the m
 const PEOPLE_WAIT=15000;
 function personHide(G,h){ G.g.children.forEach(c=>{ if(c!==G.body) c.visible=!h; }); if(h) G.body.visible=false; }
 function personEligible(G){ G.personOk=true; PEOPLE.cands.push(G);
-  if(PEOPLE.tpl.length) personAssign(); else if(!PEOPLE.gaveUp) personHide(G,true); }
-function peopleGiveUp(){ if(PEOPLE.gaveUp||PEOPLE.tpl.length) return; PEOPLE.gaveUp=true;
+  if(PEOPLE.ready) personAssign(); else if(!PEOPLE.gaveUp) personHide(G,true); }
+function peopleGiveUp(){ if(PEOPLE.tpl.length){ PEOPLE.force=true; PEOPLE.late=true; peopleReady(); personAssign(); return; }   // enough waiting: whoever is still hidden gets what there is
+  if(PEOPLE.gaveUp) return; PEOPLE.gaveUp=true;
   PEOPLE.cands.forEach(G=>{ if(G.person) return; personHide(G,false); if(!G.npc3d){ G.body.visible=true; const url=heroUrl(G.npcOpts||{});
     if(NPC3D.gltfs[url]) npcAttach(G,NPC3D.gltfs[url]); else if(G.npcOpts){ NPC3D.pending.push(G); npcLoad(url); } } }); }
 // Mixamo motion from one export onto another: same skeleton and T-pose, bone axes saved differently.
@@ -2666,7 +2667,7 @@ function mixRetarget(clip,srcRoot,tgtRoot){
 function peopleStart(){
   if(PEOPLE.started) return; PEOPLE.started=true;
   if(!USE_3D_NPCS||!PEOPLE.max) return peopleGiveUp();
-  setTimeout(peopleGiveUp,PEOPLE_WAIT);
+  setTimeout(peopleGiveUp,PEOPLE_WAIT); setTimeout(()=>{ PEOPLE.late=true; peopleReady(); },PEOPLE_FIRST);
   const script=src=>new Promise((res,rej)=>{ if(THREE.SkeletonUtils) return res(); const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
   const P=ASSET+'people/';
   script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
@@ -2682,26 +2683,51 @@ function peopleStart(){
         let lo=1e9, hi=-1e9; const v=new THREE.Vector3();
         m.traverse(o=>{ if(o.isSkinnedMesh){ const p=o.geometry.attributes.position; for(let k=0;k<p.count;k+=5){ v.fromBufferAttribute(p,k); o.boneTransform(k,v); v.applyMatrix4(o.matrixWorld); lo=Math.min(lo,v.y); hi=Math.max(hi,v.y); } } });
         mx.stopAllAction(); mx.uncacheRoot(m);
-        const k=PEOPLE_H/(hi-lo), T={scene:m,clips,k,y:-lo*k}; PEOPLE.tpl.push(T);
-        // the newcomer takes its share of the figures already dressed, so the mall is not all the first one
-        const n=PEOPLE.tpl.length; PEOPLE.cands.forEach((G,j)=>{ if(G.person&&j%n===n-1) personAttach(G,T); });
-        personAssign();
+        const k=PEOPLE_H/(hi-lo), T={scene:m,clips,k,y:-lo*k,name:PEOPLE.names[i],w:PEOPLE.weight[PEOPLE.names[i]]||1}; PEOPLE.tpl.push(T);
+        if(!PEOPLE.ready&&(PEOPLE.late||PEOPLE.tpl.length>=Math.min(3,PEOPLE.max))) peopleReady();
+        else if(PEOPLE.ready){ personAssign(); personRebalance(T); }
       }).catch(e=>console.warn('people: '+PEOPLE.names[i],e)).then(()=>(window.requestIdleCallback||setTimeout)(()=>one(i+1),{timeout:1500}));
     };
     one(0);
   }).catch(e=>{ console.warn('people: keeping the wardrobe figures',e); peopleGiveUp(); });
 }
+/* The mix: the stylised characters (Michelle) count for more than the realistic ones, so about one figure in
+   three is one of them without her being cloned everywhere; each character is picked where it is least
+   represented for its weight. Nobody is shown until the first few characters are in (or PEOPLE_FIRST ms), so
+   the first figures are already a mix; a character that arrives later takes its share only from figures
+   that are out of sight, never by swapping someone in front of the shopper. */
+const PEOPLE_FIRST=6000;
+function peopleReady(){ if(PEOPLE.ready||!PEOPLE.tpl.length) return; PEOPLE.ready=true; personAssign(); }
+function personCount(){ const c=new Map(PEOPLE.tpl.map(T=>[T,0])); PEOPLE.cands.forEach(G=>{ if(G.personT) c.set(G.personT,(c.get(G.personT)||0)+1); }); return c; }
+function personPick(){ const c=personCount(), cap=Math.max(1,Math.ceil(PEOPLE.cands.length*.3)); let best=null, bv=1e9;
+  // no character on more than about a third of the figures, while there is another to choose
+  PEOPLE.tpl.forEach(T=>{ const v=(c.get(T)+1)/T.w+(c.get(T)>=cap?100:0)+Math.random()*.01; if(v<bv){ bv=v; best=T; } }); return best; }
 function personAssign(){
   PEOPLE.cands=PEOPLE.cands.filter(G=>G.g.parent);   // bots that have left the mall drop out
-  PEOPLE.cands.forEach(G=>{ if(G.person||!PEOPLE.tpl.length) return; personAttach(G,PEOPLE.tpl[PEOPLE.next++%PEOPLE.tpl.length]); });
+  if(!PEOPLE.ready) return;
+  // while more characters are on their way, a figure waits rather than become one more of the same
+  const more=PEOPLE.tpl.length<Math.min(PEOPLE.max,PEOPLE.names.length)&&!PEOPLE.force, cap=Math.max(1,Math.ceil(PEOPLE.cands.length*.3));
+  PEOPLE.cands.forEach(G=>{ if(G.person) return; const T=personPick(); if(more&&personCount().get(T)>=cap) return; personAttach(G,T); });
+}
+const _pf=new THREE.Frustum(), _pm=new THREE.Matrix4(), _pv=new THREE.Vector3();
+function personInSight(G){ _pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); _pf.setFromProjectionMatrix(_pm);
+  G.g.getWorldPosition(_pv); _pv.y+=1; return G.g.visible&&_pv.distanceTo(camera.position)<40&&_pf.containsPoint(_pv); }
+function personRebalance(T){
+  PEOPLE.cands=PEOPLE.cands.filter(G=>G.g.parent);
+  const sumW=PEOPLE.tpl.reduce((a,t)=>a+t.w,0), want=Math.round(PEOPLE.cands.length*T.w/sumW);
+  for(let n=0;n<want;n++){ const c=personCount(); let from=null, fv=-1;
+    PEOPLE.tpl.forEach(t=>{ if(t===T) return; const v=c.get(t)/t.w; if(v>fv){ fv=v; from=t; } });
+    const G=from&&PEOPLE.cands.find(G=>G.personT===from&&!personInSight(G)); if(!G) break; personAttach(G,T); }
+  personAssign();
 }
 function personAttach(G,T){
   try{
-    const m=THREE.SkeletonUtils.clone(T.scene); const r=new THREE.Group(); r.add(m); m.scale.multiplyScalar(T.k); m.position.y=T.y;
+    if(!G.personScale) G.personScale=.95+Math.random()*.1;   // a little taller or shorter, kept through any swap
+    const m=THREE.SkeletonUtils.clone(T.scene); const r=new THREE.Group(); r.add(m); m.scale.multiplyScalar(T.k*G.personScale); m.position.y=T.y*G.personScale;
     const mixer=new THREE.AnimationMixer(m), actions={};
     Object.keys(T.clips).forEach(n=>{ const a=mixer.clipAction(T.clips[n]); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; });
     const old=G.npc3d; if(old){ try{ old.mixer.stopAllAction(); }catch(e){} if(old.model.parent) old.model.parent.remove(old.model); }
-    G.g.add(r); personHide(G,false); G.body.visible=false; G.person=true;
+    G.g.add(r); personHide(G,false); G.body.visible=false; G.person=true; G.personT=T;
     G.npc3d={model:r,mixer,actions,state:null,action:null,ik:heroFindArms(m),push:0,phase:Math.random()*10,person:true};
     mixer.update(G.npc3d.phase);
   }catch(e){ console.warn('people: keeping the wardrobe figure',e); }
