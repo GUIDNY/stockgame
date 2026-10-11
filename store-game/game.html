@@ -2439,8 +2439,10 @@ function heroAnimTick(H, speed, dt){
 function heroFindArms(model){
   const bones=[]; model.traverse(o=>{ if(o.isBone) bones.push(o); });
   // three.js drops the dot: "UpperArm.L" arrives as "UpperArmL"
-  const side=(n)=>/(Left|[._]?L)$|^Left|_l$/.test(n)?1:/(Right|[._]?R)$|^Right|_r$/.test(n)?-1:0;
-  const base=(n)=>n.replace(/(Left|Right|[._]?[LR]|_[lr])$/,'').replace(/^(Left|Right)/,'');
+  // Mixamo prefixes every bone (mixamorigLeftArm): the side and the part are what follows
+  const strip=(n)=>n.replace(/^mixamorig\d*:?/,'');
+  const side=(n)=>{ n=strip(n); return /(Left|[._]?L)$|^Left|_l$/.test(n)?1:/(Right|[._]?R)$|^Right|_r$/.test(n)?-1:0; };
+  const base=(n)=>strip(n).replace(/(Left|Right|[._]?[LR]|_[lr])$/,'').replace(/^(Left|Right)/,'');
   const find=(re,sd)=>bones.find(b=>side(b.name)===sd&&re.test(base(b.name)));
   const chain=(nm,sd)=>[1,2,3,4].map(n=>find(new RegExp('^(hand)?'+nm+n+'$','i'),sd)).filter(Boolean);
   const arm=(sd)=>{ const u=find(/^(upper.?arm|arm)$/i,sd), l=find(/^(lower.?arm|fore.?arm)$/i,sd), w=find(/^(wrist|hand)$/i,sd);
@@ -2623,6 +2625,74 @@ function npcAttach(G,gl){
     mixer.update(G.npc3d.phase);
     NPC3D.built++;
   }catch(e){ console.warn('npc 3D: keeping the classic figure',e); }
+}
+/* ---------- people: Mixamo figures for the shoppers and bots ----------
+   Ten Mixamo characters (store-game/people, converted from the FBX: about 14k triangles and 1024 px
+   textures each, materials rebuilt as plain colour + normal map) walk the mall in place of the wardrobe
+   figures of shoppers and bots; cashiers keep their uniform and other players their own look. Their Idle,
+   Walk and Run come from one Mixamo animation file (people/anims.glb, the skeleton and clips only),
+   carried onto each character by its rest pose (mixRetarget), so the same clips drive every one of them.
+   They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
+   a character is ready for it, and for good if the files can't be had. */
+const PEOPLE={names:['Remy','Ch02','Ch07','Ch12','Ch21','Ch22','Ch26','Ch27','Ch33','Ch01'], tpl:[], cands:[], next:0, started:false, V:'p1'};
+PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:10;   // about 2.5 MB each: a phone gets three
+const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
+function personEligible(G){ G.personOk=true; PEOPLE.cands.push(G); if(PEOPLE.tpl.length) personAssign(); }
+// Mixamo motion from one export onto another: same skeleton and T-pose, bone axes saved differently.
+// Per bone R = inverse(source rest world) * target rest world; a local rotation q becomes inv(R parent) * q * R.
+function mixRetarget(clip,srcRoot,tgtRoot){
+  const W=root=>{ root.updateMatrixWorld(true); const m={}; root.traverse(o=>{ if(/^mixamorig/.test(o.name)) m[o.name]={b:o,w:o.getWorldQuaternion(new THREE.Quaternion())}; }); return m; };
+  const S=W(srcRoot), T=W(tgtRoot), R={};
+  Object.keys(T).forEach(n=>{ if(S[n]) R[n]=S[n].w.clone().invert().multiply(T[n].w); });
+  const parentR=n=>{ const p=T[n].b.parent; if(p&&R[p.name]) return R[p.name];
+    return S[n].b.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(p.getWorldQuaternion(new THREE.Quaternion())); };
+  const tracks=[], q=new THREE.Quaternion(), ip=new THREE.Quaternion();
+  clip.tracks.forEach(t=>{ const i=t.name.lastIndexOf('.'), bn=t.name.slice(0,i), prop=t.name.slice(i+1); if(prop!=='quaternion'||!R[bn]) return;
+    const v=t.values.slice(), Rb=R[bn]; ip.copy(parentR(bn)).invert();
+    for(let k=0;k<v.length;k+=4){ q.fromArray(v,k); q.premultiply(ip).multiply(Rb); q.toArray(v,k); }
+    tracks.push(new THREE.QuaternionKeyframeTrack(t.name,t.times.slice(),v)); });
+  return new THREE.AnimationClip(clip.name,clip.duration,tracks);
+}
+function peopleStart(){
+  if(PEOPLE.started||!USE_3D_NPCS) return; PEOPLE.started=true;
+  const script=src=>new Promise((res,rej)=>{ if(THREE.SkeletonUtils) return res(); const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
+  const P=ASSET+'people/';
+  script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
+    const want={Idle:'idle',Walk:'walk',Run:'run'};
+    const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
+      loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
+        const m=g.scene; m.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
+          (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.75); mt.envMapIntensity=.6; }); } });
+        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=mixRetarget(c,an.scene,m); });
+        if(!clips.Idle||!clips.Walk) return;
+        // its height standing, from the skinned vertices in the first frame of Idle
+        const mx=new THREE.AnimationMixer(m); mx.clipAction(clips.Idle).play(); mx.update(0); m.updateMatrixWorld(true);
+        let lo=1e9, hi=-1e9; const v=new THREE.Vector3();
+        m.traverse(o=>{ if(o.isSkinnedMesh){ const p=o.geometry.attributes.position; for(let k=0;k<p.count;k+=5){ v.fromBufferAttribute(p,k); o.boneTransform(k,v); v.applyMatrix4(o.matrixWorld); lo=Math.min(lo,v.y); hi=Math.max(hi,v.y); } } });
+        mx.stopAllAction(); mx.uncacheRoot(m);
+        const k=PEOPLE_H/(hi-lo), T={scene:m,clips,k,y:-lo*k}; PEOPLE.tpl.push(T);
+        // the newcomer takes its share of the figures already dressed, so the mall is not all the first one
+        const n=PEOPLE.tpl.length; PEOPLE.cands.forEach((G,j)=>{ if(G.person&&j%n===n-1) personAttach(G,T); });
+        personAssign();
+      }).catch(e=>console.warn('people: '+PEOPLE.names[i],e)).then(()=>(window.requestIdleCallback||setTimeout)(()=>one(i+1),{timeout:1500}));
+    };
+    one(0);
+  }).catch(e=>console.warn('people: keeping the wardrobe figures',e));
+}
+function personAssign(){
+  PEOPLE.cands=PEOPLE.cands.filter(G=>G.g.parent);   // bots that have left the mall drop out
+  PEOPLE.cands.forEach(G=>{ if(G.person||!PEOPLE.tpl.length) return; personAttach(G,PEOPLE.tpl[PEOPLE.next++%PEOPLE.tpl.length]); });
+}
+function personAttach(G,T){
+  try{
+    const m=THREE.SkeletonUtils.clone(T.scene); const r=new THREE.Group(); r.add(m); m.scale.multiplyScalar(T.k); m.position.y=T.y;
+    const mixer=new THREE.AnimationMixer(m), actions={};
+    Object.keys(T.clips).forEach(n=>{ const a=mixer.clipAction(T.clips[n]); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; });
+    const old=G.npc3d; if(old){ try{ old.mixer.stopAllAction(); }catch(e){} if(old.model.parent) old.model.parent.remove(old.model); }
+    G.g.add(r); G.body.visible=false; G.person=true;
+    G.npc3d={model:r,mixer,actions,state:null,action:null,ik:heroFindArms(m),push:0,phase:Math.random()*10,person:true};
+    mixer.update(G.npc3d.phase);
+  }catch(e){ console.warn('people: keeping the wardrobe figure',e); }
 }
 const npcGesture=(G,name)=>{ if(G&&G.npc3d&&G.g.visible) gestStart(G.npc3d,name,name==='Wave'?2:1); };
 // the cashiers are built before this code runs: they join now
@@ -3245,6 +3315,7 @@ function randPoint(f){ for(let i=0;i<80;i++){ const x=rand(-22.5,22.5), z=rand(-
 const shoppers=[];
 [[0,2],[1,1],[2,2]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
   const girl=Math.random()<.5; const G=mkGuyNPC({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
+  personEligible(G);
   const p=randPoint(f); G.g.position.copy(p); scene.add(G.g);
   if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; floorCasters.push(o); } });
   shoppers.push({G,f,pos:p,target:randPoint(f),speed:rand(1.2,1.9),wait:rand(0,2),stuck:0,yaw:0,last:p.clone()});
@@ -3502,6 +3573,7 @@ function enterMall(){
     hero.g.position.copy(player.pos); camPos.set(player.pos.x+Math.sin(camYaw)*CAM.dist,player.pos.y+CAM.h,player.pos.z+Math.cos(camYaw)*CAM.dist); lookSm.set(player.pos.x,player.pos.y+CAM.lookH,player.pos.z);
     CATALOG.forEach(it=>{ if((rs.cart||[]).includes(it.slug)){ it.taken=true; it.model.visible=false; it.tag.visible=false; it.ring.visible=false; } });
     rebuildCart(); renderMoney(); updateCartBadge(); renderList(); }
+  setTimeout(peopleStart,2500);
   if(!Bots.started){ Bots.started=true; const n=Math.max(0,Bots.target-1); for(let i=0;i<n;i++) botSpawn(); }
   toast(rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
   netStart();
@@ -5381,7 +5453,7 @@ function botGoal(b){
 function botSpawn(){
   const f=pick(BOT_FLOORS); let p=null;
   for(let i=0;i<25;i++){ const q=randPoint(f); if(f!==player.floor||q.distanceTo(player.pos)>16){ p=q; break; } } if(!p) p=randPoint(f);
-  const G=mkGuyNPC(avOpts(botAvatar())), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.position.copy(p); scene.add(G.g);
+  const G=mkGuyNPC(avOpts(botAvatar())), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.position.copy(p); scene.add(G.g); personEligible(G);
   const casters=[]; if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; o.castShadow=f===player.floor&&o.userData.c; floorCasters.push(o); casters.push(o); } });
   G.g.visible=f!==TOP||STATIC[2].visible;
   const tag=document.createElement('div'); tag.className='nametag'; tag.hidden=true; tag.textContent=Bots.names[Bots.ni++%Bots.names.length]; $('#bubbles').appendChild(tag);
