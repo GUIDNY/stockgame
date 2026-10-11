@@ -2070,10 +2070,17 @@ function loadGLTF(url){
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
     .then(gl=>{ if(/hero-[mw]\.glb/.test(url)) smoothGLTF(gl); if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); return gl; });
 }
+const UBC_NOD=[.12,.2];   // radians forward at the neck and the head
+// their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
+function ubcNod(clip){
+  const ax=new THREE.Vector3(1,0,0), nod={Neck:new THREE.Quaternion().setFromAxisAngle(ax,UBC_NOD[0]),Head:new THREE.Quaternion().setFromAxisAngle(ax,UBC_NOD[1])}, q=new THREE.Quaternion();
+  clip.tracks.forEach(t=>{ const b=/(Neck|Head)\.quaternion$/.exec(t.name); if(!b) return; for(let k=0;k<t.values.length;k+=4){ q.fromArray(t.values,k).multiply(nod[b[1]]); q.toArray(t.values,k); } });
+  return clip;
+}
 // the base bodies come without clips: the crowd's Mixamo ones, retargeted onto them once
 function ubcAnims(gl){
   return loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V).then(an=>{
-    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&mixRetarget(c,an.scene,gl.scene); }).filter(Boolean);
+    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&ubcNod(mixRetarget(c,an.scene,gl.scene)); }).filter(Boolean);
     gl.scene.userData.ubc=true; return gl; });
 }
 /* The wardrobe is modelled low-poly and exported flat-shaded: every face its own normal, so a cheek or a sleeve
@@ -2721,7 +2728,7 @@ function peopleStart(){
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; }); } });
-        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=mixRetarget(c,an.scene,m); });
+        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c){ clips[k]=mixRetarget(c,an.scene,m); if(/^U\d/.test(PEOPLE.names[i])) ubcNod(clips[k]); } });
         if(!clips.Idle||!clips.Walk) return;
         // its height standing, from the skinned vertices in the first frame of Idle
         const mx=new THREE.AnimationMixer(m); mx.clipAction(clips.Idle).play(); mx.update(0); m.updateMatrixWorld(true);
