@@ -2630,12 +2630,13 @@ function npcAttach(G,gl){
    Ten Mixamo characters (store-game/people, converted from the FBX: about 14k triangles and 1024 px
    textures each, materials rebuilt as plain colour + normal map) walk the mall in place of the wardrobe
    figures of shoppers and bots; cashiers keep their uniform and other players their own look. Their Idle,
-   Walk and Run come from one Mixamo animation file (people/anims.glb, the skeleton and clips only),
+   Walk, Run and Wave come from one Mixamo animation file (people/anims.glb: Happy Idle, Walking, Running,
+   Waving, the skeleton and clips only),
    carried onto each character by its rest pose (mixRetarget), so the same clips drive every one of them.
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
-const PEOPLE={names:['Remy','Ch02','Ch07','Ch12','Ch21','Ch22','Ch26','Ch27','Ch33','Ch01'], tpl:[], cands:[], next:0, started:false, V:'p1'};
-PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:10;   // about 2.5 MB each: a phone gets three
+const PEOPLE={names:['Ch03','Remy','Ch02','Ch07','Ch12','Ch21','Ch22','Ch26','Ch27','Ch33','Ch01'], tpl:[], cands:[], next:0, started:false, V:'p2'};
+PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:11;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
    comes (files missing, or nothing within PEOPLE_WAIT ms of the start), the waiting figures get their
@@ -2669,7 +2670,7 @@ function peopleStart(){
   const script=src=>new Promise((res,rej)=>{ if(THREE.SkeletonUtils) return res(); const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
   const P=ASSET+'people/';
   script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
-    const want={Idle:'idle',Walk:'walk',Run:'run'};
+    const want={Idle:'Idle',Walk:'Walk',Run:'Run',Wave:'Wave'};   // Mixamo Happy Idle, Walking, Running, Waving
     const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
