@@ -2579,7 +2579,7 @@ function npcStyle(o){
   return o;
 }
 function npcAttach(G,gl){
-  if(G.npc3d) return;
+  if(G.npc3d||(G.personOk&&!PEOPLE.gaveUp)) return;   // waiting for a Mixamo character
   try{
     const o=npcStyle(Object.assign({},G.npcOpts)), L=heroLook(o), m=MERCH[o.merch];
     const shirt=m?m.shirt:o.shirt;
@@ -2637,7 +2637,16 @@ function npcAttach(G,gl){
 const PEOPLE={names:['Remy','Ch02','Ch07','Ch12','Ch21','Ch22','Ch26','Ch27','Ch33','Ch01'], tpl:[], cands:[], next:0, started:false, V:'p1'};
 PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:10;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
-function personEligible(G){ G.personOk=true; PEOPLE.cands.push(G); if(PEOPLE.tpl.length) personAssign(); }
+/* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
+   comes (files missing, or nothing within PEOPLE_WAIT ms of the start), the waiting figures get their
+   wardrobe bodies after all. */
+const PEOPLE_WAIT=15000;
+function personHide(G,h){ G.g.children.forEach(c=>{ if(c!==G.body) c.visible=!h; }); if(h) G.body.visible=false; }
+function personEligible(G){ G.personOk=true; PEOPLE.cands.push(G);
+  if(PEOPLE.tpl.length) personAssign(); else if(!PEOPLE.gaveUp) personHide(G,true); }
+function peopleGiveUp(){ if(PEOPLE.gaveUp||PEOPLE.tpl.length) return; PEOPLE.gaveUp=true;
+  PEOPLE.cands.forEach(G=>{ if(G.person) return; personHide(G,false); if(!G.npc3d){ G.body.visible=true; const url=heroUrl(G.npcOpts||{});
+    if(NPC3D.gltfs[url]) npcAttach(G,NPC3D.gltfs[url]); else if(G.npcOpts){ NPC3D.pending.push(G); npcLoad(url); } } }); }
 // Mixamo motion from one export onto another: same skeleton and T-pose, bone axes saved differently.
 // Per bone R = inverse(source rest world) * target rest world; a local rotation q becomes inv(R parent) * q * R.
 function mixRetarget(clip,srcRoot,tgtRoot){
@@ -2654,7 +2663,9 @@ function mixRetarget(clip,srcRoot,tgtRoot){
   return new THREE.AnimationClip(clip.name,clip.duration,tracks);
 }
 function peopleStart(){
-  if(PEOPLE.started||!USE_3D_NPCS) return; PEOPLE.started=true;
+  if(PEOPLE.started) return; PEOPLE.started=true;
+  if(!USE_3D_NPCS||!PEOPLE.max) return peopleGiveUp();
+  setTimeout(peopleGiveUp,PEOPLE_WAIT);
   const script=src=>new Promise((res,rej)=>{ if(THREE.SkeletonUtils) return res(); const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
   const P=ASSET+'people/';
   script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
@@ -2662,7 +2673,7 @@ function peopleStart(){
     const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
-          (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.75); mt.envMapIntensity=.6; }); } });
+          (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; }); } });
         const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=mixRetarget(c,an.scene,m); });
         if(!clips.Idle||!clips.Walk) return;
         // its height standing, from the skinned vertices in the first frame of Idle
@@ -2677,7 +2688,7 @@ function peopleStart(){
       }).catch(e=>console.warn('people: '+PEOPLE.names[i],e)).then(()=>(window.requestIdleCallback||setTimeout)(()=>one(i+1),{timeout:1500}));
     };
     one(0);
-  }).catch(e=>console.warn('people: keeping the wardrobe figures',e));
+  }).catch(e=>{ console.warn('people: keeping the wardrobe figures',e); peopleGiveUp(); });
 }
 function personAssign(){
   PEOPLE.cands=PEOPLE.cands.filter(G=>G.g.parent);   // bots that have left the mall drop out
@@ -2689,7 +2700,7 @@ function personAttach(G,T){
     const mixer=new THREE.AnimationMixer(m), actions={};
     Object.keys(T.clips).forEach(n=>{ const a=mixer.clipAction(T.clips[n]); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; });
     const old=G.npc3d; if(old){ try{ old.mixer.stopAllAction(); }catch(e){} if(old.model.parent) old.model.parent.remove(old.model); }
-    G.g.add(r); G.body.visible=false; G.person=true;
+    G.g.add(r); personHide(G,false); G.body.visible=false; G.person=true;
     G.npc3d={model:r,mixer,actions,state:null,action:null,ik:heroFindArms(m),push:0,phase:Math.random()*10,person:true};
     mixer.update(G.npc3d.phase);
   }catch(e){ console.warn('people: keeping the wardrobe figure',e); }
@@ -3320,6 +3331,7 @@ const shoppers=[];
   if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; floorCasters.push(o); } });
   shoppers.push({G,f,pos:p,target:randPoint(f),speed:rand(1.2,1.9),wait:rand(0,2),stuck:0,yaw:0,last:p.clone()});
 }});
+setTimeout(peopleStart,600);   // with the page, so the characters are in by the time the shopper walks in
 for(let i=0;i<3;i++){ const r=mkRobot(); r.scale.setScalar(1.1); scene.add(r); r.traverse(o=>{ if(o.isMesh){ o.userData.c=true; floorCasters.push(o); } });
   robots.push({m:r,x:rand(robotArena.x0,robotArena.x1),z:rand(robotArena.z0,robotArena.z1),a:rand(0,6),turn:0}); }
 setShadowFloor(0);
@@ -3573,7 +3585,6 @@ function enterMall(){
     hero.g.position.copy(player.pos); camPos.set(player.pos.x+Math.sin(camYaw)*CAM.dist,player.pos.y+CAM.h,player.pos.z+Math.cos(camYaw)*CAM.dist); lookSm.set(player.pos.x,player.pos.y+CAM.lookH,player.pos.z);
     CATALOG.forEach(it=>{ if((rs.cart||[]).includes(it.slug)){ it.taken=true; it.model.visible=false; it.tag.visible=false; it.ring.visible=false; } });
     rebuildCart(); renderMoney(); updateCartBadge(); renderList(); }
-  setTimeout(peopleStart,2500);
   if(!Bots.started){ Bots.started=true; const n=Math.max(0,Bots.target-1); for(let i=0;i<n;i++) botSpawn(); }
   toast(rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
   netStart();
