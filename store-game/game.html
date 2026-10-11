@@ -2636,6 +2636,8 @@ function npcAttach(G,gl){
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
 const PEOPLE={names:['Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27','Ch33','Ch22','Ch01','Remy'], weight:{Ch03:3}, tpl:[], cands:[], started:false, ready:false, V:'p2'};
+// hidden preview of the Quaternius base characters (?ubc=1): they lead the crowd, a few of the usual ones beside them
+if(/[?&]ubc=1/.test(location.search)){ PEOPLE.names=['U1','U3','U2','U4','Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27']; PEOPLE.weight={U1:2,U2:2,U3:2,U4:2}; }
 PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:11;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
