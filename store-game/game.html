@@ -842,8 +842,8 @@
   <button id="map" class="glass capl" data-cap="מפה" aria-label="פתיחת מפת הקניון"><canvas id="mapc" width="176" height="176"></canvas><span>מפה</span></button>
   <button id="cartBtn" class="glass capl" data-cap="עגלה" aria-label="העגלה שלי"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/></svg><b class="num" id="cartCount"></b></button>
   <button id="meBtn" class="glass capl" data-cap="הדמות שלי" aria-label="עריכת הדמות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4.5 4.5-6.5 8-6.5s6.5 2 8 6.5"/></svg></button>
-  <button id="mute" class="glass capr" data-cap="צליל" aria-label="השתקת צליל">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path id="xmark" d="M17 9l5 6M22 9l-5 6" style="display:none"/></svg>
+  <button id="mute" class="glass capr" data-cap="מוזיקה" aria-label="הפעלת מוזיקה" aria-pressed="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/><path id="xmark" d="M3 3l18 18" stroke-width="2.4"/></svg>
   </button>
   <button id="online" class="glass" hidden aria-label="שחקנים מחוברים עכשיו"><i></i><span class="num" id="onlineN">1</span><span>מחוברים</span></button>
   <button id="emoBtn" class="glass capr" data-cap="אימוג'י" hidden aria-label="שליחת אימוג'י" aria-expanded="false">😀</button>
@@ -3543,7 +3543,9 @@ function pushOut(p,r,ox,oz,f){
 function pushApart(a,b,r){ const dx=a.x-b.x, dz=a.z-b.z, d=Math.hypot(dx,dz); if(d<r&&d>1e-4){ const k=(r-d)/d*.5; a.x+=dx*k; a.z+=dz*k; b.x-=dx*k; b.z-=dz*k; return true; } return false; }
 
 /* ---------- sound ---------- */
-const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
+/* the music is off until the player turns it on (the button by the map, remembered on this device): nothing of it
+   is downloaded before that. The effects and the room's murmur play as before. */
+const Sound={ctx:null,master:null,on:true,musicOn:(()=>{ try{ return localStorage.getItem('bt-music')==='1'; }catch(e){ return false; } })(),musicTimer:null,step:0,
   init(){ if(this.ctx) return; try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); this.master=this.ctx.createGain(); this.master.gain.value=this.on?1:0; this.master.connect(this.ctx.destination); }catch(e){ this.ctx=null; } },
   tone(f,d,type,v,delay,slideTo){ if(!this.ctx) return; const t=this.ctx.currentTime+(delay||0); const o=this.ctx.createOscillator(), g=this.ctx.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,t); if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t+d);
     g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v||.15,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d); o.connect(g); g.connect(this.master); o.start(t); o.stop(t+d+.05); },
@@ -3565,7 +3567,8 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
      copy of the game) it falls back to the little synth tune below. */
   music:null, track:0, base:ASSET+'music/',
   startMusic(){
-    if(this.music){ if(this.on&&this.music.paused&&!document.hidden) this.music.play().catch(()=>{}); return; }
+    if(!this.musicOn) return;
+    if(this.music){ if(this.music.paused&&!document.hidden) this.music.play().catch(()=>{}); return; }
     const el=new Audio(); el.preload='auto'; el.muted=!this.on; this.music=el;
     // the jingle greets a new visit, not every return to the mall in the same session
     try{ if(sessionStorage.getItem('bt-jingle')) this.track=1; else sessionStorage.setItem('bt-jingle','1'); }catch(e){}
@@ -3576,7 +3579,7 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
     el.addEventListener('ended',next);
     el.addEventListener('error',()=>{ if(this.base!==HOME+'music/'){ this.base=HOME+'music/'; this.track=Math.max(0,this.track-1); next(); }
       else { this.music=null; this.synthMusic(); } });
-    document.addEventListener('visibilitychange',()=>{ if(document.hidden) el.pause(); else this.wake(); });
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden) el.pause(); else if(this.musicOn) this.wake(); });
     next();
   },
   synthMusic(){ if(!this.ctx||this.musicTimer) return; const chords=[[261.6,329.6,392,493.9],[220,261.6,329.6,392],[293.7,349.2,440,523.3],[196,246.9,293.7,349.2]]; let next=this.ctx.currentTime+.1; const beat=.3;
@@ -3587,13 +3590,17 @@ const Sound={ctx:null,master:null,on:true,musicTimer:null,step:0,
      and the music's play() on return is often refused because no tap came with it. So both are asked
      again the moment the page is visible, and, if the phone said no, again on the very next tap. */
   wake(){ if(document.hidden||G.state==='menu') return;
-    const ctxOk=()=>!this.ctx||this.ctx.state==='running', musOk=()=>!this.on||!this.music||!this.music.paused;
+    const ctxOk=()=>!this.ctx||this.ctx.state==='running', musOk=()=>!this.musicOn||!this.music||!this.music.paused;
     const kick=()=>{ try{ if(this.ctx&&this.ctx.state!=='running') this.ctx.resume().catch(()=>{}); }catch(e){}
-      if(this.on&&this.music&&this.music.paused) this.music.play().catch(()=>{}); };
+      if(this.musicOn&&this.music&&this.music.paused) this.music.play().catch(()=>{}); };
     kick();
     setTimeout(()=>{ if(ctxOk()&&musOk()) return;
       const once=()=>{ kick(); removeEventListener('pointerdown',once,true); removeEventListener('touchend',once,true); removeEventListener('keydown',once,true); };
       addEventListener('pointerdown',once,true); addEventListener('touchend',once,true); addEventListener('keydown',once,true); },300); },
+  setMusic(v){ this.musicOn=v; try{ localStorage.setItem('bt-music',v?'1':'0'); }catch(e){}
+    if(!v){ if(this.music) this.music.pause(); if(this.musicTimer){ clearInterval(this.musicTimer); this.musicTimer=null; } return; }
+    this.init(); try{ if(this.ctx&&this.ctx.state!=='running') this.ctx.resume(); }catch(e){}
+    if(this.music) this.music.play().catch(()=>{}); else this.startMusic(); },
   setOn(v){ this.on=v; if(this.master) this.master.gain.value=v?1:0; if(this.music){ this.music.muted=!v; if(v&&this.music.paused) this.music.play().catch(()=>{}); } }
 };
 
@@ -4026,7 +4033,8 @@ ui.act.addEventListener('pointerdown',e=>{ e.preventDefault(); if(!near&&G.state
 $('#cardAdd').addEventListener('click',()=>{ if(near&&near.type==='item') doAction(); });
 $('#listH').addEventListener('click',()=>{ const d=deptAt(); if(d&&catKey(d)) openCatalog(d); else openDir(); });
 $('#mhDept').addEventListener('click',()=>$('#listH').click());
-$('#mute').addEventListener('click',()=>{ Sound.setOn(!Sound.on); $('#waves').style.display=Sound.on?'':'none'; $('#xmark').style.display=Sound.on?'none':''; });
+const musicBtn=()=>{ const on=Sound.musicOn; $('#xmark').style.display=on?'none':''; $('#mute').classList.toggle('off',!on); $('#mute').setAttribute('aria-label',on?'כיבוי מוזיקה':'הפעלת מוזיקה'); $('#mute').setAttribute('aria-pressed',String(on)); };
+$('#mute').addEventListener('click',()=>{ Sound.setMusic(!Sound.musicOn); musicBtn(); }); musicBtn();
 $('#startBtn').addEventListener('click',enterMall);
 $('#againBtn').addEventListener('click',closeReceipt);
 $('#shareBtn').addEventListener('click',shareMall);
