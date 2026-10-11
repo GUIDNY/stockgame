@@ -2038,7 +2038,9 @@ const USE_3D_HERO = true;
    one shared skeleton; the avatar picks which parts show and what colour they are. Bump ?v= when a file
    changes: they are cached for a day. */
 const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w2', f:ASSET+'hero-w.glb?v=w2'};
-const heroUrl = o => HERO_MODEL_FILES[o&&o.girl?'f':'m'];
+// hidden preview (?ubc=1): the player's figure on the Quaternius base bodies (people/UH-m.glb, UH-f.glb)
+const UBC = /[?&]ubc=1/.test(location.search);
+const heroUrl = o => UBC ? ASSET+'people/UH-'+(o&&o.girl?'f':'m')+'.glb?v=u2' : HERO_MODEL_FILES[o&&o.girl?'f':'m'];
 const HERO_STYLES = {
   m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
      top:[['hoodie','קפוצ׳ון'],['tee','טישרט'],['tank','גופייה'],['suit','חליפה']]},
@@ -2066,7 +2068,13 @@ function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)) smoothGLTF(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)) smoothGLTF(gl); if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); return gl; });
+}
+// the base bodies come without clips: the crowd's Mixamo ones, retargeted onto them once
+function ubcAnims(gl){
+  return loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V).then(an=>{
+    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&mixRetarget(c,an.scene,gl.scene); }).filter(Boolean);
+    gl.scene.userData.ubc=true; return gl; });
 }
 /* The wardrobe is modelled low-poly and exported flat-shaded: every face its own normal, so a cheek or a sleeve
    reads as a row of facets. Smooth shading across any edge gentler than SMOOTH_ANGLE, keeping real creases
@@ -2206,6 +2214,7 @@ function heroBody(root,body){
 /* show the chosen parts and paint them: skin, hair, shirt (or the merch shirt), trousers; the BuyToday wordmark on
    an orange shirt or any BuyToday merch; and the accessory on the head */
 function heroDress(model,o){
+  if(model.userData.ubc) return ubcDress(model,o);
   const L=heroLook(o), m=MERCH[o.merch];
   const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND||!!o.logo3d;
   const logoCol=m&&m.wordmark==='wordmark-orange'?BRAND:m&&m.wordmark==='wordmark-navy'?0x22305f:0xffffff;
@@ -2224,6 +2233,32 @@ function heroDress(model,o){
   if(mats.Top){ mats.Top.metalness=m&&m.shiny?.6:0; mats.Top.roughness=m&&m.shiny?.32:.85; }
   heroAccessory(model,o,headNode&&headNode.userData);
   try{ heroFace(model,o,headNode); }catch(e){ console.warn('face: keeping the blocks',e); }
+}
+/* the Quaternius figure: every hairstyle and garment is in the file (H_<hair>, C_top_<cut>, C_legs_<cut>, C_feet);
+   the avatar's choices pick which show, and the swatches paint them. The skin keeps its photo, tinted by how far
+   the chosen tone is from the default one. */
+const UBC_HAIR={m:{casual:['SimpleParted'],spiky:['Buzzed'],neat:['SimpleParted'],pony:['Long'],beard:['SimpleParted','Beard'],mohawk:['Buzzed']},
+  f:{bob:['Long'],pony:['Long'],updo:['Buns'],mohawk:['BuzzedFemale']}};
+const UBC_TOP={hoodie:'long',suit:'long',tee:'short',dress:'short',tank:'tank',crop:'crop'};
+function ubcDress(model,o){
+  const L=heroLook(o), m=MERCH[o.merch], shirt=m?m.shirt:o.shirt;
+  const hair=UBC_HAIR[L.g][L.head]||UBC_HAIR[L.g][Object.keys(UBC_HAIR[L.g])[0]], top=UBC_TOP[L.top]||'short', legs=L.legs==='shorts'||L.legs==='skirt'?'shorts':'long';
+  const lin=c=>new THREE.Color(c).convertSRGBToLinear(), base=lin(0xf6d2b3), sk=lin(o.skin||0xf6d2b3);
+  const skin=new THREE.Color(Math.min(1.25,sk.r/base.r),Math.min(1.25,sk.g/base.g),Math.min(1.25,sk.b/base.b));
+  model.traverse(x=>{
+    const h=/^H_([A-Za-z]+)/.exec(x.name), c=/^C_(top|legs)_([a-z]+)/.exec(x.name);
+    if(h&&!/^Brows/.test(h[1])) x.visible=hair.includes(h[1]);
+    if(c) x.visible=c[2]===(c[1]==='top'?top:legs);
+    if(!x.isMesh) return;
+    x.castShadow=true; x.frustumCulled=false;
+    (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0;
+      if(/^R_Skin/.test(mt.name)){ mt.color.copy(skin); mt.roughness=.6; }
+      else if(/^R_Top/.test(mt.name)){ mt.color.copy(lin(shirt)); mt.roughness=m&&m.shiny?.32:.85; mt.metalness=m&&m.shiny?.6:0; }
+      else if(/^R_Pants/.test(mt.name)) mt.color.copy(lin(o.pants));
+      else if(/^R_Shoe/.test(mt.name)) mt.color.copy(lin(0xf2f2ee));
+      else if(/^H_Brows/.test(x.name)||/^R_Eyebrows/.test(mt.name)) mt.color.copy(lin(shade(o.hair,.62)));
+      else if(/^H_/.test(x.name)) { mt.color.copy(lin(o.hair)); mt.roughness=.6; } });
+  });
 }
 /* the face: painted, not modelled. The wardrobe's faces are two dark blocks for eyes and two for brows; they are
    hidden and a face is painted onto a copy of the front of the head's own skin (same vertices, same bones, so it
