@@ -2240,9 +2240,17 @@ function heroDress(model,o){
 const UBC_HAIR={m:{casual:['SimpleParted'],spiky:['Buzzed'],neat:['SimpleParted'],pony:['Long'],beard:['SimpleParted','Beard'],mohawk:['Buzzed']},
   f:{bob:['Long'],pony:['Long'],updo:['Buns'],mohawk:['BuzzedFemale']}};
 const UBC_TOP={hoodie:'long',suit:'long',tee:'short',dress:'short',tank:'tank',crop:'crop'};
+// the free bodies are superhero builds: every shape slims them (hips, torso, arms, legs), 'strong' keeps them as made
+const UBC_SHAPE={regular:[.95,.86,.74,.88],slim:[.9,.8,.66,.8],full:[1.04,1.04,.86,.98],strong:[1,1,1,1]};
+function ubcBody(root,body){
+  const [h,t,a,l]=UBC_SHAPE[body]||UBC_SHAPE.regular, B={}; root.traverse(b=>{ if(b.isBone) B[b.name.replace(/^mixamorig\d*:?/,'')]=b; });
+  const set=(n,k)=>{ if(B[n]) B[n].scale.set(k,1,k); };
+  set('Hips',h); set('Spine',t/h); set('Neck',1/t); set('LeftUpLeg',l/h); set('RightUpLeg',l/h); set('LeftArm',a/t); set('RightArm',a/t);
+}
 function ubcDress(model,o){
   const L=heroLook(o), m=MERCH[o.merch], shirt=m?m.shirt:o.shirt;
   const hair=UBC_HAIR[L.g][L.head]||UBC_HAIR[L.g][Object.keys(UBC_HAIR[L.g])[0]], top=UBC_TOP[L.top]||'short', legs=L.legs==='shorts'||L.legs==='skirt'?'shorts':'long';
+  ubcBody(model,o.body);
   const lin=c=>new THREE.Color(c).convertSRGBToLinear(), base=lin(0xf6d2b3), sk=lin(o.skin||0xf6d2b3);
   const skin=new THREE.Color(Math.min(1.25,sk.r/base.r),Math.min(1.25,sk.g/base.g),Math.min(1.25,sk.b/base.b));
   model.traverse(x=>{
