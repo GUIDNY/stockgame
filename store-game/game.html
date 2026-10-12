@@ -2042,7 +2042,9 @@ const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w2', f:ASSET+'hero-w.glb?v=w2'};
 const UBC = /[?&]ubc=1/.test(location.search);
 // hidden preview (?mh=1): the man on a MakeHuman (MPFB, CC0) body with a Mixamo skeleton, people/MH-m.glb
 const MH = /[?&]mh=1/.test(location.search);
-const heroUrl = o => MH&&!(o&&o.girl) ? ASSET+'people/MH-m.glb?v=m5' : UBC ? ASSET+'people/UH-'+(o&&o.girl?'f':'m')+'.glb?v=u2' : HERO_MODEL_FILES[o&&o.girl?'f':'m'];
+// hidden preview (?meshy=1): a Meshy-made stylized character (people/MESHY-1.glb), Mixamo bone names
+const MESHY = /[?&]meshy=1/.test(location.search);
+const heroUrl = o => MESHY ? ASSET+'people/MESHY-1.glb?v=y1' : MH&&!(o&&o.girl) ? ASSET+'people/MH-m.glb?v=m5' : UBC ? ASSET+'people/UH-'+(o&&o.girl?'f':'m')+'.glb?v=u2' : HERO_MODEL_FILES[o&&o.girl?'f':'m'];
 const HERO_STYLES = {
   m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
      top:[['hoodie','קפוצ׳ון'],['tee','טישרט'],['tank','גופייה'],['suit','חליפה']]},
@@ -2070,7 +2072,7 @@ function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb/.test(url)) return mhAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-\d+\.glb/.test(url)) return mhAnims(gl); return gl; });
 }
 const UBC_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -2289,6 +2291,7 @@ function heroBody(root,body){
    an orange shirt or any BuyToday merch; and the accessory on the head */
 function heroDress(model,o){
   if(model.userData.ubc) return ubcDress(model,o);
+  if(model.userData.mh&&model.getObjectByName('char1')) return meshyDress(model,o);
   if(model.userData.mh) return mhDress(model,o);
   const L=heroLook(o), m=MERCH[o.merch];
   const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND||!!o.logo3d;
@@ -2343,6 +2346,8 @@ function ubcDress(model,o){
       else if(/^H_/.test(x.name)) { mt.color.copy(lin(o.hair)); mt.roughness=.6; } });
   });
 }
+/* the Meshy figure: one baked texture, so nothing to swap or tint; it only needs its shadows */
+function meshyDress(model,o){ model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); }); } }); }
 /* the MakeHuman figure: two haircuts and two shirts in the file, the avatar's choices pick which show; skin, hair
    and shirt are tinted by how far the chosen swatch is from the file's own colour. */
 const MH_HAIR={short02:['casual','neat','beard','pony','bob','updo'],short04:['spiky','mohawk']};
