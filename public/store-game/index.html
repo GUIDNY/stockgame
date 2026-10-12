@@ -2079,9 +2079,15 @@ function ubcNod(clip){
 }
 // the base bodies come without clips: the crowd's Mixamo ones, retargeted onto them once
 function ubcAnims(gl){
-  return loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V).then(an=>{
-    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&ubcNod(mixRetarget(c,an.scene,gl.scene)); }).filter(Boolean);
+  // their own library's clips (Universal Animation Library, the same rig) where it has them; Mixamo's wave for the rest
+  return Promise.all([loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V), loadGLTF(ASSET+'people/ual.glb?v='+UAL_V).catch(()=>null)]).then(([an,ual])=>{
+    gl.animations=['Idle','Walk','Run','Wave','Interact'].map(n=>ubcClip(n,an,ual,gl.scene)).filter(Boolean);
     gl.scene.userData.ubc=true; return gl; });
+}
+const UAL_V='a1';
+function ubcClip(n,an,ual,root){
+  const u=ual&&ual.animations.find(a=>a.name===n); if(u) return mixRetarget(u,ual.scene,root);
+  const c=an.animations.find(a=>a.name===n); return c?ubcNod(mixRetarget(c,an.scene,root)):null;
 }
 /* The wardrobe is modelled low-poly and exported flat-shaded: every face its own normal, so a cheek or a sleeve
    reads as a row of facets. Smooth shading across any edge gentler than SMOOTH_ANGLE, keeping real creases
@@ -2722,13 +2728,13 @@ function peopleStart(){
   setTimeout(peopleGiveUp,PEOPLE_WAIT); setTimeout(()=>{ PEOPLE.late=true; peopleReady(); },PEOPLE_FIRST);
   const script=src=>new Promise((res,rej)=>{ if(THREE.SkeletonUtils) return res(); const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
   const P=ASSET+'people/';
-  script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
+  script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>PEOPLE.names.some(n=>/^U\d/.test(n))?loadGLTF(P+'ual.glb?v='+UAL_V).then(u=>{ PEOPLE.ual=u; },()=>{}):0).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
     const want={Idle:'Idle',Walk:'Walk',Run:'Run',Wave:'Wave'};   // Mixamo Happy Idle, Walking, Running, Waving
     const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; }); } });
-        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c){ clips[k]=mixRetarget(c,an.scene,m); if(/^U\d/.test(PEOPLE.names[i])) ubcNod(clips[k]); } });
+        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=/^U\d/.test(PEOPLE.names[i])?ubcClip(k,an,PEOPLE.ual,m):mixRetarget(c,an.scene,m); });
         if(!clips.Idle||!clips.Walk) return;
         // its height standing, from the skinned vertices in the first frame of Idle
         const mx=new THREE.AnimationMixer(m); mx.clipAction(clips.Idle).play(); mx.update(0); m.updateMatrixWorld(true);
