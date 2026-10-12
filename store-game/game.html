@@ -2068,7 +2068,7 @@ function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)) smoothGLTF(gl); if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); return gl; });
 }
 const UBC_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -2085,6 +2085,59 @@ function ubcAnims(gl){
     gl.scene.userData.ubc=true; return gl; });
 }
 const UAL_V='a1';
+/* the wardrobe figure moving like the crowd: Mixamo's Happy Idle, Walking, Running and Waving (people/anims.glb),
+   carried over bone by bone onto its own rig. Both stand in a T-pose, so each bone keeps its rest offset and takes
+   the source's turn from there. Its own Interact stays. ?hx=0 keeps its old clips. */
+const HERO_MIX=!/[?&]hx=0/.test(location.search);
+const HERO_MIXMAP=(()=>{ const m={Hips:'Hips',Abdomen:'Spine',Torso:'Spine1',Chest:'Spine2',Neck:'Neck',Head:'Head'};
+  [['L','Left'],['R','Right']].forEach(([s,S])=>{ Object.assign(m,{['Shoulder'+s]:S+'Shoulder',['UpperArm'+s]:S+'Arm',['LowerArm'+s]:S+'ForeArm',['Wrist'+s]:S+'Hand',
+    ['UpperLeg'+s]:S+'UpLeg',['LowerLeg'+s]:S+'Leg',['Foot'+s]:S+'Foot'});
+    ['Index','Middle','Ring','Pinky','Thumb'].forEach(f=>{ for(let i=1;i<=3;i++) m[f+i+s]=S+'Hand'+f+i; }); });
+  return m; })();
+function rigRetarget(clip,srcRoot,tgtRoot,map){
+  srcRoot.updateMatrixWorld(true); tgtRoot.updateMatrixWorld(true);
+  const S={}, T={}, wq=o=>o.getWorldQuaternion(new THREE.Quaternion());
+  srcRoot.traverse(o=>{ if(o.isBone) S[o.name.replace(/^mixamorig\d*:?/,'')]=o; });
+  tgtRoot.traverse(o=>{ if(o.isBone&&map[o.name]&&S[map[o.name]]) T[o.name]=o; });
+  // the target's rest is the pose its skin was bound in, not whatever pose its nodes were saved in
+  const bind=new Map(); tgtRoot.traverse(o=>{ if(!o.isSkinnedMesh) return; const sk=o.skeleton;
+    sk.bones.forEach((b,i)=>{ if(bind.has(b)) return; const m=new THREE.Matrix4().copy(sk.boneInverses[i]).invert().premultiply(o.bindMatrix), q=new THREE.Quaternion();
+      m.decompose(new THREE.Vector3(),q,new THREE.Vector3()); bind.set(b,q); }); });
+  const tq=o=>bind.get(o)||wq(o);
+  const R={}; Object.keys(T).forEach(n=>{ R[n]=wq(S[map[n]]).invert().multiply(tq(T[n])); });
+  const byS={}; Object.keys(T).forEach(n=>{ byS[S[map[n]].name]=n; });
+  const parentR=n=>{ const p=T[n].parent; if(p&&R[p.name]) return R[p.name];
+    return wq(S[map[n]].parent).invert().multiply(wq(p)); };   // an undriven parent stays as it is now
+  const tracks=[], q=new THREE.Quaternion(), ip=new THREE.Quaternion();
+  clip.tracks.forEach(t=>{ const i=t.name.lastIndexOf('.'), bn=byS[t.name.slice(0,i)], prop=t.name.slice(i+1); if(prop!=='quaternion'||!bn) return;
+    const v=t.values.slice(); ip.copy(parentR(bn)).invert();
+    for(let k=0;k<v.length;k+=4){ q.fromArray(v,k); q.premultiply(ip).multiply(R[bn]); q.toArray(v,k); }
+    tracks.push(new THREE.QuaternionKeyframeTrack(bn+'.quaternion',t.times.slice(),v)); });
+  return new THREE.AnimationClip(clip.name,clip.duration,tracks);
+}
+// every bone back to the pose the skin was bound in (the file saves its nodes in another one); the bones the clips
+// don't drive (the root, the toes, the finger tips) then sit where they belong
+function poseToBind(root){
+  root.updateMatrixWorld(true); const W=new Map();
+  root.traverse(o=>{ if(!o.isSkinnedMesh) return; o.skeleton.bones.forEach((b,i)=>{ if(!W.has(b)) W.set(b,new THREE.Matrix4().copy(o.skeleton.boneInverses[i]).invert().premultiply(o.bindMatrix)); }); });
+  const inv=new THREE.Matrix4(), m=new THREE.Matrix4(), sc=new THREE.Vector3();
+  const walk=o=>{ if(W.has(o)){ const pw=W.get(o.parent)||o.parent.matrixWorld; m.copy(inv.copy(pw).invert()).multiply(W.get(o)); const s0=o.scale.clone(); m.decompose(o.position,o.quaternion,sc); o.scale.copy(s0); o.updateMatrixWorld(true); }
+    o.children.forEach(walk); };
+  walk(root); root.updateMatrixWorld(true);
+}
+function heroMixClips(gl){
+  return loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V).then(an=>{
+    poseToBind(gl.scene);
+    // its feet hang off the root (they were IK targets in the source file): hang them off the shins so they follow
+    const B={}; gl.scene.traverse(o=>{ if(o.isBone) B[o.name]=o; });
+    ['L','R'].forEach(sd=>{ if(B['Foot'+sd]&&B['LowerLeg'+sd]) B['LowerLeg'+sd].attach(B['Foot'+sd]); });
+    gl.scene.updateMatrixWorld(true);
+    // its own clips keep only what doesn't touch the feet, which no longer sit under the root
+    const own=gl.animations.filter(a=>!['Idle','Walk','Run','Wave'].includes(a.name)).map(a=>{ a.tracks=a.tracks.filter(t=>!/^(Foot|PT)[LR]\./.test(t.name)); return a; });
+    const mixed=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c?rigRetarget(c,an.scene,gl.scene,HERO_MIXMAP):gl.animations.find(a=>a.name===n); }).filter(Boolean);
+    gl.animations=mixed.concat(own); return gl;
+  },()=>gl);
+}
 function ubcClip(n,an,ual,root){
   const u=ual&&ual.animations.find(a=>a.name===n); if(u) return mixRetarget(u,ual.scene,root);
   const c=an.animations.find(a=>a.name===n); return c?ubcNod(mixRetarget(c,an.scene,root)):null;
