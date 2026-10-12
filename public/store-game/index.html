@@ -3,7 +3,7 @@
 (function(){ if(/[?&]hero=old/.test(location.search)) return; var a={}; try{ a=JSON.parse(localStorage.getItem('bt-avatar')||'{}')||{}; }catch(e){}
   var B=location.hostname==='play.buytoday.co.il'?'':'https://play.buytoday.co.il/', g=a.girl?'F1':'1', O=a.girl?['teal','pink','yellow','purple','tee','leather']:['orange','red','tee','navy','sweater','leather'];
   var o=O.indexOf(a.outfit)>=0?a.outfit:O[0], small=matchMedia('(max-width:700px)').matches||matchMedia('(pointer:coarse)').matches;
-  [[B+'people/MESHY-'+g+'.glb?v=y4','fetch'],[B+'people/anims.glb?v=p4','fetch'],[B+'gltf-loader.js','script'],[B+'meshopt_decoder.js?v=1','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t1','image']].forEach(function(x){
+  [[B+'people/MESHY-'+g+'.glb?v=y4','fetch'],[B+'people/anims.glb?v=p4','fetch'],[B+'gltf-loader.js','script'],[B+'meshopt_decoder.js?v=1','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t2','image']].forEach(function(x){
     var l=document.createElement('link'); l.rel='preload'; l.href=x[0]; l.as=x[1]; if(x[1]!=='script') l.crossOrigin='anonymous'; document.head.appendChild(l); }); })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2330,8 +2330,10 @@ function heroDress(model,o){
 /* the Meshy figure: one baked texture, so nothing to swap or tint; it only needs its shadows */
 const MESHY_TEX={}, MESHY_SMALL=PHONE.matches||matchMedia('(pointer:coarse)').matches;
 function meshyTex(name){ if(MESHY_TEX[name]) return MESHY_TEX[name];
-  const t=new THREE.TextureLoader().load(ASSET+'people/tex/'+name+(MESHY_SMALL?'-m':'')+'.jpg?v=t1');
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/'+name+(MESHY_SMALL?'-m':'')+'.jpg?v=t2',tx=>{ tx.needsUpdate=true; tx.btOk=true; (tx.btWait||[]).forEach(f=>f()); tx.btWait=[]; });
   t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return MESHY_TEX[name]=t; }
+// resolves once the outfit's picture is in (a texture shown before that can stay black)
+const meshyTexReady=name=>new Promise(res=>{ const t=meshyTex(name); if(t.btOk) res(t); else (t.btWait=t.btWait||[]).push(()=>res(t)); });
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   // the player's own figure wears the chosen outfit: the same body painted another way (the face stays the same)
   const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
@@ -2854,6 +2856,28 @@ function personAttach(G,T){
     G.npc3d={model:r,mixer,actions,state:null,action:null,ik:heroFindArms(m),push:0,phase:Math.random()*10,person:true};
     mixer.update(G.npc3d.phase);
   }catch(e){ console.warn('people: keeping the wardrobe figure',e); }
+}
+/* another player as they see themselves: the Meshy figure in the outfit they wear (packAv slot 13), its own copy of
+   the skeleton and a material of its own; if the file cannot be had, the wardrobe figure as before */
+function meshyPeer(G,av){
+  // a model of its own, parsed again from the cached file (as Alfred and the seller are), with the crowd's clips
+  const url=heroMainUrl(av);
+  gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
+  .then(meshyAnims).then(gl=>{ const g=av.girl?'f':'m', list=MESHY_OUTFITS[g], o=list.some(x=>x[0]===av.outfit)?av.outfit:list[0][0];
+    return meshyTexReady((g==='f'?'F1':'1')+'-'+o).then(()=>[gl,g,o]); }).then(([gl,g,o])=>{
+    if(!G.g.parent||G.npc3d) return;
+    const m=gl.scene;
+    m.traverse(x=>{ if(x.isMesh){ x.castShadow=false; x.frustumCulled=false; } });
+    meshyDress(m,{girl:!!av.girl,outfit:o});   // exactly as the player's own figure is dressed
+    m.scale.setScalar(HERO_MODEL_SCALE); m.rotation.y=HERO_MODEL_ROTATION_OFFSET;
+    const r=new THREE.Group(); r.add(m);
+    const mixer=new THREE.AnimationMixer(m), actions={};
+    ['Idle','Walk','Run','Wave'].forEach(n=>{ const c=gl.animations.find(a=>a.name===n); if(c){ const a=mixer.clipAction(c); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
+    if(!actions.Idle||!actions.Walk) throw new Error('no clips');
+    G.g.add(r); G.body.visible=false;
+    G.npc3d={model:r,mixer,actions,state:null,action:null,ik:heroFindArms(m),push:0,phase:0};
+    mixer.update(0);
+  }).catch(e=>{ console.warn('peer 3D: the wardrobe figure instead',e); npcAdopt(G,avOpts(av)); });
 }
 const npcGesture=(G,name)=>{ if(G&&G.npc3d&&G.g.visible) gestStart(G.npc3d,name,name==='Wave'?2:1); };
 // the cashiers are built before this code runs: they join now
@@ -5493,13 +5517,15 @@ const AV_BOTTOM=['pants','skirt','shorts'], AV_EXTRA=['none','cap','glasses','be
 const packAv=a=>{ const S=HERO_STYLES[a.girl?'f':'m'], L=heroLook(a);
   return [a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra),Math.max(0,AV_MERCH.indexOf(a.merch||'none')),
     S.head.findIndex(x=>x[0]===(a.hairStyle||L.head)),S.top.findIndex(x=>x[0]===L.top),   // 8, 9: the 3D haircut and shirt style
-    Math.max(0,AV_BODY.findIndex(b=>b[0]===a.body)),Math.max(0,AV_CHOICES.eyes.indexOf(a.eyes)),Math.max(0,AV_EYEWEAR.indexOf(a.eyewear||'none'))]; };   // 10-12: build, eyes, glasses
+    Math.max(0,AV_BODY.findIndex(b=>b[0]===a.body)),Math.max(0,AV_CHOICES.eyes.indexOf(a.eyes)),Math.max(0,AV_EYEWEAR.indexOf(a.eyewear||'none')),   // 10-12: build, eyes, glasses
+    MESHY_HERO?Math.max(0,MESHY_OUTFITS[a.girl?'f':'m'].findIndex(x=>x[0]===a.outfit)):-1]; };   // 13: the Meshy outfit (-1: the wardrobe figure)
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
   const S=HERO_STYLES[v[0]===1?'f':'m'], st=(list,i)=>Number.isInteger(i)&&list[i]?list[i][0]:'';
   return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none',merch:AV_MERCH[v[7]]||'none',
-    hairStyle:st(S.head,v[8]),top:st(S.top,v[9]),body:(AV_BODY[v[10]]||AV_BODY[0])[0],eyes:AV_CHOICES.eyes[v[11]]||AV_CHOICES.eyes[0],eyewear:AV_EYEWEAR[v[12]]||'none'}; }
+    hairStyle:st(S.head,v[8]),top:st(S.top,v[9]),body:(AV_BODY[v[10]]||AV_BODY[0])[0],eyes:AV_CHOICES.eyes[v[11]]||AV_CHOICES.eyes[0],eyewear:AV_EYEWEAR[v[12]]||'none',
+    outfit:Number.isInteger(v[13])&&MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]]?MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]][0]:''}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
@@ -5544,7 +5570,8 @@ function netPeer(id,meta){
   let q=Net.peers.get(id); const key=JSON.stringify(meta.a), name=cleanName(meta.n)||'אורח/ת';
   if(q&&q.key!==key){ netDrop(id); q=null; }
   if(!q){ if(Net.peers.size>=ROOM_CAP+4) return; const av=unpackAv(meta.a); if(!av) return;
-    const G=mkGuyNPC(avOpts(av)), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.visible=false; scene.add(G.g);
+    const mp=MESHY_HERO&&!!av.outfit, G=mp?mkGuy(avOpts(av)):mkGuyNPC(avOpts(av)), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.visible=false; scene.add(G.g);
+    if(mp) meshyPeer(G,av);
     const tag=document.createElement('div'); tag.className='nametag'; tag.hidden=true; $('#bubbles').appendChild(tag);
     const emo=bubble('emo');
     q={id,key,G,tag,emo,snaps:[],seen:false,speed:0,prev:new THREE.Vector3(),emoUntil:0,emoAt:0};
