@@ -118,6 +118,8 @@
   .sitem{min-width:0;border-radius:16px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:10px;display:flex;flex-direction:column;gap:6px;text-align:center;}
   .sitem .ic{height:118px;border-radius:14px;display:grid;place-items:center;font-size:40px;background:radial-gradient(circle at 50% 40%,#ffffff,#eef0f5 70%);}
   .sitem .ic img{width:112px;height:112px;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(22,26,43,.12));}
+  .sitem.outfit .ic{height:172px;overflow:hidden;padding:0;background:#eef0f5;}
+  .sitem.outfit .ic img{width:100%;height:100%;object-fit:cover;object-position:50% 12%;filter:none;}
   .sitem b{font-size:14px;font-weight:800;}
   .sitem small{font-size:12px;color:#6b7289;min-height:30px;}
   .sitem button{height:38px;border-radius:11px;font-weight:800;font-size:14px;background:var(--brand);color:#fff;}
@@ -2050,6 +2052,10 @@ const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w3', f:ASSET+'hero-w.glb?v=w3'};
 const MESHY_HERO = !/[?&]hero=old/.test(location.search);
 const MESHY_OUTFITS = {m:[['orange','קפוצ׳ון כתום'],['red','קפוצ׳ון אדום'],['tee','לבן BuyToday'],['navy','כחול נייבי'],['sweater','ירוק'],['leather','שחור']],
   f:[['teal','טורקיז'],['pink','ורוד'],['yellow','צהוב חרדל'],['purple','סגול'],['tee','לבן BuyToday'],['leather','שחור']]};
+// the outfits are sold in the rooftop shop: two of each come free, the rest cost coins (id o-<m|f>-<outfit>)
+const MESHY_PRICE = {m:{orange:0,red:0,tee:60,navy:80,sweater:100,leather:150}, f:{teal:0,pink:0,tee:60,yellow:80,purple:100,leather:150}};
+const outfitId = (g,o) => 'o-'+g+'-'+o;
+const outfitOwned = (g,o) => !MESHY_PRICE[g][o] || (typeof Coins!=='undefined'&&Coins.owned.includes(outfitId(g,o)));
 const heroMainUrl = o => MESHY_HERO ? ASSET+'people/MESHY-'+(o&&o.girl?'F1':'1')+'.glb?v=y4' : heroUrl(o);
 const heroUrl = o => HERO_MODEL_FILES[o&&o.girl?'f':'m'];   // the wardrobe figure: shop staff, other players, the fallback crowd
 const HERO_STYLES = {
@@ -2083,7 +2089,7 @@ function gltfReady(){ if(GLTF_READY) return GLTF_READY;
 function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   return GLTF_CACHE[url] = gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
 }
 const HEAD_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -2998,7 +3004,7 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
    Everything is baked into STATIC[2], which is only drawn while somebody is on the roof. */
 const roofLive=[];
 const GAME_SPOTS=[{id:'catch',title:'תפוס את המבצע',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',title:'צייד ההנחות',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4},{id:'claw',title:'מכונת המתנות',mx:-9.4,mz:-18.6,x:-10.9,z:-18.6}];
-const SHOP_SPOT={x:0,z:0};
+const SHOP_SPOT={x:0,z:0}, SELLER={stand:null,real:null};
 function buildRoof(){
   SG=STATIC[2]; const Y=2*FH, f=2;
   // deck everywhere outside the skylight, plus the bridge to the elevator
@@ -3093,10 +3099,10 @@ function buildRoof(){
       box(.66,.72,.12,mat(c,c===0xd4a017?{metalness:.6,roughness:.3}:{}),x,Y+1.55,sz-1.3); plane(.34,.28,merchTex(['wordmark-white','wordmark-orange','wordmark-orange','wordmark-navy'][i]),x,Y+1.66,sz-1.235,0); });
     box(4,2.6,.2,mat(0x22263a),sx,Y+1.3,sz-1.8); solidR(f,sx-2.1,sx+2.1,sz-2,sz+.5);
     SHOP_SPOT.x=sx; SHOP_SPOT.z=sz+1.7;
-    neon('חנות BuyToday',sx,Y+3.6,sz-1.75,0,4.2,false,'חולצות · כובעים · אביזרים',true);
+    neon('חנות BuyToday',sx,Y+3.6,sz-1.75,0,4.2,false,MESHY_HERO?'תלבושות חדשות · מודדים ולובשים':'חולצות · כובעים · אביזרים',true);
     // spelled out rather than through avOpts/MERCH, which are declared after the building code runs
     const m=mkGuy({girl:false,skin:0xe0ac80,hair:0x16110d,shirt:0xd4a017,shiny:true,logo:true,wordmark:'wordmark-navy',logoBack:true,pants:0x2b2f3a,bottom:'pants',extra:'crown',tuft:false});
-    m.g.position.set(sx+2.6,Y,sz+.2); m.g.rotation.y=-.5; scene.add(m.g); roofLive.push(m.g); solid(f,sx+2.6,sz+.2,.8,.8); }
+    m.g.position.set(sx+2.6,Y,sz+.2); m.g.rotation.y=-.5; scene.add(m.g); roofLive.push(m.g); solid(f,sx+2.6,sz+.2,.8,.8); SELLER.stand=m; }
 
   // --- two prize machines: play, win coins ---
   GAME_SPOTS.forEach((gs,i)=>{ if(gs.id==='claw') return buildClawCabinet(gs,Y,f); const g=new THREE.Group(), col=[0xf72585,0x4cc9f0][i];
@@ -3795,7 +3801,9 @@ function renderCreator(){
   const mine=slot=>SH_.filter(i=>i.slot===slot&&owned.includes(i.id));
   if(MESHY_HERO){   // the Meshy figures: a man or a woman, and a whole outfit
     if(ctab==='body') seg('דמות','girl',[[false,'בן'],[true,'בת']],!!avatar.girl);
-    else { const L2=MESHY_OUTFITS[avatar.girl?'f':'m']; seg('תלבושת','outfit',L2,L2.some(x=>x[0]===avatar.outfit)?avatar.outfit:L2[0][0]); }
+    else { const g=avatar.girl?'f':'m', L2=MESHY_OUTFITS[g], mineO=L2.filter(x=>outfitOwned(g,x[0])), more=L2.length-mineO.length;
+      seg('תלבושת','outfit',mineO,mineO.some(x=>x[0]===avatar.outfit)?avatar.outfit:L2[0][0]);
+      if(more){ const p=document.createElement('p'); p.style.cssText='margin:0;font-size:12.5px;color:#5b6280'; p.textContent='עוד '+more+' תלבושות מחכות בחנות BuyToday על הגג. קונים במטבעות ולובשים מיד'; pane.appendChild(p); } }
   } else if(ctab==='body'){
     seg('דמות','girl',[[false,'בן'],[true,'בת']],!!avatar.girl);
     seg('מבנה גוף','body',AV_BODY,avatar.body||'regular');
@@ -4619,6 +4627,7 @@ function wearing(it){ return avatar[slotOf(it)]===it.id; }
 function wear(it,on){ const a=Object.assign({},avatar,{[slotOf(it)]:on?it.id:'none'}); setAvatar(a); saveAvatar(); acctSave(); netRetrack(); }
 function renderShop(){
   $('#shopCoins').innerHTML=Coins.n.toLocaleString('he-IL')+' '+COIN;
+  if(MESHY_HERO) return renderOutfitShop();
   [['merch','#shopShirts'],['extra','#shopHats']].forEach(([slot,sel])=>{ const box=$(sel); box.innerHTML='';
     SHOP.filter(it=>it.slot===slot).forEach(it=>{ const el=document.createElement('div'); el.className='sitem';
       el.innerHTML='<div class="ic"><img alt="" loading="lazy"></div><b></b><small></small><button></button>'; const im=el.querySelector('.ic img'); im.src=ASSET+'merch/'+it.id+'.png'; im.onerror=()=>{ el.querySelector('.ic').textContent=it.icon; }; el.querySelector('b').textContent=it.name; el.querySelector('small').textContent=it.desc;
@@ -4630,6 +4639,26 @@ function renderShop(){
         b.onclick=()=>{ if(Coins.n<it.price) return; Coins.n-=it.price; Coins.owned.push(it.id); saveCoins(); renderCoins(true); wear(it,true); Sound.cash(); buzz(30); toast('קניתם '+it.name+'. לובשים!','good'); renderShop(); }; }
       box.appendChild(el); }); });
 }
+/* the player's Meshy figure: whole outfits, a picture of each on the figure itself (people/thumb), bought with
+   coins and worn at once; the old shirts and hats belong to the wardrobe figure and are not offered to it */
+function renderOutfitShop(){
+  const g=avatar.girl?'f':'m', body=g==='f'?'F1':'1', box=$('#shopShirts'), hats=$('#shopHats');
+  box.previousElementSibling.textContent='תלבושות · '+(g==='f'?'בת':'בן'); hats.hidden=true; hats.previousElementSibling.hidden=true; box.innerHTML='';
+  const cur=MESHY_OUTFITS[g].some(x=>x[0]===avatar.outfit)?avatar.outfit:MESHY_OUTFITS[g][0][0];
+  MESHY_OUTFITS[g].forEach(([o,name])=>{ const el=document.createElement('div'); el.className='sitem outfit';
+    el.innerHTML='<div class="ic"><img alt="" loading="lazy"></div><b></b><small></small><button></button>';
+    el.querySelector('img').src=ASSET+'people/thumb/'+body+'-'+o+'.jpg'; el.querySelector('b').textContent=name;
+    const price=MESHY_PRICE[g][o], own=outfitOwned(g,o), on=cur===o, b=el.querySelector('button');
+    el.querySelector('small').textContent=!price?'חינם, לכל אחד':own?'שלכם':'תלבושת שלמה, לובשים מיד';
+    const wearIt=()=>{ setAvatar(Object.assign({},avatar,{outfit:o})); saveAvatar(); acctSave(); netRetrack(); };
+    if(own){ b.textContent=on?'לובשים ✓':'ללבוש'; b.className=on?'on':'own'; b.onclick=()=>{ if(on) return; wearIt(); buzz(10); toast('לובשים '+name,'good'); renderShop(); }; }
+    else { b.innerHTML=price+' '+COIN; b.disabled=Coins.n<price; if(b.disabled) b.innerHTML=`${price} ${COIN} · חסרים ${price-Coins.n}`;
+      b.onclick=()=>{ if(Coins.n<price) return; Coins.n-=price; Coins.owned.push(outfitId(g,o)); saveCoins(); renderCoins(true); wearIt(); Sound.cash(); buzz(30); toast('קניתם '+name+'. לובשים!','good'); sellerCheer(); renderShop(); }; }
+    box.appendChild(el); });
+}
+// whoever picked an outfit in the creator before the shop sold them keeps it
+(function(){ if(!MESHY_HERO) return; const g=avatar.girl?'f':'m', o=avatar.outfit;
+  if(o&&MESHY_PRICE[g][o]&&!outfitOwned(g,o)){ Coins.owned.push(outfitId(g,o)); saveCoins(); } })();
 function openShop(){ if(G.state!=='play') return; stopAuto(); G.paused=true; renderShop(); shopEl.hidden=false; }
 function closeShop(){ shopEl.hidden=true; G.paused=false; last=performance.now(); }
 $('#shopClose').addEventListener('click',closeShop);
@@ -4991,6 +5020,28 @@ function alfReal(a,gl){
   a.real={model,mixer,actions,ik,glass,state:null,action:null,speed:0,push:0,yaw:0,pitch:0,raise:0,near:false,waveT:0};
   alfRealTick(a,0,0);
 }
+/* the shop's seller (people/SELLER.glb, made with Meshy): stands by the counter, waves when the shopper comes up to
+   the shop and cheers a purchase. She is only fetched on the roof, the one place she can be seen. */
+function sellerLoad(){ if(SELLER.asked||!SELLER.stand||!MESHY_HERO) return; SELLER.asked=true;
+  loadGLTF(ASSET+'people/SELLER'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=s1').then(gl=>{
+    const model=gl.scene, a=SELLER.stand; model.scale.setScalar(HERO_MODEL_SCALE); model.rotation.y=HERO_MODEL_ROTATION_OFFSET;
+    model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); if(mt.map) mt.map.anisotropy=4; }); } });
+    const mixer=new THREE.AnimationMixer(model), actions={};
+    ['Idle','Wave'].forEach(n=>{ const c=gl.animations.find(x=>x.name===n); if(c){ const x=mixer.clipAction(c); x.setLoop(THREE.LoopRepeat,Infinity); actions[n]=x; } });
+    if(!actions.Idle) return;
+    a.g.children.forEach(c=>c.visible=false); a.g.add(model); actions.Idle.play();
+    SELLER.real={model,mixer,actions,state:'Idle',action:actions.Idle,speed:0,push:0,near:false,waveT:0}; })
+    .catch(e=>console.warn('seller 3D: keeping the classic figure',e)); }
+function sellerTick(dt){ const r=SELLER.real;
+  if(!r){ if(player.floor===TOP&&G.state==='play') sellerLoad(); return; }
+  if(player.floor!==TOP) return;
+  const d=Math.hypot(player.pos.x-SHOP_SPOT.x,player.pos.z-SHOP_SPOT.z); r.waveT-=dt;
+  const near=d<6; if(near&&!r.near&&r.waveT<=0){ r.waveT=25; gestStart(r,'Wave',2); } r.near=near;
+  const g=SELLER.stand.g, want=near?Math.atan2(player.pos.x-g.position.x,player.pos.z-g.position.z):-.5;
+  let dy=want-g.rotation.y; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); g.rotation.y+=dy*(1-Math.exp(-dt*3));
+  if(!gestTick(r,0,dt)&&r.action!==r.actions.Idle){ r.actions.Idle.reset().play(); if(r.action) r.action.crossFadeTo(r.actions.Idle,HERO_FADE,false); r.action=r.actions.Idle; }
+  r.mixer.update(dt); }
+function sellerCheer(){ if(SELLER.real) gestStart(SELLER.real,'Wave',2); }
 const alfGesture=name=>{ const r=ALF.npc&&ALF.npc.real; if(r) gestStart(r,name,name==='Wave'?2:1); };
 const _alf={v:new THREE.Vector3(),w:new THREE.Vector3(),q:new THREE.Quaternion()};
 function alfRealTick(a,dt,t){ const r=a.real; if(!r) return;
@@ -5407,7 +5458,7 @@ function updateNear(){
   else if(near.type==='enter') setHint('קניון BuyToday','חזרה פנימה, לכל המחלקות',false,'כניסה');
   else if(near.type==='car') setHint(OUT.parked==='home'?'נסיעה ל־BuyToday Kids 🚗':'חזרה לקניון BuyToday 🚗',OUT.parked==='home'?'הקניון החדש לילדים, ממש בהמשך הרחוב':'נוסעים בחזרה לכניסה',false,'נסיעה');
   else if(near.type==='kids') setHint('BuyToday Kids · נפתח בקרוב','צעצועים, תינוקות, משחקים וחדרי ילדים. נעדכן כשנפתח',false,'עדכנו אותי');
-  else if(near.type==='shop') setHint('חנות BuyToday','חולצות וכובעים למטבעות · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
+  else if(near.type==='shop') setHint('חנות BuyToday',(MESHY_HERO?'תלבושות חדשות למטבעות':'חולצות וכובעים למטבעות')+' · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
@@ -5691,7 +5742,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=it.model.userData.face?Math.atan2(camera.position.x-it.x,camera.position.z-it.z):Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
-  alfTick(dt,t);
+  alfTick(dt,t); sellerTick(dt);
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
   AD.update(dt);
