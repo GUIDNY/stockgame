@@ -2072,7 +2072,7 @@ function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-\d+\.glb/.test(url)) return mhAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-\d+\.glb|ALFRED\.glb/.test(url)) return mhAnims(gl); return gl; });
 }
 const UBC_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -4982,7 +4982,12 @@ function buildAlfred(){
    Until it arrives, or if it cannot load, the blocky Alfred stays. */
 const ALF_LOOK={girl:false,hairStyle:'casual',top:'hoodie',bottom:'pants',skin:0xf3cfab,hair:0x4a2f1c,shirt:0x17191f,pants:0x2b3346,extra:'glasses',merch:'none',logo3d:true};
 const ALF_GLASS={x:-.3,y:1.58,z:.32};   // where his right hand holds the glass up, in his own space (right is -x)
+// Alfred made with Meshy (people/ALFRED.glb, Mixamo bone names, the crowd's clips); ?alf=old brings back the wardrobe one
+const ALF_MESHY=!/[?&]alf=old/.test(location.search);
 function loadAlfredReal(a){
+  if(ALF_MESHY){ (window.requestIdleCallback||setTimeout)(()=>{ loadGLTF(ASSET+'people/ALFRED.glb?v=a1')
+      .then(gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred 3D: keeping the classic figure',e); } })
+      .catch(e=>console.warn('alfred 3D: keeping the classic figure',e)); },{timeout:2500}); return; }
   const url=HERO_MODEL_FILES.m;
   (window.requestIdleCallback||setTimeout)(()=>{
     loadGLTF(url)   // the GLTF loader script, and the file in the browser cache
@@ -4995,7 +5000,7 @@ function alfReal(a,gl){
   const model=gl.scene;
   model.scale.setScalar(HERO_MODEL_SCALE); model.rotation.y=HERO_MODEL_ROTATION_OFFSET;
   model.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } });
-  smoothGLTF(gl); heroDress(model,ALF_LOOK);
+  if(model.userData.mh) meshyDress(model,ALF_LOOK); else { smoothGLTF(gl); heroDress(model,ALF_LOOK); }
   const mixer=new THREE.AnimationMixer(model), actions={};
   ['Idle','Walk','Run','Wave','Interact'].forEach(n=>{ const c=gl.animations.find(x=>x.name===n); if(c){ const x=mixer.clipAction(c); x.setLoop(THREE.LoopRepeat,Infinity); actions[n]=x; } });
   const ik=heroFindArms(model); if(!actions.Idle||!actions.Walk||!ik) return;
