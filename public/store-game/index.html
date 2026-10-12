@@ -3,7 +3,7 @@
 (function(){ if(/[?&]hero=old/.test(location.search)) return; var a={}; try{ a=JSON.parse(localStorage.getItem('bt-avatar')||'{}')||{}; }catch(e){}
   var B=location.hostname==='play.buytoday.co.il'?'':'https://play.buytoday.co.il/', g=a.girl?'F1':'1', O=a.girl?['teal','pink','yellow','purple','tee','leather']:['orange','red','tee','navy','sweater','leather'];
   var o=O.indexOf(a.outfit)>=0?a.outfit:O[0], small=matchMedia('(max-width:700px)').matches||matchMedia('(pointer:coarse)').matches;
-  [[B+'people/MESHY-'+g+'.glb?v=y3','fetch'],[B+'people/anims.glb?v=p3','fetch'],[B+'gltf-loader.js','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t1','image']].forEach(function(x){
+  [[B+'people/MESHY-'+g+'.glb?v=y4','fetch'],[B+'people/anims.glb?v=p4','fetch'],[B+'gltf-loader.js','script'],[B+'meshopt_decoder.js?v=1','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t1','image']].forEach(function(x){
     var l=document.createElement('link'); l.rel='preload'; l.href=x[0]; l.as=x[1]; if(x[1]!=='script') l.crossOrigin='anonymous'; document.head.appendChild(l); }); })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2044,13 +2044,13 @@ const USE_3D_HERO = true;
 /* The hero's wardrobe: one file per body (men / women), each holding every haircut, top, trousers and shoes on
    one shared skeleton; the avatar picks which parts show and what colour they are. Bump ?v= when a file
    changes: they are cached for a day. */
-const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w2', f:ASSET+'hero-w.glb?v=w2'};
+const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w3', f:ASSET+'hero-w.glb?v=w3'};
 /* the player's own figure: made with Meshy (a man and a woman), its clothes are whole painted outfits swapped on the
    same body (people/tex/<body>-<outfit>.jpg); ?hero=old brings back the wardrobe figure */
 const MESHY_HERO = !/[?&]hero=old/.test(location.search);
 const MESHY_OUTFITS = {m:[['orange','קפוצ׳ון כתום'],['red','קפוצ׳ון אדום'],['tee','לבן BuyToday'],['navy','כחול נייבי'],['sweater','ירוק'],['leather','שחור']],
   f:[['teal','טורקיז'],['pink','ורוד'],['yellow','צהוב חרדל'],['purple','סגול'],['tee','לבן BuyToday'],['leather','שחור']]};
-const heroMainUrl = o => MESHY_HERO ? ASSET+'people/MESHY-'+(o&&o.girl?'F1':'1')+'.glb?v=y3' : heroUrl(o);
+const heroMainUrl = o => MESHY_HERO ? ASSET+'people/MESHY-'+(o&&o.girl?'F1':'1')+'.glb?v=y4' : heroUrl(o);
 const heroUrl = o => HERO_MODEL_FILES[o&&o.girl?'f':'m'];   // the wardrobe figure: shop staff, other players, the fallback crowd
 const HERO_STYLES = {
   m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
@@ -2075,10 +2075,14 @@ const HERO_THUMB_CURL = [.3, .4, .3];
 const HERO3D = {status:USE_3D_HERO?'idle':'off', url:'', gltfs:{}, failed:{}, gen:0, owner:null, error:null};
 // one cached load per URL; uses the same GLTFLoader file as Alfred, adding it to the page if it isn't there yet
 const GLTF_CACHE = {};
+// the GLTF loader and the meshopt decoder (the models are packed with gltfpack: a quarter of their size), once
+let GLTF_READY=null;
+function gltfReady(){ if(GLTF_READY) return GLTF_READY;
+  const js=f=>new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+f; sc.onload=res; sc.onerror=()=>rej(new Error(f+' failed')); document.head.appendChild(sc); });
+  return GLTF_READY=Promise.all([THREE.GLTFLoader?0:js('gltf-loader.js'), window.MeshoptDecoder?0:js('meshopt_decoder.js?v=1')]).then(()=>window.MeshoptDecoder&&MeshoptDecoder.ready); }
 function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
-  const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
-  return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
+  return GLTF_CACHE[url] = gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
     .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
 }
 const HEAD_NOD=[.12,.2];   // radians forward at the neck and the head
@@ -2327,7 +2331,10 @@ function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
   const outfit=list?(list.some(x=>x[0]===o.outfit)?o.outfit:list[0][0]):null;
   model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6);
-    if(outfit){ if(!mt.userData.own) mt.userData.own=mt.map; mt.map=meshyTex(body+'-'+outfit); mt.needsUpdate=true; }
+    if(outfit){ if(!mt.userData.own) mt.userData.own=mt.map; const own=mt.userData.own, t=meshyTex(body+'-'+outfit);
+      // a packed model squeezes its texture coordinates and undoes it with a transform on its own texture: the outfit takes the same one
+      if(own){ t.offset.copy(own.offset); t.repeat.copy(own.repeat); t.rotation=own.rotation; t.center.copy(own.center); t.matrixAutoUpdate=own.matrixAutoUpdate; t.matrix.copy(own.matrix); }
+      mt.map=t; mt.needsUpdate=true; }
     if(mt.map){ mt.map.anisotropy=an; mt.map.needsUpdate=true; } }); } }); }   // sharp at a slant, not smeared
 /* the face: painted, not modelled. The wardrobe's faces are two dark blocks for eyes and two for brows; they are
    hidden and a face is painted onto a copy of the front of the head's own skin (same vertices, same bones, so it
@@ -2739,7 +2746,7 @@ function npcAttach(G,gl){
    carried onto each character by its rest pose (mixRetarget), so the same clips drive every one of them.
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
-const PEOPLE={names:['Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27','Ch33','Ch22'], weight:{Ch03:3}, tpl:[], cands:[], started:false, ready:false, V:'p3'};
+const PEOPLE={names:['Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27','Ch33','Ch22'], weight:{Ch03:3}, tpl:[], cands:[], started:false, ready:false, V:'p4'};
 PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:9;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
@@ -4952,14 +4959,14 @@ const ALF_GLASS={x:-.3,y:1.58,z:.32};   // where his right hand holds the glass 
 // Alfred made with Meshy (people/ALFRED.glb, Mixamo bone names, the crowd's clips); ?alf=old brings back the wardrobe one
 const ALF_MESHY=!/[?&]alf=old/.test(location.search);
 function loadAlfredReal(a){
-  if(ALF_MESHY){ whenInMall(()=>{ loadGLTF(ASSET+'people/ALFRED'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=a3')   // a 2048 texture on a computer, 1024 on a phone
+  if(ALF_MESHY){ whenInMall(()=>{ loadGLTF(ASSET+'people/ALFRED'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=a4')   // a 2048 texture on a computer, 1024 on a phone
      
       .then(gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred 3D: keeping the classic figure',e); } })
       .catch(e=>console.warn('alfred 3D: keeping the classic figure',e)); }); return; }
   const url=HERO_MODEL_FILES.m;
   (window.requestIdleCallback||setTimeout)(()=>{
     loadGLTF(url)   // the GLTF loader script, and the file in the browser cache
-      .then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
+      .then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
       .then(gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred 3D: keeping the classic figure',e); } })
       .catch(e=>console.warn('alfred 3D: keeping the classic figure',e));
   },{timeout:2500});
