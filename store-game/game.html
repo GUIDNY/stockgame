@@ -119,6 +119,9 @@
   .sitem .ic{height:118px;border-radius:14px;display:grid;place-items:center;font-size:40px;background:radial-gradient(circle at 50% 40%,#ffffff,#eef0f5 70%);}
   .sitem .ic img{width:112px;height:112px;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(22,26,43,.12));}
   .sitem.outfit .ic{height:172px;overflow:hidden;padding:0;background:#eef0f5;}
+  .sitem.pet .ic{overflow:hidden;padding:0;background:#dcdfe6;}
+  .sitem.pet .ic img{width:100%;height:100%;object-fit:cover;filter:none;}
+  .petnone{grid-column:1/-1;height:40px;border-radius:12px;background:#eef0f5;color:#161a2b;font-weight:700;font-size:14px;}
   .sitem.outfit .ic img{width:100%;height:100%;object-fit:cover;object-position:50% 12%;filter:none;}
   .sitem b{font-size:14px;font-weight:800;}
   .sitem small{font-size:12px;color:#6b7289;min-height:30px;}
@@ -2754,7 +2757,7 @@ function npcAttach(G,gl){
    carried onto each character by its rest pose (mixRetarget), so the same clips drive every one of them.
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
-const PEOPLE={names:['Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27','Ch33','Ch22'], weight:{Ch03:3}, tpl:[], cands:[], started:false, ready:false, V:'p4'};
+const PEOPLE={names:['BT1','BT2','BT3','Ch03','Ch02','Ch07','Ch26','Ch21','Ch12'], weight:{BT1:2.5,BT2:2.5,BT3:2.5,Ch03:2}, tpl:[], cands:[], started:false, ready:false, V:'p4'};
 PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:9;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
@@ -2801,7 +2804,8 @@ function peopleStart(){
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ dequant(o.geometry); o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; }); } });
-        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=mixRetarget(c,an.scene,m); });
+        const meshy=/^BT/.test(PEOPLE.names[i]);   // the BuyToday team, made with Meshy: their spine needs the head nodded forward
+        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c){ const r=mixRetarget(c,an.scene,m); clips[k]=meshy?headNod(r):r; } });
         if(!clips.Idle||!clips.Walk) return;
         // its height standing, from the skinned vertices in the first frame of Idle
         const mx=new THREE.AnimationMixer(m); mx.clipAction(clips.Idle).play(); mx.update(0); m.updateMatrixWorld(true);
@@ -3029,6 +3033,8 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
 const roofLive=[];
 const GAME_SPOTS=[{id:'catch',title:'תפוס את המבצע',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',title:'צייד ההנחות',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4},{id:'claw',title:'מכונת המתנות',mx:-9.4,mz:-18.6,x:-10.9,z:-18.6}];
 const SHOP_SPOT={x:0,z:0}, SELLER={stand:null,real:null};
+// the pet corner on the roof, east of the outfit shop: one of each pet on a cushion (see PETS)
+const PET_ZONE={x0:19.4,x1:23.5,z0:-3.1,z1:4.7,cz:.8,spot:{x:0,z:0},spots:[[20.3,-2.2],[21.6,-2.2],[22.9,-2.2],[20.3,3.7],[21.5,3.7],[22.8,1.2]],list:[],made:false};
 function buildRoof(){
   SG=STATIC[2]; const Y=2*FH, f=2;
   // deck everywhere outside the skylight, plus the bridge to the elevator
@@ -3127,6 +3133,25 @@ function buildRoof(){
     // spelled out rather than through avOpts/MERCH, which are declared after the building code runs
     const m=mkGuy({girl:false,skin:0xe0ac80,hair:0x16110d,shirt:0xd4a017,shiny:true,logo:true,wordmark:'wordmark-navy',logoBack:true,pants:0x2b2f3a,bottom:'pants',extra:'crown',tuft:false});
     m.g.position.set(sx+2.6,Y,sz+.2); m.g.rotation.y=-.5; scene.add(m.g); roofLive.push(m.g); solid(f,sx+2.6,sz+.2,.8,.8); SELLER.stand=m; }
+
+  // --- the pet corner, beside the outfit shop: grass, a picket fence open to the walkway, a kennel, bowls and cushions ---
+  { const x0=PET_ZONE.x0, x1=PET_ZONE.x1, z0=PET_ZONE.z0, z1=PET_ZONE.z1, cz=PET_ZONE.cz;
+    const grass=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0),new THREE.MeshStandardMaterial({map:canvasTex(256,256,(g,W,H)=>{ g.fillStyle='#5fae45'; g.fillRect(0,0,W,H);
+      for(let i=0;i<1400;i++){ g.fillStyle=['#4f9a3a','#6cbf52','#79c95c','#579f3f'][i%4]; g.fillRect((i*73)%W,(i*151)%H,2,5); } }),roughness:1}));
+    grass.rotation.x=-Math.PI/2; grass.position.set((x0+x1)/2,Y+.025,(z0+z1)/2); grass.receiveShadow=true; SG.add(grass);
+    const white=mat(0xfafafa,{roughness:.7}), fence=(ax,az,bx,bz)=>{ const L=Math.hypot(bx-ax,bz-az), r=Math.atan2(bx-ax,bz-az)-Math.PI/2;
+      [.22,.48].forEach(h=>{ const b=box(L,.05,.04,white,(ax+bx)/2,Y+h,(az+bz)/2,null,false); b.rotation.y=r; });
+      for(let k=0;k<=L+.01;k+=.3){ const t=L?k/L:0; box(.07,.62,.04,white,ax+(bx-ax)*t,Y+.31,az+(bz-az)*t,null,false); }
+      solidR(f,Math.min(ax,bx)-.08,Math.max(ax,bx)+.08,Math.min(az,bz)-.08,Math.max(az,bz)+.08); };
+    fence(x0,z0,x1,z0); fence(x0,z1,x1,z1); fence(x1,z0,x1,z1); fence(x0,z0,x0,cz-1.1); fence(x0,cz+1.1,x0,z1);   // open on the walkway side
+    // the kennel
+    const kx=x1-.8, kz=z1-.75; box(1,.7,.9,mat(0xd9482b,{roughness:.8}),kx,Y+.35,kz); box(.42,.46,.05,M.black,kx-.505,Y+.27,kz,null,false).rotation.y=Math.PI/2;
+    [-1,1].forEach(sd=>{ const r=box(1.2,.06,.62,mat(0x3b2a20,{roughness:.9}),kx,Y+.9,kz+sd*.25); r.rotation.x=sd*.62; }); solid(f,kx,kz,1.1,1);
+    [[x1-.5,z0+.5,0x1f9dd9],[x1-1.05,z0+.5,0xff7a1a]].forEach(([x,z,c])=>{ cyl(.17,.13,.09,mat(c,{roughness:.4}),x,Y+.07,z); });
+    PET_ZONE.spots.forEach(([x,z],i)=>{ cyl(.34,.36,.06,mat([0xff9fbf,0x9fd3ff,0xffe08a,0xb9f2a1,0xd7b8ff,0xffc29a][i%6],{roughness:.95}),x,Y+.055,z); });
+    [cz-1.15,cz+1.15].forEach(z=>{ box(.12,2.9,.12,M.dark,x0,Y+1.45,z); solid(f,x0,z,.3,.3); });
+    neon('פינת החיות',x0,Y+3.1,cz,-Math.PI/2,3.4,false,'חבר שהולך איתכם בכל הקניון',true);
+    PET_ZONE.spot={x:x0-1.2,z:cz}; }
 
   // --- two prize machines: play, win coins ---
   GAME_SPOTS.forEach((gs,i)=>{ if(gs.id==='claw') return buildClawCabinet(gs,Y,f); const g=new THREE.Group(), col=[0xf72585,0x4cc9f0][i];
@@ -4158,6 +4183,8 @@ function doAction(){
     openGame(near.gs);
   } else if(near.type==='shop'){
     openShop();
+  } else if(near.type==='pets'){
+    openPetShop();
   } else if(near.type==='alfred'){
     openTalk();
   } else if(near.type==='kiosk'){
@@ -4649,8 +4676,11 @@ const shopEl=$('#shopp');
 const slotOf=it=>AV_EYEWEAR.includes(it.id)?'eyewear':it.slot;   // sunglasses go with a hat, in the glasses slot
 function wearing(it){ return avatar[slotOf(it)]===it.id; }
 function wear(it,on){ const a=Object.assign({},avatar,{[slotOf(it)]:on?it.id:'none'}); setAvatar(a); saveAvatar(); acctSave(); netRetrack(); }
+let SHOP_MODE='';
 function renderShop(){
   $('#shopCoins').innerHTML=Coins.n.toLocaleString('he-IL')+' '+COIN;
+  $('#shopTitle').textContent=SHOP_MODE==='pets'?'פינת החיות':'חנות BuyToday';
+  if(SHOP_MODE==='pets') return renderPetShop();
   if(MESHY_HERO) return renderOutfitShop();
   [['merch','#shopShirts'],['extra','#shopHats']].forEach(([slot,sel])=>{ const box=$(sel); box.innerHTML='';
     SHOP.filter(it=>it.slot===slot).forEach(it=>{ const el=document.createElement('div'); el.className='sitem';
@@ -4684,7 +4714,23 @@ function renderOutfitShop(){
 (function(){ if(!MESHY_HERO) return; const g=avatar.girl?'f':'m', o=avatar.outfit;
   if(o&&MESHY_PRICE[g][o]&&!outfitOwned(g,o)){ Coins.owned.push(outfitId(g,o)); saveCoins(); } })();
 function openShop(){ if(G.state!=='play') return; stopAuto(); G.paused=true; renderShop(); shopEl.hidden=false; }
-function closeShop(){ shopEl.hidden=true; G.paused=false; last=performance.now(); }
+function closeShop(){ shopEl.hidden=true; G.paused=false; last=performance.now(); SHOP_MODE=''; }
+function openPetShop(){ SHOP_MODE='pets'; openShop(); }
+function renderPetShop(){
+  const box=$('#shopShirts'), hats=$('#shopHats'), cur=petWant();
+  box.previousElementSibling.textContent='חיות מחמד · הולכות איתכם בכל הקניון'; hats.hidden=true; hats.previousElementSibling.hidden=true; box.innerHTML='';
+  const pick=id=>{ avatar.pet=id; saveAvatar(); acctSave(); netRetrack(); petSync(); };
+  PETS.forEach(P=>{ const el=document.createElement('div'); el.className='sitem pet';
+    el.innerHTML='<div class="ic"><img alt="" loading="lazy"></div><b></b><small></small><button></button>';
+    el.querySelector('img').src=ASSET+'pets/'+P.id+'.jpg'; el.querySelector('b').textContent=P.name;
+    const own=petOwned(P.id), on=cur===P.id, b=el.querySelector('button');
+    el.querySelector('small').textContent=!P.price?'מתנה, לכל אחד':own?'שלכם':'הולך אחריכם לכל מקום';
+    if(own){ b.textContent=on?'איתכם ✓':'לקחת איתי'; b.className=on?'on':'own'; b.onclick=()=>{ if(on) return; pick(P.id); buzz(10); toast(P.name+' הולך איתכם','good'); renderShop(); }; }
+    else { b.innerHTML=P.price+' '+COIN; b.disabled=Coins.n<P.price; if(b.disabled) b.innerHTML=`${P.price} ${COIN} · חסרים ${P.price-Coins.n}`;
+      b.onclick=()=>{ if(Coins.n<P.price) return; Coins.n-=P.price; Coins.owned.push('pet-'+P.id); saveCoins(); renderCoins(true); pick(P.id); Sound.cash(); buzz(30); toast(P.name+' מצטרף אליכם! 🐾','good'); renderShop(); }; }
+    box.appendChild(el); });
+  if(cur!=='none'){ const nb=document.createElement('button'); nb.className='petnone'; nb.textContent='להסתובב בלי חיה'; nb.onclick=()=>{ pick('none'); renderShop(); }; box.appendChild(nb); }
+}
 $('#shopClose').addEventListener('click',closeShop);
 
 /* the two prize machines: a canvas over the game.
@@ -5065,6 +5111,53 @@ function sellerTick(dt){ const r=SELLER.real;
   let dy=want-g.rotation.y; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); g.rotation.y+=dy*(1-Math.exp(-dt*3));
   if(!gestTick(r,0,dt)&&r.action!==r.actions.Idle){ r.actions.Idle.reset().play(); if(r.action) r.action.crossFadeTo(r.actions.Idle,HERO_FADE,false); r.action=r.actions.Idle; }
   r.mixer.update(dt); }
+/* pets, made with Meshy (pets/<id>.glb, about 200 KB each, no skeleton): the one the shopper picked trots after
+   them everywhere, hopping as it goes (a bounce with a little squash), and in between it breathes, hops on the spot
+   or spins round. Other players' pets follow them the same way. The dog comes free; the rest cost coins. */
+const PETS=[{id:'dog',name:'שיבה אינו',price:0,h:.5},{id:'cat',name:'חתלתול ג׳ינג׳י',price:120,h:.42},{id:'bunny',name:'ארנבון',price:120,h:.52},
+  {id:'penguin',name:'פינגווין',price:180,h:.55},{id:'panda',name:'פנדה',price:250,h:.55},{id:'dragon',name:'דרקון קטן',price:400,h:.62}];
+const PET_IDS=PETS.map(p=>p.id), PET_TPL={}, PET={mine:null,allowed:false};
+const petOwned=id=>{ const P=PETS.find(x=>x.id===id); return !!P&&(!P.price||Coins.owned.includes('pet-'+id)); };
+const petWant=()=>{ const v=avatar.pet===undefined?'dog':avatar.pet; return PET_IDS.includes(v)&&petOwned(v)?v:'none'; };
+function petTpl(id){ if(PET_TPL[id]) return PET_TPL[id]; const P=PETS.find(x=>x.id===id);
+  return PET_TPL[id]=loadGLTF(ASSET+'pets/'+id+'.glb?v=1').then(gl=>{ const s=gl.scene, inner=new THREE.Group(), outer=new THREE.Group(); inner.add(s); outer.add(inner);
+    s.traverse(o=>{ if(o.isMesh){ dequant(o.geometry); o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere(); o.castShadow=true;
+      (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.55); }); } });
+    outer.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(inner), c=b.getCenter(new THREE.Vector3()), k=P.h/Math.max(.01,b.max.y-b.min.y);
+    inner.scale.setScalar(k); inner.position.set(-c.x*k,-b.min.y*k,-c.z*k); return outer; }); }
+const PET_BLOB=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.22,depthWrite:false});
+function petSpawn(id){ const root=new THREE.Group(), bob=new THREE.Group(); root.add(bob);
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(.24,18),PET_BLOB); shadow.rotation.x=-Math.PI/2; shadow.position.y=.03; root.add(shadow);
+  const p={id,root,bob,shadow,phase:Math.random()*6,yaw:0,speed:0,nextTrick:2+Math.random()*4,trick:0,spin:0};
+  petTpl(id).then(t=>{ if(!p.dead) bob.add(t.clone(true)); }).catch(e=>console.warn('pet '+id,e));
+  scene.add(root); return p; }
+function petKill(p){ if(!p) return; p.dead=true; if(p.root.parent) p.root.parent.remove(p.root); }
+function petAnim(p,dt){
+  if(p.speed>.4){ p.phase+=dt*(7+p.speed*2); const h=Math.abs(Math.sin(p.phase)); p.bob.position.y=h*.12;
+    p.bob.scale.set(1+(1-h)*.07,1-(1-h)*.09+h*.04,1+(1-h)*.07); p.bob.rotation.x=Math.cos(p.phase)*.13; p.trick=0; p.spin=0; }
+  else { p.nextTrick-=dt; if(p.nextTrick<=0&&!p.trick){ p.trick=1; p.trickT=0; p.trickKind=Math.random()<.55?'hop':'spin'; p.nextTrick=4+Math.random()*6; }
+    if(p.trick){ p.trickT+=dt; const u=Math.min(1,p.trickT/.75); p.bob.position.y=Math.sin(u*Math.PI)*(p.trickKind==='hop'?.3:.16); p.spin=p.trickKind==='spin'?u*Math.PI*2:0; if(u>=1){ p.trick=0; p.spin=0; } }
+    else p.bob.position.y*=Math.exp(-dt*12);
+    const br=Math.sin(performance.now()/330+p.phase)*.025; p.bob.scale.set(1-br*.5,1+br,1-br*.5); p.bob.rotation.x*=Math.exp(-dt*8); }
+  p.root.rotation.y=p.yaw+p.spin; p.shadow.scale.setScalar(Math.max(.5,1-p.bob.position.y*1.6)); }
+// at its owner's heel: a little behind and to the side, catching up at a trot, popping back to them if left far behind
+function petFollow(p,dt,o){
+  const fx=Math.sin(o.yaw), fz=Math.cos(o.yaw), tx=o.x-fx*.95+fz*.65, tz=o.z-fz*.95-fx*.65, r=p.root.position, dx=tx-r.x, dz=tz-r.z, d=Math.hypot(dx,dz);
+  if(d>10||Math.abs(o.y-r.y)>1.5){ r.set(tx,o.y,tz); p.yaw=o.yaw; p.speed=0; }
+  else { const want=d>.35?Math.min(7.5,d*2.8):0; p.speed+=(want-p.speed)*(1-Math.exp(-dt*6));
+    if(d>.01&&p.speed>.05){ const st=Math.min(d,p.speed*dt); r.x+=dx/d*st; r.z+=dz/d*st; } r.y+=(o.y-r.y)*(1-Math.exp(-dt*10)); }
+  const face=p.speed>.4?Math.atan2(dx,dz):Math.atan2(o.x-r.x,o.z-r.z);
+  p.yaw=lerpAngle(p.yaw,face,1-Math.exp(-dt*(p.speed>.4?10:2.5))); petAnim(p,dt); }
+function petSync(){ if(!PET.allowed) return; const want=petWant();
+  if(PET.mine&&PET.mine.id!==want){ petKill(PET.mine); PET.mine=null; }
+  if(!PET.mine&&want!=='none'){ PET.mine=petSpawn(want); const h=hero.g.position; PET.mine.root.position.set(h.x+.6,h.y,h.z-.6); } }
+function petTick(dt){
+  if(PET.mine){ const h=hero.g.position; petFollow(PET.mine,dt,{x:h.x,y:h.y,z:h.z,yaw:G.state==='play'?player.yaw:hero.g.rotation.y}); }
+  if(player.floor!==TOP) return;
+  if(!PET_ZONE.made){ PET_ZONE.made=true; PETS.forEach((P,i)=>{ const [x,z]=PET_ZONE.spots[i], p=petSpawn(P.id); p.root.position.set(x,TOP*FH+.08,z); p.home=Math.atan2(PET_ZONE.spot.x-x,PET_ZONE.spot.z-z); p.yaw=p.home; roofLive.push(p.root); PET_ZONE.list.push(p); }); }
+  PET_ZONE.list.forEach(p=>{ const r=p.root.position, d=Math.hypot(player.pos.x-r.x,player.pos.z-r.z);
+    p.yaw=lerpAngle(p.yaw,d<6?Math.atan2(player.pos.x-r.x,player.pos.z-r.z):p.home,1-Math.exp(-dt*3)); p.speed=0; petAnim(p,dt); }); }
+afterHero(()=>{ PET.allowed=true; petSync(); });
 function sellerCheer(){ if(SELLER.real) gestStart(SELLER.real,'Wave',2); }
 const alfGesture=name=>{ const r=ALF.npc&&ALF.npc.real; if(r) gestStart(r,name,name==='Wave'?2:1); };
 const _alf={v:new THREE.Vector3(),w:new THREE.Vector3(),q:new THREE.Quaternion()};
@@ -5459,7 +5552,8 @@ function updateNear(){
     // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
     CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
     if(!near&&f===TOP){ for(const gs of GAME_SPOTS){ if(Math.hypot(gs.x-p.x,gs.z-p.z)<2.1||Math.hypot(gs.x-cx,gs.z-cz)<1.6){ near={type:'game',gs}; break; } }
-      if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'}; }
+      if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'};
+      if(!near&&(Math.hypot(PET_ZONE.spot.x-p.x,PET_ZONE.spot.z-p.z)<2.4||(p.x>PET_ZONE.x0&&p.x<PET_ZONE.x1&&p.z>PET_ZONE.z0&&p.z<PET_ZONE.z1))) near={type:'pets'}; }
     if(!near){ for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.9||Math.hypot(k.x-cx,k.z-cz)<2.2)){ near={type:'kiosk',d}; break; } } }
     if(!near && f===0){
       if(!outsideNow&&p.z>BZ-3.4&&Math.abs(p.x)<3.2) near={type:'exit'};
@@ -5482,6 +5576,7 @@ function updateNear(){
   else if(near.type==='enter') setHint('קניון BuyToday','חזרה פנימה, לכל המחלקות',false,'כניסה');
   else if(near.type==='car') setHint(OUT.parked==='home'?'נסיעה ל־BuyToday Kids 🚗':'חזרה לקניון BuyToday 🚗',OUT.parked==='home'?'הקניון החדש לילדים, ממש בהמשך הרחוב':'נוסעים בחזרה לכניסה',false,'נסיעה');
   else if(near.type==='kids') setHint('BuyToday Kids · נפתח בקרוב','צעצועים, תינוקות, משחקים וחדרי ילדים. נעדכן כשנפתח',false,'עדכנו אותי');
+  else if(near.type==='pets') setHint('פינת החיות','חבר שהולך איתכם · יש לכם '+Coins.n+' מטבעות',false,'לבחור');
   else if(near.type==='shop') setHint('חנות BuyToday',(MESHY_HERO?'תלבושות חדשות למטבעות':'חולצות וכובעים למטבעות')+' · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
@@ -5518,14 +5613,16 @@ const packAv=a=>{ const S=HERO_STYLES[a.girl?'f':'m'], L=heroLook(a);
   return [a.girl?1:0,a.skin,a.hair,a.shirt,a.pants,AV_BOTTOM.indexOf(a.bottom),AV_EXTRA.indexOf(a.extra),Math.max(0,AV_MERCH.indexOf(a.merch||'none')),
     S.head.findIndex(x=>x[0]===(a.hairStyle||L.head)),S.top.findIndex(x=>x[0]===L.top),   // 8, 9: the 3D haircut and shirt style
     Math.max(0,AV_BODY.findIndex(b=>b[0]===a.body)),Math.max(0,AV_CHOICES.eyes.indexOf(a.eyes)),Math.max(0,AV_EYEWEAR.indexOf(a.eyewear||'none')),   // 10-12: build, eyes, glasses
-    MESHY_HERO?Math.max(0,MESHY_OUTFITS[a.girl?'f':'m'].findIndex(x=>x[0]===a.outfit)):-1]; };   // 13: the Meshy outfit (-1: the wardrobe figure)
+    MESHY_HERO?Math.max(0,MESHY_OUTFITS[a.girl?'f':'m'].findIndex(x=>x[0]===a.outfit)):-1,   // 13: the Meshy outfit (-1: the wardrobe figure)
+    PET_IDS.indexOf(a===avatar?petWant():a.pet)]; };   // 14: the pet at their heel (-1: none)
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
   const S=HERO_STYLES[v[0]===1?'f':'m'], st=(list,i)=>Number.isInteger(i)&&list[i]?list[i][0]:'';
   return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none',merch:AV_MERCH[v[7]]||'none',
     hairStyle:st(S.head,v[8]),top:st(S.top,v[9]),body:(AV_BODY[v[10]]||AV_BODY[0])[0],eyes:AV_CHOICES.eyes[v[11]]||AV_CHOICES.eyes[0],eyewear:AV_EYEWEAR[v[12]]||'none',
-    outfit:Number.isInteger(v[13])&&MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]]?MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]][0]:''}; }
+    outfit:Number.isInteger(v[13])&&MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]]?MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]][0]:'',
+    pet:Number.isInteger(v[14])&&PET_IDS[v[14]]?PET_IDS[v[14]]:'none'}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
@@ -5572,14 +5669,15 @@ function netPeer(id,meta){
   if(!q){ if(Net.peers.size>=ROOM_CAP+4) return; const av=unpackAv(meta.a); if(!av) return;
     const mp=MESHY_HERO&&!!av.outfit, G=mp?mkGuy(avOpts(av)):mkGuyNPC(avOpts(av)), c=mkCart(); c.c.position.set(0,0,1.32); G.g.add(c.c); G.g.visible=false; scene.add(G.g);
     if(mp) meshyPeer(G,av);
+    const pet=av.pet&&av.pet!=='none'?petSpawn(av.pet):null;
     const tag=document.createElement('div'); tag.className='nametag'; tag.hidden=true; $('#bubbles').appendChild(tag);
     const emo=bubble('emo');
-    q={id,key,G,tag,emo,snaps:[],seen:false,speed:0,prev:new THREE.Vector3(),emoUntil:0,emoAt:0};
+    q={id,key,G,tag,emo,pet,snaps:[],seen:false,speed:0,prev:new THREE.Vector3(),emoUntil:0,emoAt:0};
     Net.peers.set(id,q);
     const s=netSnap(meta.s); if(s) q.snaps.push(s); }
   q.tag.textContent=name;
 }
-function netDrop(id){ const q=Net.peers.get(id); if(!q) return; scene.remove(q.G.g); q.tag.remove(); q.emo.remove(); Net.peers.delete(id); }
+function netDrop(id){ const q=Net.peers.get(id); if(!q) return; scene.remove(q.G.g); petKill(q.pet); q.tag.remove(); q.emo.remove(); Net.peers.delete(id); }
 function netSnap(s){ if(!Array.isArray(s)||s.length<4||!s.every(Number.isFinite)) return null;
   return {t:performance.now(),x:clamp(s[0],-BX,BX),y:clamp(s[1],0,TOP*FH),z:clamp(s[2],-BZ,BZ),yaw:s[3]}; }
 function netMove(m){ const q=m&&Net.peers.get(m.i); if(!q) return; const s=netSnap(m.s); if(!s) return; q.snaps.push(s); if(q.snaps.length>8) q.snaps.shift(); }
@@ -5605,6 +5703,7 @@ function netUpdate(dt,now){
     g.rotation.y=q.seen?lerpAngle(g.rotation.y,lerpAngle(a.yaw,b.yaw,k),1-Math.exp(-dt*12)):b.yaw;
     const v=q.seen&&dt>0?Math.hypot(g.position.x-q.prev.x,g.position.z-q.prev.z)/dt:0; q.speed+=(Math.min(v,7)-q.speed)*(1-Math.exp(-dt*8));
     g.visible=q.seen=true; animGuy(q.G,q.speed,dt,true);
+    if(q.pet) petFollow(q.pet,dt,{x:g.position.x,y:g.position.y,z:g.position.z,yaw:g.rotation.y});
     const d=Math.hypot(g.position.x-player.pos.x,g.position.z-player.pos.z), same=Math.abs(g.position.y-player.pos.y)<2;
     if(G.state==='play'&&same&&d<20) place2d(q.tag,g.position,g.position.y+2.55); else q.tag.hidden=true;
     if(now<q.emoUntil&&G.state==='play'&&d<30) place2d(q.emo,g.position,g.position.y+3.25); else q.emo.hidden=true; });
@@ -5769,7 +5868,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=it.model.userData.face?Math.atan2(camera.position.x-it.x,camera.position.z-it.z):Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
-  alfTick(dt,t); sellerTick(dt);
+  alfTick(dt,t); sellerTick(dt); petTick(dt);
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
   AD.update(dt);
