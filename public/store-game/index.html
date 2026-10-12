@@ -2044,6 +2044,12 @@ const UBC = /[?&]ubc=1/.test(location.search);
 const MH = /[?&]mh=1/.test(location.search);
 // hidden preview (?meshy=1): a Meshy-made stylized character (people/MESHY-1.glb), Mixamo bone names
 const MESHY = /[?&]meshy=1/.test(location.search);
+/* the player's own figure: made with Meshy (a man and a woman), its clothes are whole painted outfits swapped on the
+   same body (people/tex/<body>-<outfit>.jpg); ?hero=old brings back the wardrobe figure */
+const MESHY_HERO = !/[?&]hero=old/.test(location.search);
+const MESHY_OUTFITS = {m:[['orange','קפוצ׳ון כתום'],['red','קפוצ׳ון אדום'],['tee','לבן BuyToday'],['navy','כחול נייבי'],['sweater','ירוק'],['leather','שחור']],
+  f:[['teal','טורקיז'],['pink','ורוד'],['yellow','צהוב חרדל'],['purple','סגול'],['tee','לבן BuyToday'],['leather','שחור']]};
+const heroMainUrl = o => MESHY_HERO ? ASSET+'people/MESHY-'+(o&&o.girl?'F1':'1')+'.glb?v=y2' : heroUrl(o);
 const heroUrl = o => MESHY ? ASSET+'people/MESHY-1.glb?v=y1' : MH&&!(o&&o.girl) ? ASSET+'people/MH-m.glb?v=m5' : UBC ? ASSET+'people/UH-'+(o&&o.girl?'f':'m')+'.glb?v=u2' : HERO_MODEL_FILES[o&&o.girl?'f':'m'];
 const HERO_STYLES = {
   m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
@@ -2072,7 +2078,7 @@ function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-\d+\.glb|ALFRED(-m)?\.glb/.test(url)) return mhAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb/.test(url)) return mhAnims(gl); return gl; });
 }
 const UBC_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -2228,7 +2234,7 @@ function mkGuy3D(o){
   const G = mkGuy(o);
   if(!USE_3D_HERO) return G;
   const id = ++HERO3D.gen;
-  const url = heroUrl(o);
+  const url = heroMainUrl(o);
   G.h3d = {id, disposed:false, model:null, mixer:null, actions:{}, state:null, action:null, speed:0, slots:heroSlots(), av:o, url, gltf:null};
   G.dispose = ()=>disposeHero3D(G);
   if(HERO3D.failed[url]) return G;
@@ -2291,7 +2297,7 @@ function heroBody(root,body){
    an orange shirt or any BuyToday merch; and the accessory on the head */
 function heroDress(model,o){
   if(model.userData.ubc) return ubcDress(model,o);
-  if(model.userData.mh&&model.getObjectByName('char1')) return meshyDress(model,o);
+  if(model.userData.mh&&model.getObjectByName('char1')) return meshyDress(model,o);   // Meshy figures (the player's, the preview)
   if(model.userData.mh) return mhDress(model,o);
   const L=heroLook(o), m=MERCH[o.merch];
   const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND||!!o.logo3d;
@@ -2347,8 +2353,16 @@ function ubcDress(model,o){
   });
 }
 /* the Meshy figure: one baked texture, so nothing to swap or tint; it only needs its shadows */
+const MESHY_TEX={}, MESHY_SMALL=PHONE.matches||matchMedia('(pointer:coarse)').matches;
+function meshyTex(name){ if(MESHY_TEX[name]) return MESHY_TEX[name];
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/'+name+(MESHY_SMALL?'-m':'')+'.jpg?v=t1');
+  t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return MESHY_TEX[name]=t; }
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
+  // the player's own figure wears the chosen outfit: the same body painted another way (the face stays the same)
+  const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
+  const outfit=list?(list.some(x=>x[0]===o.outfit)?o.outfit:list[0][0]):null;
   model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6);
+    if(outfit){ if(!mt.userData.own) mt.userData.own=mt.map; mt.map=meshyTex(body+'-'+outfit); mt.needsUpdate=true; }
     if(mt.map){ mt.map.anisotropy=an; mt.map.needsUpdate=true; } }); } }); }   // sharp at a slant, not smeared
 /* the MakeHuman figure: two haircuts and two shirts in the file, the avatar's choices pick which show; skin, hair
    and shirt are tinted by how far the chosen swatch is from the file's own colour. */
@@ -3803,7 +3817,8 @@ const light=c=>{ const r=c>>16&255, g=c>>8&255, b=c&255; return .299*r+.587*g+.1
 let ctab='body';
 /* the creator: four tabs, every choice shows on the character at once (it is rebuilt and saved on each tap) */
 function renderCreator(){
-  const tabs=[['body','גוף'],['face','פנים ושיער'],['clothes','בגדים'],['acc','אביזרים']];
+  const tabs=MESHY_HERO?[['body','דמות'],['clothes','בגדים']]:[['body','גוף'],['face','פנים ושיער'],['clothes','בגדים'],['acc','אביזרים']];
+  if(MESHY_HERO&&!['body','clothes'].includes(ctab)) ctab='body';
   const tb=$('#ctabs'); tb.innerHTML='';
   tabs.forEach(([k,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(k===ctab)); if(k===ctab) b.className='on';
     b.addEventListener('click',()=>{ ctab=k; renderCreator(); buzz(6); }); tb.appendChild(b); });
@@ -3818,7 +3833,10 @@ function renderCreator(){
   const S=HERO_STYLES[avatar.girl?'f':'m'], L=heroLook(avatar);
   const owned=(typeof Coins!=='undefined'?Coins.owned:[]), SH_=typeof SHOP!=='undefined'?SHOP:[];
   const mine=slot=>SH_.filter(i=>i.slot===slot&&owned.includes(i.id));
-  if(ctab==='body'){
+  if(MESHY_HERO){   // the Meshy figures: a man or a woman, and a whole outfit
+    if(ctab==='body') seg('דמות','girl',[[false,'בן'],[true,'בת']],!!avatar.girl);
+    else { const L2=MESHY_OUTFITS[avatar.girl?'f':'m']; seg('תלבושת','outfit',L2,L2.some(x=>x[0]===avatar.outfit)?avatar.outfit:L2[0][0]); }
+  } else if(ctab==='body'){
     seg('דמות','girl',[[false,'בן'],[true,'בת']],!!avatar.girl);
     seg('מבנה גוף','body',AV_BODY,avatar.body||'regular');
     sw('צבע עור','skin');
