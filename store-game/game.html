@@ -2042,7 +2042,7 @@ const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w2', f:ASSET+'hero-w.glb?v=w2'};
 const UBC = /[?&]ubc=1/.test(location.search);
 // hidden preview (?mh=1): the man on a MakeHuman (MPFB, CC0) body with a Mixamo skeleton, people/MH-m.glb
 const MH = /[?&]mh=1/.test(location.search);
-const heroUrl = o => MH&&!(o&&o.girl) ? ASSET+'people/MH-m.glb?v=m4' : UBC ? ASSET+'people/UH-'+(o&&o.girl?'f':'m')+'.glb?v=u2' : HERO_MODEL_FILES[o&&o.girl?'f':'m'];
+const heroUrl = o => MH&&!(o&&o.girl) ? ASSET+'people/MH-m.glb?v=m5' : UBC ? ASSET+'people/UH-'+(o&&o.girl?'f':'m')+'.glb?v=u2' : HERO_MODEL_FILES[o&&o.girl?'f':'m'];
 const HERO_STYLES = {
   m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
      top:[['hoodie','קפוצ׳ון'],['tee','טישרט'],['tank','גופייה'],['suit','חליפה']]},
@@ -2355,7 +2355,7 @@ function mhDress(model,o){
     else if(/tucked/.test(n)) x.visible=top==='tee'; else if(/polo/.test(n)) x.visible=top==='polo';
     if(!x.isMesh) return; x.castShadow=true; x.frustumCulled=false;
     (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ const k=mt.name.toLowerCase(); mt.metalness=0;
-      if(/body/.test(k)) mt.color.copy(ratio(o.skin||0xf1c7a0,0xf1c7a0));
+      if(/body/.test(k)) mt.color.copy(mt.map?ratio(o.skin||0xf1c7a0,0xf1c7a0):lin(o.skin||0xf1c7a0));   // a painted skin takes the swatch itself
       else if(/short0|eyebrow/.test(k)) mt.color.copy(ratio(o.hair||0x3a2618,0x3a2618));
       else if(/tucked|polo/.test(k)) mt.color.copy(lin(shirt)); }); });
 }
