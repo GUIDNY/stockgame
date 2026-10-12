@@ -3,7 +3,7 @@
 (function(){ if(/[?&]hero=old/.test(location.search)) return; var a={}; try{ a=JSON.parse(localStorage.getItem('bt-avatar')||'{}')||{}; }catch(e){}
   var B=location.hostname==='play.buytoday.co.il'?'':'https://play.buytoday.co.il/', g=a.girl?'F1':'1', O=a.girl?['teal','pink','yellow','purple','tee','leather']:['orange','red','tee','navy','sweater','leather'];
   var o=O.indexOf(a.outfit)>=0?a.outfit:O[0], small=matchMedia('(max-width:700px)').matches||matchMedia('(pointer:coarse)').matches;
-  [[B+'people/MESHY-'+g+'.glb?v=y2','fetch'],[B+'people/anims.glb?v=p3','fetch'],[B+'gltf-loader.js','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t1','image']].forEach(function(x){
+  [[B+'people/MESHY-'+g+'.glb?v=y3','fetch'],[B+'people/anims.glb?v=p3','fetch'],[B+'gltf-loader.js','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t1','image']].forEach(function(x){
     var l=document.createElement('link'); l.rel='preload'; l.href=x[0]; l.as=x[1]; if(x[1]!=='script') l.crossOrigin='anonymous'; document.head.appendChild(l); }); })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2045,19 +2045,13 @@ const USE_3D_HERO = true;
    one shared skeleton; the avatar picks which parts show and what colour they are. Bump ?v= when a file
    changes: they are cached for a day. */
 const HERO_MODEL_FILES = {m:ASSET+'hero-m.glb?v=w2', f:ASSET+'hero-w.glb?v=w2'};
-// hidden preview (?ubc=1): the player's figure on the Quaternius base bodies (people/UH-m.glb, UH-f.glb)
-const UBC = /[?&]ubc=1/.test(location.search);
-// hidden preview (?mh=1): the man on a MakeHuman (MPFB, CC0) body with a Mixamo skeleton, people/MH-m.glb
-const MH = /[?&]mh=1/.test(location.search);
-// hidden preview (?meshy=1): a Meshy-made stylized character (people/MESHY-1.glb), Mixamo bone names
-const MESHY = /[?&]meshy=1/.test(location.search);
 /* the player's own figure: made with Meshy (a man and a woman), its clothes are whole painted outfits swapped on the
    same body (people/tex/<body>-<outfit>.jpg); ?hero=old brings back the wardrobe figure */
 const MESHY_HERO = !/[?&]hero=old/.test(location.search);
 const MESHY_OUTFITS = {m:[['orange','קפוצ׳ון כתום'],['red','קפוצ׳ון אדום'],['tee','לבן BuyToday'],['navy','כחול נייבי'],['sweater','ירוק'],['leather','שחור']],
   f:[['teal','טורקיז'],['pink','ורוד'],['yellow','צהוב חרדל'],['purple','סגול'],['tee','לבן BuyToday'],['leather','שחור']]};
-const heroMainUrl = o => MESHY_HERO ? ASSET+'people/MESHY-'+(o&&o.girl?'F1':'1')+'.glb?v=y2' : heroUrl(o);
-const heroUrl = o => MESHY ? ASSET+'people/MESHY-1.glb?v=y1' : MH&&!(o&&o.girl) ? ASSET+'people/MH-m.glb?v=m5' : UBC ? ASSET+'people/UH-'+(o&&o.girl?'f':'m')+'.glb?v=u2' : HERO_MODEL_FILES[o&&o.girl?'f':'m'];
+const heroMainUrl = o => MESHY_HERO ? ASSET+'people/MESHY-'+(o&&o.girl?'F1':'1')+'.glb?v=y3' : heroUrl(o);
+const heroUrl = o => HERO_MODEL_FILES[o&&o.girl?'f':'m'];   // the wardrobe figure: shop staff, other players, the fallback crowd
 const HERO_STYLES = {
   m:{head:[['casual','קלאסי'],['spiky','קוצים'],['neat','מסורק'],['pony','קוקו'],['beard','זקן'],['mohawk','מוהוק']],
      top:[['hoodie','קפוצ׳ון'],['tee','טישרט'],['tank','גופייה'],['suit','חליפה']]},
@@ -2085,27 +2079,20 @@ function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb/.test(url)) return mhAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
 }
-const UBC_NOD=[.12,.2];   // radians forward at the neck and the head
+const HEAD_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
-function ubcNod(clip){
-  const ax=new THREE.Vector3(1,0,0), nod={Neck:new THREE.Quaternion().setFromAxisAngle(ax,UBC_NOD[0]),Head:new THREE.Quaternion().setFromAxisAngle(ax,UBC_NOD[1])}, q=new THREE.Quaternion();
+function headNod(clip){
+  const ax=new THREE.Vector3(1,0,0), nod={Neck:new THREE.Quaternion().setFromAxisAngle(ax,HEAD_NOD[0]),Head:new THREE.Quaternion().setFromAxisAngle(ax,HEAD_NOD[1])}, q=new THREE.Quaternion();
   clip.tracks.forEach(t=>{ const b=/(Neck|Head)\.quaternion$/.exec(t.name); if(!b) return; for(let k=0;k<t.values.length;k+=4){ q.fromArray(t.values,k).multiply(nod[b[1]]); q.toArray(t.values,k); } });
   return clip;
 }
-// the base bodies come without clips: the crowd's Mixamo ones, retargeted onto them once
-function ubcAnims(gl){
-  // their own library's clips (Universal Animation Library, the same rig) where it has them; Mixamo's wave for the rest
-  return Promise.all([loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V), loadGLTF(ASSET+'people/ual.glb?v='+UAL_V).catch(()=>null)]).then(([an,ual])=>{
-    gl.animations=['Idle','Walk','Run','Wave','Interact'].map(n=>ubcClip(n,an,ual,gl.scene)).filter(Boolean);
-    gl.scene.userData.ubc=true; return gl; });
-}
-const UAL_V='a1';
-// the MakeHuman figure has Mixamo's own skeleton: the crowd's clips go straight on
-function mhAnims(gl){
+
+// the Meshy figures (the player's, Alfred) have Mixamo's bone names: the crowd's clips go straight on
+function meshyAnims(gl){
   return loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V).then(an=>{
-    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&ubcNod(mixRetarget(c,an.scene,gl.scene)); }).filter(Boolean);
+    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&headNod(mixRetarget(c,an.scene,gl.scene)); }).filter(Boolean);
     gl.scene.userData.mh=true; return gl; });
 }
 /* the wardrobe figure moving like the crowd: Mixamo's Happy Idle, Walking, Running and Waving (people/anims.glb),
@@ -2160,10 +2147,6 @@ function heroMixClips(gl){
     const mixed=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c?rigRetarget(c,an.scene,gl.scene,HERO_MIXMAP):gl.animations.find(a=>a.name===n); }).filter(Boolean);
     gl.animations=mixed.concat(own); return gl;
   },()=>gl);
-}
-function ubcClip(n,an,ual,root){
-  const u=ual&&ual.animations.find(a=>a.name===n); if(u) return mixRetarget(u,ual.scene,root);
-  const c=an.animations.find(a=>a.name===n); return c?ubcNod(mixRetarget(c,an.scene,root)):null;
 }
 /* The wardrobe is modelled low-poly and exported flat-shaded: every face its own normal, so a cheek or a sleeve
    reads as a row of facets. Smooth shading across any edge gentler than SMOOTH_ANGLE, keeping real creases
@@ -2261,6 +2244,9 @@ function heroLoading(on){ let el=document.getElementById('heroLoad');
     el.style.cssText='position:fixed;left:30%;top:55%;transform:translate(-50%,-50%);padding:10px 18px;border-radius:999px;background:rgba(22,26,43,.82);color:#fff;font:700 15px Rubik,sans-serif;z-index:5;pointer-events:none';
     document.body.appendChild(el); }
   if(!on&&el) el.remove(); }
+// once the shopper has walked in (and the page has caught its breath): things the entrance screen never shows
+function whenInMall(fn){ const w=()=>{ let inMall=false; try{ inMall=G.state==='play'; }catch(e){}   // G may not exist yet while the page is still being built
+    if(inMall) setTimeout(()=>(window.requestIdleCallback||setTimeout)(fn,{timeout:2000}),1200); else setTimeout(w,400); }; w(); }
 function afterHero(fn){ const t0=performance.now(); const w=()=>{ if(HERO3D.status==='loaded'||HERO3D.status==='failed'||HERO3D.status==='off'||performance.now()-t0>8000) fn(); else setTimeout(w,250); }; setTimeout(w,300); }
 function attachHeroModel(G, gltf){
   const h = G.h3d;
@@ -2311,9 +2297,7 @@ function heroBody(root,body){
 /* show the chosen parts and paint them: skin, hair, shirt (or the merch shirt), trousers; the BuyToday wordmark on
    an orange shirt or any BuyToday merch; and the accessory on the head */
 function heroDress(model,o){
-  if(model.userData.ubc) return ubcDress(model,o);
   if(model.userData.mh&&model.getObjectByName('char1')) return meshyDress(model,o);   // Meshy figures (the player's, the preview)
-  if(model.userData.mh) return mhDress(model,o);
   const L=heroLook(o), m=MERCH[o.merch];
   const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND||!!o.logo3d;
   const logoCol=m&&m.wordmark==='wordmark-orange'?BRAND:m&&m.wordmark==='wordmark-navy'?0x22305f:0xffffff;
@@ -2333,40 +2317,6 @@ function heroDress(model,o){
   heroAccessory(model,o,headNode&&headNode.userData);
   try{ heroFace(model,o,headNode); }catch(e){ console.warn('face: keeping the blocks',e); }
 }
-/* the Quaternius figure: every hairstyle and garment is in the file (H_<hair>, C_top_<cut>, C_legs_<cut>, C_feet);
-   the avatar's choices pick which show, and the swatches paint them. The skin keeps its photo, tinted by how far
-   the chosen tone is from the default one. */
-const UBC_HAIR={m:{casual:['SimpleParted'],spiky:['Buzzed'],neat:['SimpleParted'],pony:['Long'],beard:['SimpleParted','Beard'],mohawk:['Buzzed']},
-  f:{bob:['Long'],pony:['Long'],updo:['Buns'],mohawk:['BuzzedFemale']}};
-const UBC_TOP={hoodie:'long',suit:'long',tee:'short',dress:'short',tank:'tank',crop:'crop'};
-// the free bodies are superhero builds: every shape slims them (hips, torso, arms, legs), 'strong' keeps them as made
-const UBC_SHAPE={regular:[.95,.86,.74,.88],slim:[.9,.8,.66,.8],full:[1.04,1.04,.86,.98],strong:[1,1,1,1]};
-function ubcBody(root,body){
-  const [h,t,a,l]=UBC_SHAPE[body]||UBC_SHAPE.regular, B={}; root.traverse(b=>{ if(b.isBone) B[b.name.replace(/^mixamorig\d*:?/,'')]=b; });
-  const set=(n,k)=>{ if(B[n]) B[n].scale.set(k,1,k); };
-  set('Hips',h); set('Spine',t/h); set('Neck',1/t); set('LeftUpLeg',l/h); set('RightUpLeg',l/h); set('LeftArm',a/t); set('RightArm',a/t);
-}
-function ubcDress(model,o){
-  const L=heroLook(o), m=MERCH[o.merch], shirt=m?m.shirt:o.shirt;
-  const hair=UBC_HAIR[L.g][L.head]||UBC_HAIR[L.g][Object.keys(UBC_HAIR[L.g])[0]], top=UBC_TOP[L.top]||'short', legs=L.legs==='shorts'||L.legs==='skirt'?'shorts':'long';
-  ubcBody(model,o.body);
-  const lin=c=>new THREE.Color(c).convertSRGBToLinear(), base=lin(0xf6d2b3), sk=lin(o.skin||0xf6d2b3);
-  const skin=new THREE.Color(Math.min(1.25,sk.r/base.r),Math.min(1.25,sk.g/base.g),Math.min(1.25,sk.b/base.b));
-  model.traverse(x=>{
-    const h=/^H_([A-Za-z]+)/.exec(x.name), c=/^C_(top|legs)_([a-z]+)/.exec(x.name);
-    if(h&&!/^Brows/.test(h[1])) x.visible=hair.includes(h[1]);
-    if(c) x.visible=c[2]===(c[1]==='top'?top:legs);
-    if(!x.isMesh) return;
-    x.castShadow=true; x.frustumCulled=false;
-    (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0;
-      if(/^R_Skin/.test(mt.name)){ mt.color.copy(skin); mt.roughness=.6; }
-      else if(/^R_Top/.test(mt.name)){ mt.color.copy(lin(shirt)); mt.roughness=m&&m.shiny?.32:.85; mt.metalness=m&&m.shiny?.6:0; }
-      else if(/^R_Pants/.test(mt.name)) mt.color.copy(lin(o.pants));
-      else if(/^R_Shoe/.test(mt.name)) mt.color.copy(lin(0xf2f2ee));
-      else if(/^H_Brows/.test(x.name)||/^R_Eyebrows/.test(mt.name)) mt.color.copy(lin(shade(o.hair,.62)));
-      else if(/^H_/.test(x.name)) { mt.color.copy(lin(o.hair)); mt.roughness=.6; } });
-  });
-}
 /* the Meshy figure: one baked texture, so nothing to swap or tint; it only needs its shadows */
 const MESHY_TEX={}, MESHY_SMALL=PHONE.matches||matchMedia('(pointer:coarse)').matches;
 function meshyTex(name){ if(MESHY_TEX[name]) return MESHY_TEX[name];
@@ -2379,22 +2329,6 @@ function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6);
     if(outfit){ if(!mt.userData.own) mt.userData.own=mt.map; mt.map=meshyTex(body+'-'+outfit); mt.needsUpdate=true; }
     if(mt.map){ mt.map.anisotropy=an; mt.map.needsUpdate=true; } }); } }); }   // sharp at a slant, not smeared
-/* the MakeHuman figure: two haircuts and two shirts in the file, the avatar's choices pick which show; skin, hair
-   and shirt are tinted by how far the chosen swatch is from the file's own colour. */
-const MH_HAIR={short02:['casual','neat','beard','pony','bob','updo'],short04:['spiky','mohawk']};
-function mhDress(model,o){
-  const L=heroLook(o), m=MERCH[o.merch], shirt=m?m.shirt:o.shirt;
-  const hair=MH_HAIR.short04.includes(L.head)?'short04':'short02', top='polo';   // one shirt for now: the free tees didn't fit a man well
-  const lin=c=>new THREE.Color(c).convertSRGBToLinear(), ratio=(c,b)=>{ const x=lin(c), y=lin(b); return new THREE.Color(Math.min(2.5,x.r/y.r),Math.min(2.5,x.g/y.g),Math.min(2.5,x.b/y.b)); };
-  model.traverse(x=>{ const n=x.name.toLowerCase();
-    if(/short02/.test(n)) x.visible=hair==='short02'; else if(/short04/.test(n)) x.visible=hair==='short04';
-    else if(/tucked/.test(n)) x.visible=top==='tee'; else if(/polo/.test(n)) x.visible=top==='polo';
-    if(!x.isMesh) return; x.castShadow=true; x.frustumCulled=false;
-    (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ const k=mt.name.toLowerCase(); mt.metalness=0;
-      if(/body/.test(k)) mt.color.copy(mt.map?ratio(o.skin||0xf1c7a0,0xf1c7a0):lin(o.skin||0xf1c7a0));   // a painted skin takes the swatch itself
-      else if(/short0|eyebrow/.test(k)) mt.color.copy(ratio(o.hair||0x3a2618,0x3a2618));
-      else if(/tucked|polo/.test(k)) mt.color.copy(lin(shirt)); }); });
-}
 /* the face: painted, not modelled. The wardrobe's faces are two dark blocks for eyes and two for brows; they are
    hidden and a face is painted onto a copy of the front of the head's own skin (same vertices, same bones, so it
    moves with every frame of every clip): eyes with a white, a coloured iris, a pupil and a glint, lids, brows in
@@ -2738,7 +2672,7 @@ function npcLoad(url){
       const wait=NPC3D.pending; NPC3D.pending=[];
       wait.forEach(G=>{ if(heroUrl(G.npcOpts)===url) npcAttach(G,gl); else NPC3D.pending.push(G); }); })
     .catch(e=>{ NPC3D.status='failed'; console.warn('npc wardrobe: keeping the classic figures',e); });
-  (window.requestIdleCallback||setTimeout)(go,{timeout:3000});
+  whenInMall(go);   // the wardrobe figures (staff, other players, a fallback crowd) only matter inside
 }
 // everyone not given a haircut or shirt style gets one at random, once
 function npcStyle(o){
@@ -2806,8 +2740,6 @@ function npcAttach(G,gl){
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
 const PEOPLE={names:['Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27','Ch33','Ch22'], weight:{Ch03:3}, tpl:[], cands:[], started:false, ready:false, V:'p3'};
-// hidden preview of the Quaternius base characters (?ubc=1): they lead the crowd, a few of the usual ones beside them
-if(/[?&]ubc=1/.test(location.search)){ PEOPLE.names=['U1','U3','U2','U4','Ch03','Ch02','Ch07','Ch26','Ch21','Ch12','Ch27']; PEOPLE.weight={U1:2,U2:2,U3:2,U4:2}; }
 PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:9;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
@@ -2842,13 +2774,13 @@ function peopleStart(){
   setTimeout(peopleGiveUp,PEOPLE_WAIT); setTimeout(()=>{ PEOPLE.late=true; peopleReady(); },PEOPLE_FIRST);
   const script=src=>new Promise((res,rej)=>{ if(THREE.SkeletonUtils) return res(); const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
   const P=ASSET+'people/';
-  script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>PEOPLE.names.some(n=>/^U\d/.test(n))?loadGLTF(P+'ual.glb?v='+UAL_V).then(u=>{ PEOPLE.ual=u; },()=>{}):0).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
+  script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
     const want={Idle:'Idle',Walk:'Walk',Run:'Run',Wave:'Wave'};   // Mixamo Happy Idle, Walking, Running, Waving
     const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; }); } });
-        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=/^U\d/.test(PEOPLE.names[i])?ubcClip(k,an,PEOPLE.ual,m):mixRetarget(c,an.scene,m); });
+        const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=mixRetarget(c,an.scene,m); });
         if(!clips.Idle||!clips.Walk) return;
         // its height standing, from the skinned vertices in the first frame of Idle
         const mx=new THREE.AnimationMixer(m); mx.clipAction(clips.Idle).play(); mx.update(0); m.updateMatrixWorld(true);
@@ -3466,7 +3398,7 @@ function loadLightmaps(){
   if(!BAKED_LM) return;
   for(let f=0;f<=TOP;f++){
     Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l1').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l1').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
-      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+'.jpg?v=l1'); tex.flipY=true;
+      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l1');   // a phone gets the light at half the size tex.flipY=true;
       const meshes=STATIC[f].children.filter(o=>o.isMesh); let off=0, used=0;
       idx.forEach(e=>{ const m=meshes[e.i], n=e.tris*3;
         if(m&&!m.userData.dyn){ const g=m.geometry, tris=(g.index?g.index.count:g.attributes.position.count)/3;
@@ -5020,7 +4952,7 @@ const ALF_GLASS={x:-.3,y:1.58,z:.32};   // where his right hand holds the glass 
 // Alfred made with Meshy (people/ALFRED.glb, Mixamo bone names, the crowd's clips); ?alf=old brings back the wardrobe one
 const ALF_MESHY=!/[?&]alf=old/.test(location.search);
 function loadAlfredReal(a){
-  if(ALF_MESHY){ afterHero(()=>{ loadGLTF(ASSET+'people/ALFRED'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=a3')   // a 2048 texture on a computer, 1024 on a phone
+  if(ALF_MESHY){ whenInMall(()=>{ loadGLTF(ASSET+'people/ALFRED'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=a3')   // a 2048 texture on a computer, 1024 on a phone
      
       .then(gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred 3D: keeping the classic figure',e); } })
       .catch(e=>console.warn('alfred 3D: keeping the classic figure',e)); }); return; }

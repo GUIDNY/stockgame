@@ -21,7 +21,7 @@ URLs, loaded lazily as the list scrolls.
 Outputs: public/store-game/index.html (deploy anywhere) and store-game/dist/game.html.
 Requires: Pillow (pip install pillow)
 """
-import base64, datetime, html, io, json, pathlib, re, sys, time, urllib.request
+import base64, datetime, hashlib, html, io, json, pathlib, re, sys, time, urllib.request
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -224,8 +224,34 @@ def collect(cfg, seen):
         print(f"  {cat['name']:<24} {got} מוצרים" + (f" (דילגתי על {skipped}: בלי תמונה, אביזר, כפול או בלי דגם תלת־ממד מתאים)" if skipped else ''))
     return {'updated': datetime.date.today().isoformat(), 'cats': cats, 'items': items}
 
+def externalize(data):
+    """The product photos as files beside the page (img/<hash>.jpg|webp) instead of inside it: the page itself
+    shrinks by half and each photo loads only when something shows it, from the browser cache after that."""
+    d = json.loads(json.dumps(data)); (OUT / 'img').mkdir(parents=True, exist_ok=True)
+    for it in d.get('items', []):
+        for k in ('img', 'cut'):
+            v = it.get(k)
+            if isinstance(v, str) and v.startswith('data:image/'):
+                ext = 'webp' if v.startswith('data:image/webp') else 'jpg'
+                raw = base64.b64decode(v.split(',', 1)[1]); name = hashlib.sha1(raw).hexdigest()[:16] + '.' + ext
+                f = OUT / 'img' / name
+                if not f.exists(): f.write_bytes(raw)
+                it[k] = 'img/' + name
+    return d
+
+def inline(data):
+    """The single-file copy (the artifact) keeps every photo inside it."""
+    d = json.loads(json.dumps(data))
+    for it in d.get('items', []):
+        for k in ('img', 'cut'):
+            v = it.get(k)
+            if isinstance(v, str) and v.startswith('img/') and (OUT / v).exists():
+                it[k] = ('data:image/webp;base64,' if v.endswith('.webp') else 'data:image/jpeg;base64,') + base64.b64encode((OUT / v).read_bytes()).decode()
+    return d
+
 def write(data, cfg):
     data = with_totals(data)
+    full, data = inline(data), externalize(data)
     src = (ROOT / 'game.html').read_text(encoding='utf-8')
     frag = re.sub(r'/\*__PRODUCTS__\*/.*?/\*__END__\*/', lambda m: '/*__PRODUCTS__*/' + json.dumps(data, ensure_ascii=False) + '/*__END__*/', src, flags=re.S)
     frag = re.sub(r'/\*__CHECKOUT__\*/.*?/\*__END__\*/', lambda m: '/*__CHECKOUT__*/' + json.dumps(cfg.get('checkout_url', '')) + '/*__END__*/', frag, flags=re.S)
@@ -234,7 +260,8 @@ def write(data, cfg):
     def with_online(v): return re.sub(r'/\*__ONLINE__\*/.*?/\*__END__\*/', lambda m: '/*__ONLINE__*/' + json.dumps(v) + '/*__END__*/', frag, flags=re.S)
     (ROOT / 'dist').mkdir(exist_ok=True)
     # the artifact copy stays single-player: its sandbox would refuse the socket anyway
-    (ROOT / 'dist' / 'game.html').write_text(with_online(None), encoding='utf-8')
+    frag_full = re.sub(r'/\*__PRODUCTS__\*/.*?/\*__END__\*/', lambda m: '/*__PRODUCTS__*/' + json.dumps(full, ensure_ascii=False) + '/*__END__*/', frag, flags=re.S)
+    (ROOT / 'dist' / 'game.html').write_text(re.sub(r'/\*__ONLINE__\*/.*?/\*__END__\*/', '/*__ONLINE__*/null/*__END__*/', frag_full, flags=re.S), encoding='utf-8')
     frag = with_online(online)
     head = ('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
