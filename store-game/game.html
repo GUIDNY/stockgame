@@ -2072,7 +2072,7 @@ function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   const ready = THREE.GLTFLoader ? Promise.resolve() : new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+'gltf-loader.js'; sc.onload=res; sc.onerror=()=>rej(new Error('gltf-loader.js failed')); document.head.appendChild(sc); });
   return GLTF_CACHE[url] = ready.then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(url,res,undefined,rej)))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-\d+\.glb|ALFRED\.glb/.test(url)) return mhAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/UH-[mf]\.glb/.test(url)) return ubcAnims(gl); if(/MH-[mf]\.glb|MESHY-\d+\.glb|ALFRED(-m)?\.glb/.test(url)) return mhAnims(gl); return gl; });
 }
 const UBC_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -2347,7 +2347,9 @@ function ubcDress(model,o){
   });
 }
 /* the Meshy figure: one baked texture, so nothing to swap or tint; it only needs its shadows */
-function meshyDress(model,o){ model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); }); } }); }
+function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
+  model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6);
+    if(mt.map){ mt.map.anisotropy=an; mt.map.needsUpdate=true; } }); } }); }   // sharp at a slant, not smeared
 /* the MakeHuman figure: two haircuts and two shirts in the file, the avatar's choices pick which show; skin, hair
    and shirt are tinted by how far the chosen swatch is from the file's own colour. */
 const MH_HAIR={short02:['casual','neat','beard','pony','bob','updo'],short04:['spiky','mohawk']};
@@ -4985,7 +4987,8 @@ const ALF_GLASS={x:-.3,y:1.58,z:.32};   // where his right hand holds the glass 
 // Alfred made with Meshy (people/ALFRED.glb, Mixamo bone names, the crowd's clips); ?alf=old brings back the wardrobe one
 const ALF_MESHY=!/[?&]alf=old/.test(location.search);
 function loadAlfredReal(a){
-  if(ALF_MESHY){ (window.requestIdleCallback||setTimeout)(()=>{ loadGLTF(ASSET+'people/ALFRED.glb?v=a1')
+  if(ALF_MESHY){ (window.requestIdleCallback||setTimeout)(()=>{ loadGLTF(ASSET+'people/ALFRED'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=a2')   // a 2048 texture on a computer, 1024 on a phone
+     
       .then(gl=>{ try{ alfReal(a,gl); }catch(e){ console.warn('alfred 3D: keeping the classic figure',e); } })
       .catch(e=>console.warn('alfred 3D: keeping the classic figure',e)); },{timeout:2500}); return; }
   const url=HERO_MODEL_FILES.m;
