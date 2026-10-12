@@ -2775,6 +2775,12 @@ function mixRetarget(clip,srcRoot,tgtRoot){
     tracks.push(new THREE.QuaternionKeyframeTrack(t.name,t.times.slice(),v)); });
   return new THREE.AnimationClip(clip.name,clip.duration,tracks);
 }
+// gltfpack stores positions and skin weights as normalized integers, which three r128 hands back raw on the
+// CPU side (fromBufferAttribute, boneTransform): turn those two into floats so a figure can be measured.
+function dequant(geo){ ['position','skinWeight'].forEach(n=>{ const a=geo.attributes[n]; if(!a||!a.normalized||a.array instanceof Float32Array) return;
+  const d=a.array instanceof Int8Array?127:a.array instanceof Uint8Array?255:a.array instanceof Int16Array?32767:a.array instanceof Uint16Array?65535:1, s=a.itemSize, f=new Float32Array(a.count*s);
+  for(let i=0;i<a.count;i++) for(let j=0;j<s;j++){ const v=a.array[i*s+j]/d; f[i*s+j]=d===127||d===32767?Math.max(v,-1):v; }
+  geo.setAttribute(n,new THREE.BufferAttribute(f,s)); }); }
 function peopleStart(){
   if(PEOPLE.started) return; PEOPLE.started=true;
   if(!USE_3D_NPCS||!PEOPLE.max) return peopleGiveUp();
@@ -2785,7 +2791,7 @@ function peopleStart(){
     const want={Idle:'Idle',Walk:'Walk',Run:'Run',Wave:'Wave'};   // Mixamo Happy Idle, Walking, Running, Waving
     const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
-        const m=g.scene; m.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
+        const m=g.scene; m.traverse(o=>{ if(o.isMesh){ dequant(o.geometry); o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; }); } });
         const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c) clips[k]=mixRetarget(c,an.scene,m); });
         if(!clips.Idle||!clips.Walk) return;
