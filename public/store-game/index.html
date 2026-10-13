@@ -1103,7 +1103,7 @@ function lerpAngle(a,b,t){ let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*
 const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
 
 /* ---------- mall dimensions ---------- */
-const MALL2=/[?&]mall=2/.test(location.search);   // the mall street: every department a shop (buildStores)
+const MALL2=!/[?&]mall=1/.test(location.search);   // the mall street: every department a shop (buildStores)
 const FH = 6;                                   // floor height
 const BX = 24, BZ = 32;                         // half size of the building
 const VOID = {minX:-8,maxX:8,minZ:-7,maxZ:7};   // atrium opening in floor 1
@@ -3278,12 +3278,15 @@ function buildKiosks(){
       if(x>SH.x0-2&&x<SH.x1+2&&z>SH.z0-2&&z<SH.z1+2) continue;
       if(CATALOG.some(it=>it.f===f&&Math.hypot(it.x-x,it.z-z)<2.3)) continue;
       const sc=Math.abs(Math.hypot(x-d.to[0],z-d.to[1])-2.4); if(sc<bs){ bs=sc; best=[x,z]; } }
+    const S=MALL2&&STORE_DEFS.find(S=>S.id===d.id);
+    if(S) best=S.at(S.D*.8,-S.L*.42);   // in a real shop the catalogue screen stands in the far corner, off the way in
     if(!best) return;
     const [x,z]=best, y=f*FH, P=STATIC[f], g=new THREE.Group();
     // turn the screen to where people walk: the longest clear run from the kiosk, nudged towards the department's centre
     const toA=Math.atan2(d.to[0]-x,d.to[1]-z); let ry=toA, bs2=-1e9;
     for(let k=0;k<16;k++){ const a=k*Math.PI/8, sx=Math.sin(a), sz=Math.cos(a); let run=0; while(run<14&&walkable(x+sx*(run+.9),z+sz*(run+.9),.35,f)) run+=.5;
       const sc=run+2.2*Math.cos(a-toA); if(sc>bs2){ bs2=sc; ry=a; } }
+    if(S) ry=Math.atan2(S.c[0]-x,S.c[1]-z);
     box(.8,.08,.56,frame,0,.04,0,g); box(.14,.95,.14,frame,0,.5,-.06,g);
     const scr=new THREE.Group(); scr.position.set(0,1.62,0); scr.rotation.x=-.12; g.add(scr);
     box(1.02,1.38,.1,frame,0,0,0,scr); box(1.06,.06,.12,mat(new THREE.Color(d.color).getHex()),0,.72,0,scr);
