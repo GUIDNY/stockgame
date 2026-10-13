@@ -1974,6 +1974,24 @@ function loadProductRelief(){
   }).catch(()=>{});
 }
 setTimeout(loadProductRelief,1200);
+
+/* Meshy models placed in the world (the hot-deal products, the car, the arcade cabinets): sized to a box, standing on
+   y=0 and centred, inside a wrapper group so the original stays untouched. */
+function fitModel(obj,{h,maxW,maxD,len}){
+  const inner=new THREE.Group(), outer=new THREE.Group(); inner.add(obj); outer.add(inner);
+  obj.traverse(o=>{ if(o.isMesh){ dequant(o.geometry); o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere(); o.castShadow=true; o.receiveShadow=true;
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=Math.min(mt.metalness,.3); mt.roughness=Math.max(mt.roughness,.35); if(mt.map) mt.map.anisotropy=renderer.capabilities.getMaxAnisotropy(); }); } });
+  outer.updateMatrixWorld(true); let b=new THREE.Box3().setFromObject(inner), sz=b.getSize(new THREE.Vector3());
+  if(len&&sz.x>sz.z){ inner.rotation.y=Math.PI/2; outer.updateMatrixWorld(true); b=new THREE.Box3().setFromObject(inner); sz=b.getSize(new THREE.Vector3()); }   // lengthwise along z
+  let k=Infinity; if(h) k=Math.min(k,h/sz.y); if(maxW) k=Math.min(k,maxW/sz.x); if(maxD) k=Math.min(k,maxD/sz.z); if(len) k=Math.min(k,len/sz.z);
+  const c=b.getCenter(new THREE.Vector3()); inner.scale.multiplyScalar(k); inner.position.set(-c.x*k,-b.min.y*k,-c.z*k); return outer; }
+/* the products on the hot-deal stage as real 3D models (Meshy, from their own photos): they replace the photo
+   relief, stand at about its height and turn slowly to show themselves off. Others keep the relief. */
+const PROD3D=['ninja-food-processors-og853','ninja-food-processors-dg553','ninja-food-processors-dt203','ninja-coffee-machines-es603','ninja-food-processors-oo103'];
+function loadProduct3D(){ CATALOG.forEach(it=>{ if(!PROD3D.includes(it.slug)||!it.cutPlane) return;
+  loadGLTF(ASSET+'prod3d/'+it.slug+'.glb?v=1').then(gl=>{ if(it.m3d) return; const [Wd,H]=it.cutSize;
+    const w=fitModel(gl.scene,{h:H*1.05,maxW:1,maxD:1}); it.m3d=w; it.cutPlane.visible=false; it.model.add(w); it.model.userData.face=false; }).catch(e=>console.warn('product 3D '+it.slug,e)); }); }
+whenInMall(loadProduct3D);
 const faceCache={};
 const hx=c=>'#'+c.toString(16).padStart(6,'0');
 function faceMat(o){
@@ -3158,11 +3176,11 @@ function buildRoof(){
 
   // --- two prize machines: play, win coins ---
   GAME_SPOTS.forEach((gs,i)=>{ if(gs.id==='claw') return buildClawCabinet(gs,Y,f); const g=new THREE.Group(), col=[0xf72585,0x4cc9f0][i];
-    box(1.5,2.3,1.1,mat(col,{roughness:.35}),0,1.15,0,g); box(1.3,.9,.06,new THREE.MeshBasicMaterial({map:canvasTex(256,180,(c,W,H)=>{ const gr=c.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1b1f4a'); gr.addColorStop(1,'#0b0e26'); c.fillStyle=gr; c.fillRect(0,0,W,H);
+    const body=box(1.5,2.3,1.1,mat(col,{roughness:.35}),0,1.15,0,g), scr=box(1.3,.9,.06,new THREE.MeshBasicMaterial({map:canvasTex(256,180,(c,W,H)=>{ const gr=c.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1b1f4a'); gr.addColorStop(1,'#0b0e26'); c.fillStyle=gr; c.fillRect(0,0,W,H);
       c.font='56px sans-serif'; c.textAlign='center'; c.fillText(i?'🏷️':'🛒',W/2,86); c.fillStyle='#ffd166'; c.font='800 26px Rubik,sans-serif'; c.direction='rtl'; c.fillText('מטבעות!',W/2,140); })}),0,1.55,.56,g,false);
-    box(1.5,.14,.6,M.dark,0,1,.7,g); box(.12,.12,.12,M.red,-.3,1.12,.75,g,false); box(.12,.12,.12,M.ledCyan,.3,1.12,.75,g,false);
-    box(1.55,.4,.5,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=i?'#4cc9f0':'#f72585'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='800 30px Rubik,sans-serif'; c.textAlign='center'; c.direction='rtl'; c.fillText(gs.title,W/2,43); })}),0,2.5,.3,g,false);
-    place(g,gs.mx,Y,gs.mz,-Math.PI/2); solid(f,gs.mx,gs.mz,1.3,1.7); });
+    const panel=[box(1.5,.14,.6,M.dark,0,1,.7,g),box(.12,.12,.12,M.red,-.3,1.12,.75,g,false),box(.12,.12,.12,M.ledCyan,.3,1.12,.75,g,false)];
+    const marq=box(1.55,.4,.5,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=i?'#4cc9f0':'#f72585'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='800 30px Rubik,sans-serif'; c.textAlign='center'; c.direction='rtl'; c.fillText(gs.title,W/2,43); })}),0,2.5,.3,g,false);
+    place(g,gs.mx,Y,gs.mz,-Math.PI/2,0,scene); roofLive.push(g); solid(f,gs.mx,gs.mz,1.3,1.7); gs.cab={g,body,scr,panel,marq}; });   // kept out of the roof's baked mesh: the Meshy cabinet replaces its boxes later
 
   // --- helipad behind the elevator ---
   const pad=new THREE.Mesh(new THREE.CircleGeometry(4.6,48),mat(0x2b2f3d,overlay({roughness:.8}))); pad.rotation.x=-Math.PI/2; pad.position.set(0,Y+.014,-21); SG.add(pad);
@@ -3359,6 +3377,9 @@ function buildOutside(){
   solidR(0,-41,-40,BZ,191); solidR(0,40,41,BZ,191); solidR(0,-41,41,190,191);
   SG=keep;
   const car=mkCar(); car.g.position.set(OUT.home.x,0,OUT.home.z); scene.add(car.g); OUT.car=car.g; OUT.wheels=car.wheels;
+  // the Meshy car takes the place of the boxes once it has loaded (its wheels are part of it and do not turn)
+  whenInMall(()=>loadGLTF(ASSET+'deco/car.glb?v=1').then(gl=>{ const m=fitModel(gl.scene,{len:4.3,maxW:2.1,h:1.8}); car.g.children.forEach(o=>o.visible=false); car.g.add(m); })
+    .catch(e=>console.warn('car 3D: keeping the boxes',e)));
   OUT.solid=solid(0,OUT.home.x,OUT.home.z,2.1,4.4,'car');
 }
 function carSolid(){ const p=OUT.car.position, s=OUT.solid, along=Math.abs(Math.cos(OUT.car.rotation.y))>.5; const w=along?2.1:4.4, d=along?4.4:2.1;
@@ -5107,7 +5128,7 @@ function sellerLoad(){ if(SELLER.asked||!SELLER.stand||!MESHY_HERO) return; SELL
     SELLER.real={model,mixer,actions,state:'Idle',action:actions.Idle,speed:0,push:0,near:false,waveT:0}; })
     .catch(e=>console.warn('seller 3D: keeping the classic figure',e)); }
 function sellerTick(dt){ const r=SELLER.real;
-  if(!r){ if(player.floor===TOP&&G.state==='play') sellerLoad(); return; }
+  if(!r){ if(player.floor===TOP&&G.state==='play'){ sellerLoad(); arcadeUpgrade(); } return; }
   if(player.floor!==TOP) return;
   const d=Math.hypot(player.pos.x-SHOP_SPOT.x,player.pos.z-SHOP_SPOT.z); r.waveT-=dt;
   const near=d<6; if(near&&!r.near&&r.waveT<=0){ r.waveT=25; gestStart(r,'Wave',2); } r.near=near;
@@ -5162,6 +5183,18 @@ function petTick(dt){
   PET_ZONE.list.forEach(p=>{ const r=p.root.position, d=Math.hypot(player.pos.x-r.x,player.pos.z-r.z);
     p.yaw=lerpAngle(p.yaw,d<6?Math.atan2(player.pos.x-r.x,player.pos.z-r.z):p.home,1-Math.exp(-dt*3)); p.speed=0; petAnim(p,dt); }); }
 afterHero(()=>{ PET.allowed=true; petSync(); });
+/* the two coin machines on the roof as a Meshy arcade cabinet: the boxes give way to it, and their game screen and
+   marquee move onto its front, found by casting a ray at the cabinet from in front */
+function arcadeUpgrade(){ if(ARCADE.asked) return; ARCADE.asked=true;
+  loadGLTF(ASSET+'deco/arcade.glb?v=1').then(gl=>{ GAME_SPOTS.forEach(gs=>{ const c=gs.cab; if(!c) return;
+      const m=fitModel(gl.scene.clone(true),{h:2.3,maxW:1.45,maxD:1.2}); c.g.add(m); m.updateMatrixWorld(true);
+      [c.body,...c.panel].forEach(o=>o.visible=false);
+      const rc=new THREE.Raycaster(), front=y=>{ rc.set(c.g.localToWorld(new THREE.Vector3(0,y,3)),c.g.localToWorld(new THREE.Vector3(0,y,-3)).sub(c.g.localToWorld(new THREE.Vector3(0,y,3))).normalize());
+        const hit=rc.intersectObject(m,true)[0]; return hit?c.g.worldToLocal(hit.point.clone()).z:null; };
+      const zs=front(1.55); if(zs!==null){ c.scr.position.z=zs+.035; c.scr.scale.set(.82,.82,.3); }
+      const zt=front(2.05); c.marq.position.set(0,2.5,0); c.marq.scale.set(.92,1,.2); if(zt!==null) c.marq.position.z=Math.min(zt,.1); });
+  }).catch(e=>console.warn('arcade 3D: keeping the boxes',e)); }
+const ARCADE={asked:false};
 function sellerCheer(){ if(SELLER.real) gestStart(SELLER.real,'Wave',2); }
 const alfGesture=name=>{ const r=ALF.npc&&ALF.npc.real; if(r) gestStart(r,name,name==='Wave'?2:1); };
 const _alf={v:new THREE.Vector3(),w:new THREE.Vector3(),q:new THREE.Quaternion()};
