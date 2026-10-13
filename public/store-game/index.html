@@ -3620,8 +3620,8 @@ function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) retu
 function loadLightmaps(only){
   if(!BAKED_LM) return;
   for(let f=0;f<=TOP;f++){ if(only!==undefined&&f!==only&&only!=='rest') continue; if(only==='rest'&&f===0) continue;
-    Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l1').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l1').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
-      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l1');   // a phone gets the light at half the size tex.flipY=true;
+    Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l2').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l2').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
+      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l2');   // a phone gets the light at half the size tex.flipY=true;
       const meshes=STATIC[f].children.filter(o=>o.isMesh); let off=0, used=0;
       idx.forEach(e=>{ const m=meshes[e.i], n=e.tris*3;
         if(m&&!m.userData.dyn){ const g=m.geometry, tris=(g.index?g.index.count:g.attributes.position.count)/3;
