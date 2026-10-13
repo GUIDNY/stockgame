@@ -1185,7 +1185,7 @@ function gfxBuild(){
     const C=new THREE.EffectComposer(renderer,rt);
     C.addPass(new THREE.RenderPass(scene,camera));
     // bloom on the brightest things only, at half resolution: the white mall must not turn into fog
-    GFX.bloom=new THREE.UnrealBloomPass(new THREE.Vector2(w/2,h/2),.32,.55,.86); C.addPass(GFX.bloom);
+    GFX.bloom=new THREE.UnrealBloomPass(new THREE.Vector2(w/2,h/2),.2,.4,.92); C.addPass(GFX.bloom);
     GFX.grade=new THREE.ShaderPass(GRADE_SHADER); C.addPass(GFX.grade);
     GFX.composer=C; GFX.on=true; C.setSize(w,h);
   }catch(e){ console.warn('fx: keeping the plain renderer',e); GFX.failed=true; GFX.on=false; GFX.composer=null; }
@@ -2824,7 +2824,7 @@ function peopleStart(){
     const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ dequant(o.geometry); o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
-          (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; }); } });
+          (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; if(mt.map) mt.map.anisotropy=renderer.capabilities.getMaxAnisotropy(); }); } });
         const meshy=/^BT/.test(PEOPLE.names[i]);   // the BuyToday team, made with Meshy: their spine needs the head nodded forward
         const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c){ const r=mixRetarget(c,an.scene,m); clips[k]=meshy?headNod(r):r; } });
         if(!clips.Idle||!clips.Walk) return;
@@ -5887,13 +5887,15 @@ document.addEventListener('visibilitychange',()=>{ if(!ONLINE) return; if(docume
    median doesn't see it). Under ~42 fps it steps down a level, after 8 s over ~56 fps it steps back up, but never into a
    level that failed during this visit, and at most twice: every switch costs a moment, and a game that keeps switching stutters. Nothing is judged in the first seconds in the mall, while it is still loading.
    The level that held is kept on the device, so the next visit starts there. ?q=0..7 pins a level. */
-const QL=[{pr:.75,fx:0,refl:0,sh:1},{pr:1,fx:0,refl:0,sh:1},{pr:1.25,fx:0,refl:0,sh:2},{pr:1.25,fx:1,refl:0,sh:2},
-  {pr:1.5,fx:1,refl:0,sh:2},{pr:1.75,fx:1,refl:0,sh:2},{pr:2,fx:1,refl:0,sh:2},{pr:2,fx:1,refl:1,sh:2}];
-const Q={max:Math.min(window.devicePixelRatio||1,2),lv:0,pr:0,shadow:2,times:[],winT:0,good:0,hold:0,bad:{},steady:0,pin:null,ups:0};
+// sharpness goes last: on the way down the reflections and the post-processing give way before the resolution does,
+// because a soft picture is what people notice (the canvas keeps its own antialiasing without the post-processing)
+const QL=[{pr:.75,fx:0,refl:0,sh:1},{pr:1,fx:0,refl:0,sh:1},{pr:1.25,fx:0,refl:0,sh:2},{pr:1.5,fx:0,refl:0,sh:2},
+  {pr:1.75,fx:0,refl:0,sh:2},{pr:2,fx:0,refl:0,sh:2},{pr:2,fx:1,refl:0,sh:2},{pr:2,fx:1,refl:1,sh:2}];
+const Q={max:Math.min(window.devicePixelRatio||1,2),lv:0,pr:0,shadow:2,times:[],winT:0,good:0,hold:0,bad:{},steady:0,pin:null,ups:0,slow:0};
 (function(){ const pin=new URLSearchParams(location.search).get('q'); if(pin!==null&&QL[+pin]) Q.pin=+pin;
-  let saved=null; try{ saved=localStorage.getItem('bt-q'); }catch(e){}
+  let saved=null; try{ saved=localStorage.getItem('bt-q2'); }catch(e){}
   const coarse=matchMedia('(pointer:coarse)').matches;
-  Q.lv=Q.pin!==null?Q.pin:saved!==null&&QL[+saved]?+saved:coarse?4:QL.length-1; })();
+  Q.lv=Q.pin!==null?Q.pin:saved!==null&&QL[+saved]?+saved:coarse?4:QL.length-1; })();   // a phone starts at 1.75x, no post-processing
 function qApply(lv){
   const L=QL[lv], coarse=matchMedia('(pointer:coarse)').matches; Q.lv=lv;
   const pr=Math.min(L.pr,Q.max); if(pr!==Q.pr){ Q.pr=pr; renderer.setPixelRatio(pr); onResize(); }
@@ -5910,10 +5912,12 @@ function qTick(raw,now){
   const ts=Q.times.sort((a,b)=>a-b), med=ts[ts.length>>1]; Q.times=[]; Q.winT=0;
   if(now<Q.hold) return;
   const fps=1/med;
-  if(fps<42&&Q.lv>0){ Q.bad[Q.lv]=true; Q.good=0; Q.steady=0; qApply(Q.lv-1); Q.hold=now+4000; try{ localStorage.setItem('bt-q',String(Q.lv)); }catch(e){} console.info('quality: down to',Q.lv,'at',fps.toFixed(0),'fps'); return; }
+  if(fps<42&&Q.lv>0&&++Q.slow<2) return;
+  if(fps>=42) Q.slow=0;
+  if(fps<42&&Q.lv>0){ Q.slow=0; Q.bad[Q.lv]=true; Q.good=0; Q.steady=0; qApply(Q.lv-1); Q.hold=now+4000; try{ localStorage.setItem('bt-q2',String(Q.lv)); }catch(e){} console.info('quality: down to',Q.lv,'at',fps.toFixed(0),'fps'); return; }
   if(fps>56){ Q.good++; if(Q.good>=4&&Q.lv<QL.length-1&&!Q.bad[Q.lv+1]&&Q.ups<2){ Q.good=0; Q.ups++; qApply(Q.lv+1); Q.hold=now+4000; console.info('quality: up to',Q.lv); return; } }
   else Q.good=0;
-  Q.steady+=2; if(Q.steady>=20){ Q.steady=-1e9; try{ localStorage.setItem('bt-q',String(Q.lv)); }catch(e){} }   // this level holds here: start at it next time
+  Q.steady+=2; if(Q.steady>=20){ Q.steady=-1e9; try{ localStorage.setItem('bt-q2',String(Q.lv)); }catch(e){} }   // this level holds here: start at it next time
 }
 function fadeTapMark(){ if(!tapMark||!tapMark.visible) return; const a=1-(performance.now()-tapMark.userData.t)/900; if(a<=0||!auto.on) tapMark.visible=false; else { tapMark.material.opacity=a; tapMark.scale.setScalar(1+(1-a)*.4); } }
 function loop(now){ fadeTapMark(); kioskGlow(now/1000);
