@@ -3,7 +3,7 @@
 (function(){ if(/[?&]hero=old/.test(location.search)) return; var a={}; try{ a=JSON.parse(localStorage.getItem('bt-avatar')||'{}')||{}; }catch(e){}
   var B=location.hostname==='play.buytoday.co.il'?'':'https://play.buytoday.co.il/', g=a.girl?'F1':'1', O=a.girl?['teal','pink','yellow','purple','tee','leather']:['orange','red','tee','navy','sweater','leather'];
   var o=O.indexOf(a.outfit)>=0?a.outfit:O[0], small=matchMedia('(max-width:700px)').matches||matchMedia('(pointer:coarse)').matches;
-  [[B+'people/MESHY-'+g+'.glb?v=y4','fetch'],[B+'people/anims.glb?v=p4','fetch'],[B+'gltf-loader.js','script'],[B+'meshopt_decoder.js?v=1','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t2','image']].forEach(function(x){
+  [[B+'people/MESHY-'+g+'.glb?v=y4','fetch'],[B+'people/anims.glb?v=p5','fetch'],[B+'gltf-loader.js','script'],[B+'meshopt_decoder.js?v=1','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t2','image']].forEach(function(x){
     var l=document.createElement('link'); l.rel='preload'; l.href=x[0]; l.as=x[1]; if(x[1]!=='script') l.crossOrigin='anonymous'; document.head.appendChild(l); }); })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2756,7 +2756,7 @@ function npcAttach(G,gl){
    carried onto each character by its rest pose (mixRetarget), so the same clips drive every one of them.
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
-const PEOPLE={names:['BT1','BT2','BT3','Ch03','Ch02','Ch07','Ch26','Ch21','Ch12'], weight:{BT1:2.5,BT2:2.5,BT3:2.5,Ch03:2}, tpl:[], cands:[], started:false, ready:false, V:'p4'};
+const PEOPLE={names:['BT1','BT2','BT3','Ch03','Ch02','Ch07','Ch26','Ch21','Ch12'], weight:{BT1:2.5,BT2:2.5,BT3:2.5,Ch03:2}, tpl:[], cands:[], started:false, ready:false, V:'p5'};
 PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:9;   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
@@ -2783,7 +2783,11 @@ function mixRetarget(clip,srcRoot,tgtRoot){
     const v=t.values.slice(), Rb=R[bn]; ip.copy(parentR(bn)).invert();
     for(let k=0;k<v.length;k+=4){ q.fromArray(v,k); q.premultiply(ip).multiply(Rb); q.toArray(v,k); }
     tracks.push(new THREE.QuaternionKeyframeTrack(t.name,t.times.slice(),v)); });
-  return new THREE.AnimationClip(clip.name,clip.duration,tracks);
+  // the Mixamo exports start at their second frame (t = 1/30): the gap before it, at every loop, was one frame of a
+  // wrong pose (a visible twitch every two seconds). Start the clip at its first key.
+  const t0=tracks.reduce((m,t)=>Math.min(m,t.times[0]),Infinity);
+  if(t0>0&&t0<.5) tracks.forEach(t=>t.shift(-t0));
+  return new THREE.AnimationClip(clip.name,t0>0&&t0<.5?clip.duration-t0:clip.duration,tracks);
 }
 // gltfpack stores positions and skin weights as normalized integers, which three r128 hands back raw on the
 // CPU side (fromBufferAttribute, boneTransform): turn those two into floats so a figure can be measured.
