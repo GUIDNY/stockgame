@@ -1699,6 +1699,7 @@ function buildGround(){
     const num=canvasTex(128,128,(g)=>{ g.fillStyle='#f55304'; g.beginPath(); g.arc(64,64,60,0,7); g.fill(); g.fillStyle='#fff'; g.font='80px "Secular One", sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(String(i+1),64,70); });
     const nm=new THREE.Mesh(new THREE.CircleGeometry(.3,24),new THREE.MeshBasicMaterial({map:num,side:THREE.DoubleSide})); nm.position.set(cx-.45,2.55,25.4); SG.add(nm);
     solid(0,cx,24,1.4,3.4,'counter');
+    if(i!==1) return;   // one cashier, at the middle till (every character in the mall appears once)
     const g=mkGuy({skin:pick([0xf1c7a0,0xc98e62,0x8d5a3b]),shirt:BRAND,pants:0x2b2f3a,hair:pick([0x2b1a10,0x5a3a1a,0x111111]),vest:0x22305f});
     g.npcLater={skin:pick([0xf1c7a0,0xc98e62,0x8d5a3b]),shirt:BRAND,pants:0x22305f,hair:0x2b1a10,hairStyle:'neat',top:'tee',girl:false};   // turned 3D once the NPC code below has run
     g.g.position.set(cx+1.25,0,24.6); g.g.rotation.y=-Math.PI/2; scene.add(g.g); solid(0,cx+1.25,24.6,.8,.8); cashiers.push(g);
@@ -2109,7 +2110,7 @@ function gltfReady(){ if(GLTF_READY) return GLTF_READY;
 function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   return GLTF_CACHE[url] = gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb|CASHIER(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
 }
 const HEAD_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -2695,6 +2696,7 @@ function mkGuyNPC(o){
   const G=mkGuy(o);
   if(!USE_3D_NPCS||!USE_3D_HERO) return G;
   G.npcOpts=o;
+  if(MESHY_HERO) return G;   // a Meshy character comes for it (people); the wardrobe file is only fetched if none can
   const url=heroUrl(o);
   if(NPC3D.gltfs[url]) npcAttach(G,NPC3D.gltfs[url]);
   else if(!HERO3D.failed[url]){ NPC3D.pending.push(G); npcLoad(url); }
@@ -2774,8 +2776,8 @@ function npcAttach(G,gl){
    carried onto each character by its rest pose (mixRetarget), so the same clips drive every one of them.
    They load one by one after the mall is up, fewer on a phone; a figure keeps its wardrobe body until
    a character is ready for it, and for good if the files can't be had. */
-const PEOPLE={names:['BT1','BT2','BT3','Ch03','Ch02','Ch07','Ch26','Ch21','Ch12'], weight:{BT1:2.5,BT2:2.5,BT3:2.5,Ch03:2}, tpl:[], cands:[], started:false, ready:false, V:'p5'};
-PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:9;   // about 2.5 MB each: a phone gets three
+const PEOPLE={names:['BT1','BT2','BT3','S2','S3'], weight:{}, tpl:[], cands:[], started:false, ready:false, V:'p5'};
+PEOPLE.max=PHONE.matches||matchMedia('(pointer:coarse)').matches?3:PEOPLE.names.length;   // every character appears once, so this is also how many people walk the mall   // about 2.5 MB each: a phone gets three
 const PEOPLE_H=HERO_MODEL_SCALE*1.87;   // the height of the hero model in the mall
 /* A figure waiting for its character stays out of sight (no swap in front of the shopper); if no character
    comes (files missing, or nothing within PEOPLE_WAIT ms of the start), the waiting figures get their
@@ -2825,7 +2827,7 @@ function peopleStart(){
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ dequant(o.geometry); o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; if(mt.map) mt.map.anisotropy=renderer.capabilities.getMaxAnisotropy(); }); } });
-        const meshy=/^BT/.test(PEOPLE.names[i]);   // the BuyToday team, made with Meshy: their spine needs the head nodded forward
+        const meshy=/^(BT|S)\d/.test(PEOPLE.names[i]);   // the BuyToday team, made with Meshy: their spine needs the head nodded forward
         const clips={}; Object.keys(want).forEach(k=>{ const c=an.animations.find(a=>a.name===want[k]); if(c){ const r=mixRetarget(c,an.scene,m); clips[k]=meshy?headNod(r):r; } });
         if(!clips.Idle||!clips.Walk) return;
         // its height standing, from the skinned vertices in the first frame of Idle
@@ -2849,20 +2851,17 @@ function peopleStart(){
 const PEOPLE_FIRST=6000;
 function peopleReady(){ if(PEOPLE.ready||!PEOPLE.tpl.length) return; PEOPLE.ready=true; personAssign(); }
 function personCount(){ const c=new Map(PEOPLE.tpl.map(T=>[T,0])); PEOPLE.cands.forEach(G=>{ if(G.personT) c.set(G.personT,(c.get(G.personT)||0)+1); }); return c; }
-function personPick(){ const c=personCount(), cap=Math.max(1,Math.ceil(PEOPLE.cands.length*.3)); let best=null, bv=1e9;
-  // no character on more than about a third of the figures, while there is another to choose
-  PEOPLE.tpl.forEach(T=>{ const v=(c.get(T)+1)/T.w+(c.get(T)>=cap?100:0)+Math.random()*.01; if(v<bv){ bv=v; best=T; } }); return best; }
+// every character once: a figure gets one nobody else is wearing, and a figure for whom there is none stays out of sight
+function personPick(){ const used=new Set(PEOPLE.cands.filter(G=>G.person&&G.g.parent).map(G=>G.personT)); return PEOPLE.tpl.find(T=>!used.has(T))||null; }
 function personAssign(){
-  PEOPLE.cands=PEOPLE.cands.filter(G=>G.g.parent);   // bots that have left the mall drop out
+  PEOPLE.cands=PEOPLE.cands.filter(G=>G.g.parent);   // bots that have left the mall drop out, and free their character
   if(!PEOPLE.ready) return;
-  // while more characters are on their way, a figure waits rather than become one more of the same
-  const more=PEOPLE.tpl.length<Math.min(PEOPLE.max,PEOPLE.names.length)&&!PEOPLE.force, cap=Math.max(1,Math.ceil(PEOPLE.cands.length*.3));
-  PEOPLE.cands.forEach(G=>{ if(G.person) return; const T=personPick(); if(more&&personCount().get(T)>=cap) return; personAttach(G,T); });
+  PEOPLE.cands.forEach(G=>{ if(G.person) return; const T=personPick(); if(T) personAttach(G,T); });
 }
 const _pf=new THREE.Frustum(), _pm=new THREE.Matrix4(), _pv=new THREE.Vector3();
 function personInSight(G){ _pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); _pf.setFromProjectionMatrix(_pm);
   G.g.getWorldPosition(_pv); _pv.y+=1; return G.g.visible&&_pv.distanceTo(camera.position)<40&&_pf.containsPoint(_pv); }
-function personRebalance(T){
+function personRebalance(T){ return personAssign();
   PEOPLE.cands=PEOPLE.cands.filter(G=>G.g.parent);
   const sumW=PEOPLE.tpl.reduce((a,t)=>a+t.w,0), want=Math.round(PEOPLE.cands.length*T.w/sumW);
   for(let n=0;n<want;n++){ const c=personCount(); let from=null, fv=-1;
@@ -2907,7 +2906,21 @@ function meshyPeer(G,av){
 const npcGesture=(G,name)=>{ if(G&&G.npc3d&&G.g.visible) gestStart(G.npc3d,name,name==='Wave'?2:1); };
 // the cashiers are built before this code runs: they join now
 function npcAdopt(G,o){ if(!USE_3D_NPCS||!USE_3D_HERO||G.npc3d) return; G.npcOpts=o; const url=heroUrl(o); if(NPC3D.gltfs[url]) npcAttach(G,NPC3D.gltfs[url]); else { NPC3D.pending.push(G); npcLoad(url); } }
-setTimeout(()=>{ if(typeof cashiers!=='undefined') cashiers.forEach(c=>{ if(c.npcLater) npcAdopt(c,c.npcLater); }); },0);   // after the whole mall has been built
+// the cashier: a Meshy figure in the BuyToday uniform (people/CASHIER.glb), standing at the till; waves when you come to pay
+function staffReal(G,gl){ const model=gl.scene; model.scale.setScalar(HERO_MODEL_SCALE); model.rotation.y=HERO_MODEL_ROTATION_OFFSET;
+  model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); if(mt.map) mt.map.anisotropy=renderer.capabilities.getMaxAnisotropy(); }); } });
+  const mixer=new THREE.AnimationMixer(model), actions={};
+  ['Idle','Wave'].forEach(n=>{ const c=gl.animations.find(x=>x.name===n); if(c){ const x=mixer.clipAction(c); x.setLoop(THREE.LoopRepeat,Infinity); actions[n]=x; } });
+  if(!actions.Idle) return null;
+  G.g.children.forEach(c=>c.visible=false); G.g.add(model); actions.Idle.play();
+  return {model,mixer,actions,state:'Idle',action:actions.Idle,speed:0,push:0,near:false,waveT:0}; }
+function staffTick(G,r,dt,f){ const p=G.g.position, d=player.floor===f?Math.hypot(player.pos.x-p.x,player.pos.z-p.z):99; r.waveT-=dt;
+  const near=d<5; if(near&&!r.near&&r.waveT<=0){ r.waveT=25; gestStart(r,'Wave',2); } r.near=near;
+  if(!gestTick(r,0,dt)&&r.action!==r.actions.Idle){ r.actions.Idle.reset().play(); if(r.action) r.action.crossFadeTo(r.actions.Idle,HERO_FADE,false); r.action=r.actions.Idle; }
+  if(d<40) r.mixer.update(dt); }
+whenInMall(()=>{ if(typeof cashiers==='undefined'||!cashiers.length) return;
+  loadGLTF(ASSET+'people/CASHIER'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=1').then(gl=>{ cashiers.forEach(c=>{ if(!c.real) c.real=staffReal(c,gl); }); })
+    .catch(e=>console.warn('cashier 3D: keeping the classic figure',e)); });
 /* called from animGuy for every figure that has a 3D body */
 function npcAnimTick(G,speed,dt,pushing){
   const n=G.npc3d; if(!G.g.visible) return;
@@ -3486,9 +3499,9 @@ function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) retu
       reflectedLight.indirectSpecular *= lmv; reflectedLight.directSpecular *= mix(1.0, lmv, .75);
     #endif`); if(c.userData.floor!==undefined) reflPatch(sh); };
   c.customProgramCacheKey=()=>c.userData.floor!==undefined?'lmfloor':'lm'; LM_MATS.set(k,c); return c; }
-function loadLightmaps(){
+function loadLightmaps(only){
   if(!BAKED_LM) return;
-  for(let f=0;f<=TOP;f++){
+  for(let f=0;f<=TOP;f++){ if(only!==undefined&&f!==only&&only!=='rest') continue; if(only==='rest'&&f===0) continue;
     Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l1').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l1').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
       const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l1');   // a phone gets the light at half the size tex.flipY=true;
       const meshes=STATIC[f].children.filter(o=>o.isMesh); let off=0, used=0;
@@ -3501,7 +3514,8 @@ function loadLightmaps(){
     }).catch(()=>{});
   }
 }
-setTimeout(loadLightmaps,0);
+// the ground floor's light first (it is what the entrance shows); the floors above once the shopper is inside
+setTimeout(()=>loadLightmaps(0),0); whenInMall(()=>loadLightmaps('rest'));
 bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
 OUT.backdrop=STATIC[0].children.find(m=>m.material===OUT_BACKDROP)||null;
 STATIC[1].children.forEach(m=>floorCasters.push(m));
@@ -3547,14 +3561,14 @@ function walkable(x,z,r,f){ for(const s of solids[f]){ if(x>s.minX-r&&x<s.maxX+r
   for(const s of noSpawn[f]){ if(x>s.minX&&x<s.maxX&&z>s.minZ&&z<s.maxZ) return false; } return true; }
 function randPoint(f){ for(let i=0;i<80;i++){ const x=rand(-22.5,22.5), z=rand(-30.5,f?30.5:19); if(walkable(x,z,.9,f)) return new THREE.Vector3(x,f*FH,z); } return new THREE.Vector3(0,f*FH,f?20:12); }
 const shoppers=[];
-[[0,2],[1,1],[2,2]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
+[[0,1],[1,1],[2,1]].forEach(([f,n])=>{ for(let i=0;i<n;i++){
   const girl=Math.random()<.5; const G=mkGuyNPC({girl,pony:girl&&Math.random()<.5,bottom:girl&&Math.random()<.6?'skirt':'pants',extra:Math.random()<.2?'glasses':'none',skin:pick([0xf6d2b3,0xf1c7a0,0xe0ac80,0xc98e62,0x8d5a3b]),shirt:pick(SHIRTS),pants:pick([0x2b2f3a,0x3d5a80,0x6b4f3a,0x1f3b2c,0xd0508a]),hair:pick([0x2b1a10,0x5a3a1a,0x111111,0xc9a26b,0x8a8a8a,0xb5542a]),tuft:Math.random()<.4});
   personEligible(G);
   const p=randPoint(f); G.g.position.copy(p); scene.add(G.g);
   if(f>=1) G.g.traverse(o=>{ if(o.isMesh){ o.userData.c=o.castShadow; o.userData.f=f; floorCasters.push(o); } });
   shoppers.push({G,f,pos:p,target:randPoint(f),speed:rand(1.2,1.9),wait:rand(0,2),stuck:0,yaw:0,last:p.clone()});
 }});
-afterHero(peopleStart);   // once the player's own figure is in (it comes first), so the characters are in by the time the shopper walks in
+afterHero(()=>whenInMall(peopleStart));   // the shoppers load once you are inside: the entrance screen comes first   // once the player's own figure is in (it comes first), so the characters are in by the time the shopper walks in
 for(let i=0;i<3;i++){ const r=mkRobot(); r.scale.setScalar(1.1); scene.add(r); r.traverse(o=>{ if(o.isMesh){ o.userData.c=true; floorCasters.push(o); } });
   robots.push({m:r,x:rand(robotArena.x0,robotArena.x1),z:rand(robotArena.z0,robotArena.z1),a:rand(0,6),turn:0}); }
 setShadowFloor(0);
@@ -5545,7 +5559,7 @@ function wander(a,dt,speed,r){
 function updateNPCs(dt,t){
   shoppers.forEach(s=>{ const sp=wander(s,dt,s.speed,.45); s.G.g.position.copy(s.pos); s.G.g.rotation.y=s.yaw; animGuy(s.G,sp,dt,false); s.G.head.rotation.y=sp?0:Math.sin(t*.8+s.speed*9)*.5; });
   for(let i=0;i<shoppers.length;i++) for(let j=i+1;j<shoppers.length;j++) if(shoppers[i].f===shoppers[j].f) pushApart(shoppers[i].pos,shoppers[j].pos,.9);
-  cashiers.forEach((c,i)=>{ c.head.rotation.y=Math.sin(t*.6+i)*.35; c.arms[0].rotation.x=-.4+Math.sin(t*2+i)*.15; if(c.npc3d) npcAnimTick(c,0,dt,false); });
+  cashiers.forEach((c,i)=>{ if(c.real) return staffTick(c,c.real,dt,0); c.head.rotation.y=Math.sin(t*.6+i)*.35; c.arms[0].rotation.x=-.4+Math.sin(t*2+i)*.15; });
   robots.forEach(r=>{ r.turn-=dt; r.x+=Math.sin(r.a)*dt*1.1; r.z+=Math.cos(r.a)*dt*1.1;
     if(r.x<robotArena.x0||r.x>robotArena.x1||r.z<robotArena.z0||r.z>robotArena.z1||r.turn<0){ r.x=clamp(r.x,robotArena.x0,robotArena.x1); r.z=clamp(r.z,robotArena.z0,robotArena.z1); r.a+=Math.PI*rand(.5,1.2); r.turn=rand(2,5); }
     r.m.position.set(r.x,FH+.01,r.z); r.m.rotation.y=r.a; });
@@ -5822,7 +5836,8 @@ function netChatIn(m){ const q=m&&Net.peers.get(m.i), now=performance.now(); if(
    your emoji. The "מחוברים" counter still counts real people only. */
 const BOT_NAMES=['נועה','איתי','מאיה','יונתן','שירה','אורי','תמר','עומר','דניאל','ליה','רוני','אביב','יעל','עידו','הילה','גיא','נוי','אליה','בן','אגם','עדי','שקד','רז','מיכל','טל','אלון','רותם','Tal88','Shaked','Omer_K','דור','ים','סהר','לירון','אופיר','מעיין'];
 const BOT_FLOORS=[0,0,0,1,1,2,2];
-const Bots={list:[],target:3+((Math.random()*4)|0),driftT:rand(40,80),spawnT:0,names:BOT_NAMES.slice().sort(()=>Math.random()-.5),ni:0,started:false};
+const BOT_CAP=Math.max(0,PEOPLE.max-3);   // the characters left after the three shoppers
+const Bots={list:[],target:1+BOT_CAP,driftT:rand(40,80),spawnT:0,names:BOT_NAMES.slice().sort(()=>Math.random()-.5),ni:0,started:false};
 function botAvatar(){ const girl=Math.random()<.5; return {girl,merch:Math.random()<.3?pick(AV_MERCH.slice(1,4)):'none',bottom:girl&&Math.random()<.6?'skirt':'pants',extra:pick(['none','none','cap','glasses','beanie','shades','headphones']),skin:pick(AV_CHOICES.skin),hair:pick(AV_CHOICES.hair),shirt:pick(AV_CHOICES.shirt),pants:pick(AV_CHOICES.pants)}; }
 function botGoal(b){
   const r=Math.random(), f=b.f;
@@ -5848,7 +5863,7 @@ function botEmoji(b,e,delay){ setTimeout(()=>{ if(!Bots.list.includes(b)) return
 function botsReact(){ Bots.list.forEach(b=>{ if(b.f===player.floor&&b.pos.distanceTo(player.pos)<11&&Math.random()<.45) botEmoji(b,pick(['👋','👍','😂','🔥','😍']),rand(600,1800)); }); }
 function botsUpdate(dt,now){
   if(!Bots.started) return;
-  Bots.driftT-=dt; if(Bots.driftT<=0){ Bots.driftT=rand(40,90); Bots.target=clamp(Bots.target+pick([-1,0,1]),3,6); }
+  Bots.driftT-=dt; if(Bots.driftT<=0){ Bots.driftT=rand(40,90); Bots.target=1+BOT_CAP; }
   const real=Net.ready?Math.max(0,Net.count-1):0, want=Math.max(0,Bots.target-1-real), active=Bots.list.filter(b=>!b.leaving);
   Bots.spawnT-=dt;
   if(active.length<want&&Bots.spawnT<=0){ botSpawn(); Bots.spawnT=rand(2,6); }
