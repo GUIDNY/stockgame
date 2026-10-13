@@ -2059,7 +2059,7 @@ const STORE_PROP={tv:{h:1,maxW:2.2,maxD:1.1},audio:{h:1.5,maxW:1.9,maxD:1},kitch
   fridge:{h:1.2,maxW:1.4,maxD:1.4},laundry:{h:1.3,maxW:1.4,maxD:1},home:{h:1.7,maxW:1.3,maxD:1.3},ac:{h:2.2,maxW:1.6,maxD:1},heat:{h:1.6,maxW:2,maxD:.9}};
 let storeT=0;
 function storeTick(dt){ if(!STORE_DEFS.length||G.state!=='play') return;
-  storeT-=dt; if(storeT<=0){ storeT=.5; STORE_DEFS.forEach(S=>{ if(!S.loading&&S.f===player.floor&&Math.hypot(player.pos.x-S.c[0],player.pos.z-S.c[1])<30) storeLoad(S); }); }
+  storeT-=dt; if(storeT<=0){ storeT=.5; STORE_DEFS.forEach(S=>{ if(!S.loading&&S.f===player.floor&&Math.hypot(player.pos.x-S.c[0],player.pos.z-S.c[1])<20) storeLoad(S); }); }
   STAFF.forEach(x=>{ if(x.f===player.floor) staffTick(x.G,x.r,dt,x.f); }); }
 const faceCache={};
 const hx=c=>'#'+c.toString(16).padStart(6,'0');
