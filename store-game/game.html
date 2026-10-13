@@ -1680,8 +1680,10 @@ function buildGround(){
   for(let z=-7.5;z<=10.5;z+=2.25){ box(1.2,2.6,2.15,M.white,BX-.75,1.3,z); box(.02,.62,1.6,M.glass,BX-1.36,1.55,z,null,false); box(.02,.62,1.6,M.glass,BX-1.36,.8,z,null,false);
     box(.03,.04,1.2,M.steel,BX-1.38,1.92,z,null,false); box(.02,.05,.5,M.led,BX-1.37,2.2,z,null,false); }
   solidR(0,BX-1.4,BX,-8.7,11.7);
-  box(1.4,.92,18,M.white,10.2,.46,2); box(1.5,.06,18.2,M.quartz,10.2,.95,2); box(.02,.03,17.6,M.ledWarm,9.49,.06,2,null,false); box(.02,.03,17.6,M.ledWarm,10.91,.06,2,null,false); solidR(0,9.4,11,-7.2,11.2);
-  for(let z=-5.5;z<=9.5;z+=3){ place(mkCooktop(),10.2,.98,z,Math.PI/2,1.2); }
+  // the cooktop island: along the shop front in the old hall, in the back of the shop on the mall street (the front is the door)
+  const ix=MALL2?19.5:10.2, iz=MALL2?2:2, iL=MALL2?10:18;
+  box(1.4,.92,iL,M.white,ix,.46,iz); box(1.5,.06,iL+.2,M.quartz,ix,.95,iz); box(.02,.03,iL-.4,M.ledWarm,ix-.71,.06,iz,null,false); box(.02,.03,iL-.4,M.ledWarm,ix+.71,.06,iz,null,false); solidR(0,ix-.8,ix+.8,iz-iL/2-.2,iz+iL/2+.2);
+  for(let z=iz-iL/2+1.7;z<=iz+iL/2-1;z+=MALL2?2.2:3){ place(mkCooktop(),ix,.98,z,Math.PI/2,1.2); }
   neon('תנורים וכיריים',16,4.5,13.5,0,6.8,true,'תנורים בנויים · כיריים · מיקרוגלים');
   // --- hot deals (back centre) ---
   cyl(1.75,1.9,.3,M.navy,0,.15,-19,null,40); const ring=new THREE.Mesh(new THREE.TorusGeometry(1.76,.05,8,48),M.led); ring.rotation.x=Math.PI/2; ring.position.set(0,.3,-19); SG.add(ring);
@@ -1738,8 +1740,10 @@ function buildUpper(){
   solidR(1,-BX,-BX+1.4,-29.8,-9.4);
   for(let x=-21.6;x<=-10;x+=1.9){ box(1.8,2.3,1.1,x%3<-1.5?M.steel:M.black,x,Y+1.15,-BZ+.7); box(.02,2.1,.02,M.dark,x,Y+1.15,-BZ+1.26,null,false); box(.04,.6,.05,M.steel,x-.12,Y+1.4,-BZ+1.29,null,false); box(.04,.6,.05,M.steel,x+.12,Y+1.4,-BZ+1.29,null,false); }
   solidR(1,-22.6,-9.1,-BZ,-BZ+1.4);
-  for(let x=-20.5;x<=-10;x+=1.3){ [-1,1].forEach(s=>place(mkFridge(),x,Y,-16+s*.57,s>0?0:Math.PI,1.9)); }
-  solidR(1,-21.3,-9.2,-17.2,-14.8);
+  // the double row of fridges, shorter on the mall street so you can walk round both ends of it
+  const fx0=MALL2?-19.5:-20.5, fx1=MALL2?-14.3:-10;
+  for(let x=fx0;x<=fx1;x+=1.3){ [-1,1].forEach(s=>place(mkFridge(),x,Y,-16+s*.57,s>0?0:Math.PI,1.9)); }
+  solidR(1,fx0-.8,fx1+.8,-17.2,-14.8);
   neon('מקררים וקירור',-16,Y+4.4,-9.3,0,6.8,true,'מקררים · מקפיאים · מקררי יין');
   // --- laundry & dishwashers (left, front) ---
   floorPlane(-BX,-8.5,-9,13,Y+.01,surfMat('carpet','#dcdee6',new THREE.MeshStandardMaterial(overlay({map:carpetTex('#dcdee6','#d2d5de'),roughness:.9}))),null,3);
@@ -1869,9 +1873,9 @@ const STORE_DEFS=MALL2?[
 ]:[];
 STORE_DEFS.forEach(S=>{
   if(S.ez===undefined){ const outer=S.inward<0?-BX+.25:BX-.25; S.D=Math.abs(outer-S.ex); S.L=S.z1-S.z0; S.vc=(S.z0+S.z1)/2;
-    S.at=(u,v)=>[S.ex+S.inward*u,S.vc+v]; S.ux=S.inward; S.uz=0; S.rect=[Math.min(S.ex,outer),Math.max(S.ex,outer),S.z0,S.z1]; }
+    S.at=(u,v)=>[S.ex+S.inward*u,S.vc+v]; S.uv=(x,z)=>[(x-S.ex)*S.inward,z-S.vc]; S.ux=S.inward; S.uz=0; S.rect=[Math.min(S.ex,outer),Math.max(S.ex,outer),S.z0,S.z1]; }
   else { const outer=BZ-.25; S.D=outer-S.ez; S.L=S.x1-S.x0; S.vc=(S.x0+S.x1)/2;
-    S.at=(u,v)=>[S.vc+v,S.ez+u]; S.ux=0; S.uz=1; S.rect=[S.x0,S.x1,S.ez,outer]; }
+    S.at=(u,v)=>[S.vc+v,S.ez+u]; S.uv=(x,z)=>[z-S.ez,x-S.vc]; S.ux=0; S.uz=1; S.rect=[S.x0,S.x1,S.ez,outer]; }
   S.face=Math.atan2(-S.ux,-S.uz);   // a figure or a till looking out of the shop, towards its door
   S.c=S.at(S.D/2,0);
   // the products: a centrepiece, three along the back wall, one on each side
@@ -5655,7 +5659,15 @@ function updateCamera(dt,menu){
     tmp.set(player.pos.x+sy*dist, base+h*(.55+.45*dist/CAM.dist), player.pos.z+cy0*dist);
     if(!outsideNow){ tmp.x=clamp(tmp.x,-BX+.7,BX-.7); tmp.z=clamp(tmp.z,-BZ+.7,BZ-.4); } else tmp.z=Math.max(tmp.z,BZ+.6);   // outside, the camera keeps off the glass
     if(MALL2&&!outsideNow){ const R=storeAt(player.floor,player.pos.x,player.pos.z);   // in a shop the camera stays in it; outside, it stays out of them
-      if(R){ tmp.x=clamp(tmp.x,R.rect[0]+.5,R.rect[1]-.5); tmp.z=clamp(tmp.z,R.rect[2]+.5,R.rect[3]-.5); }
+      if(R){ const [pu,pv]=R.uv(player.pos.x,player.pos.z), [cu,cv]=R.uv(tmp.x,tmp.z);
+        // just in from the door, looking in: the camera may hang back through the doorway, so the shop opens up in front of you
+        const thru=cu<.5&&pu>cu&&Math.abs(pv+(cv-pv)*(pu-.3)/(pu-cu))<1.4;
+        if(thru){ if(cu<-5){ const [x,z]=R.at(-5,pv+(cv-pv)*(pu+5)/(pu-cu)); tmp.x=x; tmp.z=z; } }
+        else { // pulled in along its own line to the wall, not squashed sideways on top of the player
+          const r=R.rect, px=player.pos.x, pz=player.pos.z, dx=tmp.x-px, dz=tmp.z-pz; let t=1;
+          if(dx>1e-4) t=Math.min(t,(r[1]-.5-px)/dx); if(dx<-1e-4) t=Math.min(t,(r[0]+.5-px)/dx);
+          if(dz>1e-4) t=Math.min(t,(r[3]-.5-pz)/dz); if(dz<-1e-4) t=Math.min(t,(r[2]+.5-pz)/dz);
+          t=clamp(t,0,1); tmp.x=px+dx*t; tmp.z=pz+dz*t; tmp.y=base+h*(.55+.45*Math.max(t*dist,1.6)/CAM.dist); } }
       else { const C=storeAt(player.floor,tmp.x,tmp.z); if(C){ if(C.ez===undefined) tmp.x=C.ex-C.inward*.5; else tmp.z=C.ez-.5; } } }
     look.set(player.pos.x-sy*CAM.ahead,base+CAM.lookH,player.pos.z-cy0*CAM.ahead);
   }
