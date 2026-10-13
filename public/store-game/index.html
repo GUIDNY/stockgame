@@ -1103,6 +1103,7 @@ function lerpAngle(a,b,t){ let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*
 const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
 
 /* ---------- mall dimensions ---------- */
+const MALL2=/[?&]mall=2/.test(location.search), STORES=[];   // the mall-street experiment (buildStorefronts)
 const FH = 6;                                   // floor height
 const BX = 24, BZ = 32;                         // half size of the building
 const VOID = {minX:-8,maxX:8,minZ:-7,maxZ:7};   // atrium opening in floor 1
@@ -3248,7 +3249,7 @@ function buildKiosks(){
 /* what follows the catalogue (plinths, kiosks, the fronts' columns, signs and bins placed round them) moves
    when the catalogue does: it is kept apart from the fixed building, which is all the baked lighting covers */
 function markDyn(fn){ const n=STATIC.map(g=>g.children.length); fn(); STATIC.forEach((g,i)=>{ for(let k=n[i];k<g.children.length;k++) g.children[k].userData.dyn=true; }); }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); if(MALL2){ buildStorefronts(); whenInMall(fillStoreWindows); } buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -3279,9 +3280,57 @@ function bake(group){
 function deptFronts(){ return DEPTS.filter(d=>d.f<=1&&(d.rect[0]<=-BX||d.rect[1]>=BX)&&d.rect[1]-d.rect[0]<BX*1.5).map(d=>{
   const [x0,x1,z0,z1]=d.rect, ex=x0<=-BX?x1:x0, inward=x0<=-BX?-1:1;
   return {d,ex,inward,z0:Math.max(z0,-BZ+.25),z1:Math.min(z1,BZ-.25)}; }); }
+/* ---------- the experiment (?mall=2): the ground floor as a mall street ----------
+   Each department on the ground floor (but the tills) becomes a shop of its own: a front onto the main aisle
+   in white with the department's colour, two shop windows with the first products of the department on lit
+   plinths behind the glass, a doorway with the department's sign over it, and walls down to the outer wall
+   on either side. Walking through the doorway takes you in among the department's products. The fronts are
+   not part of the baked floor (its lightmap stays as it is), and whichever front stands between the camera
+   and the shopper fades so neither going in nor coming out hides you. */
+function buildStorefronts(){
+  const glassM=new THREE.MeshStandardMaterial({color:0xd6ecff,transparent:true,opacity:.14,roughness:.04,metalness:.25,depthWrite:false});
+  deptFronts().filter(o=>o.d.f===0&&o.d.id!=='checkout').forEach(({d,ex,inward,z0,z1})=>{
+    const g=new THREE.Group(); scene.add(g);
+    const top=FH-.3, L=z1-z0, zc=(z0+z1)/2, ry=-inward*Math.PI/2, col=new THREE.Color(d.color);
+    const wallM=mat(0xf6f3ee,{roughness:.55}), frameM=mat(0x1b2340,{roughness:.35,metalness:.35}), accM=new THREE.MeshBasicMaterial({color:col}), plinthM=mat(0xffffff,{roughness:.3});
+    const B=(w,h,dz,m,x,y,z)=>box(w,h,dz,m,x,y,z,g,false);
+    const dw=3.6, dz0=zc-dw/2, dz1=zc+dw/2, wy0=.4, wy1=3.4, vit=[];
+    B(.32,top-wy1,L,wallM,ex,(top+wy1)/2,zc);                          // the fascia over windows and door
+    B(.03,.16,L,accM,ex-inward*.17,wy1+.12,zc);                         // a band of the department's colour under it
+    B(.03,.05,L,M.ledWarm,ex-inward*.17,top-.2,zc);
+    [[z0,dz0],[dz1,z1]].forEach(([a,b])=>{
+      B(.32,wy0,b-a,frameM,ex,wy0/2,(a+b)/2);                           // kick plate
+      const pw=.8; B(.34,wy1-wy0,pw,wallM,ex,(wy0+wy1)/2,a+pw/2); B(.34,wy1-wy0,pw,wallM,ex,(wy0+wy1)/2,b-pw/2);
+      const ga=a+pw, gb=b-pw, gl=gb-ga;
+      if(gl>.6){ const gm=new THREE.Mesh(new THREE.PlaneGeometry(gl,wy1-wy0),glassM); gm.position.set(ex,(wy0+wy1)/2,(ga+gb)/2); gm.rotation.y=Math.PI/2; g.add(gm);
+        const n=Math.max(1,Math.round(gl/2.8)); for(let k=1;k<n;k++) B(.07,wy1-wy0,.07,frameM,ex,(wy0+wy1)/2,ga+gl*k/n);
+        B(.14,.07,gl,frameM,ex,wy1,(ga+gb)/2); B(.14,.07,gl,frameM,ex,wy0,(ga+gb)/2);
+        vit.push({ga,gb}); }
+      solidR(0,ex-.2,ex+.2,a,b,'front'); });
+    B(.4,wy1,.14,frameM,ex,wy1/2,dz0); B(.4,wy1,.14,frameM,ex,wy1/2,dz1); B(.4,.14,dw+.14,frameM,ex,wy1,zc);   // the door frame
+    floorPlane(ex-.6,ex+.6,dz0,dz1,.018,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.85,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6}),g,1);   // a mat at the door
+    const xo=inward<0?-BX:BX;                                           // walls on either side, back to the outer wall
+    [z0,z1].forEach(z=>{ if(Math.abs(z)>=BZ-.3) return; B(Math.abs(xo-ex),top,.3,wallM,(ex+xo)/2,top/2,z); solidR(0,Math.min(ex,xo),Math.max(ex,xo),z-.16,z+.16,'front'); });
+    const prev=SG; SG=g; neon(d.name,ex-inward*.2,wy1+1.2,zc,ry,Math.min(5.6,L*.45),false,d.sub,true); SG=prev;
+    // the shop windows: plinths a step behind the glass, filled with the department's products once inside
+    vit.forEach(v=>{ const n=Math.max(1,Math.min(3,Math.round((v.gb-v.ga)/2.2)));
+      for(let k=0;k<n;k++){ const z=v.ga+(v.gb-v.ga)*(k+.5)/n, x=ex+inward*1.0;
+        B(.9,.82,.9,plinthM,x,.41,z); B(.92,.03,.92,accM,x,.835,z); v.spots=(v.spots||[]).concat([[x,z]]); } });
+    STORES.push({d,ex,inward,z0,z1,g,vit,op:1,fade:[wallM,frameM,plinthM]});
+  });
+}
+function fillStoreWindows(){ STORES.forEach(S=>{ const items=CATALOG.filter(it=>it.zone===S.d.id&&it.model); let k=0;
+  S.vit.forEach(v=>(v.spots||[]).forEach(([x,z])=>{ const it=items[k++%Math.max(1,items.length)]; if(!it) return;
+    const m=it.model.clone(true); m.position.set(x,m.position.y,z); m.rotation.y=-S.inward*Math.PI/2; m.userData.face=false; S.g.add(m); })); }); }
+function storeTick(dt){ if(!STORES.length) return;
+  const cam=camera.position, p=player.pos;
+  STORES.forEach(S=>{ const inside=q=>(q.x-S.ex)*S.inward>0&&q.z>S.z0-.2&&q.z<S.z1+.2;
+    const want=player.floor===0&&inside(p)!==inside(cam)?.22:1; S.op+=(want-S.op)*(1-Math.exp(-dt*10));
+    const t=S.op<.98; S.fade.forEach(m=>{ m.transparent=t; m.opacity=S.op; m.depthWrite=!t; }); }); }
 function buildFronts(){
   const cols=[];
   deptFronts().forEach(({d,ex,inward,z0,z1})=>{
+    if(MALL2&&d.f===0&&d.id!=='checkout') return;   // the experiment builds a storefront here instead (buildStorefronts)
     const f=d.f, P=STATIC[f], base=f*FH, top=f===0?FH-.3:2*FH, L=z1-z0, zc=(z0+z1)/2;
     const line=new THREE.MeshBasicMaterial({color:new THREE.Color(d.color)});
     // bulkhead
@@ -5956,7 +6005,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=it.model.userData.face?Math.atan2(camera.position.x-it.x,camera.position.z-it.z):Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
-  alfTick(dt,t); sellerTick(dt); petTick(dt);
+  alfTick(dt,t); sellerTick(dt); petTick(dt); storeTick(dt);
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
   AD.update(dt);
