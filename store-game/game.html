@@ -5847,12 +5847,12 @@ document.addEventListener('visibilitychange',()=>{ if(!ONLINE) return; if(docume
    A ladder of levels, from plain to everything: resolution (up to the screen's own, at most 2x), the post-processing
    (bloom, grade, multisampling), the floor reflections, and soft shadows. The frame rate decides: every two seconds the
    median frame time of the last window (a model loading in the background is one long frame, not a slow game, and the
-   median doesn't see it). Under ~42 fps it steps down a level, after 6 s over ~56 fps it steps back up, but never into a
-   level that failed in the last minute. Nothing is judged in the first seconds in the mall, while it is still loading.
+   median doesn't see it). Under ~42 fps it steps down a level, after 8 s over ~56 fps it steps back up, but never into a
+   level that failed during this visit, and at most twice: every switch costs a moment, and a game that keeps switching stutters. Nothing is judged in the first seconds in the mall, while it is still loading.
    The level that held is kept on the device, so the next visit starts there. ?q=0..7 pins a level. */
 const QL=[{pr:.75,fx:0,refl:0,sh:1},{pr:1,fx:0,refl:0,sh:1},{pr:1.25,fx:0,refl:0,sh:2},{pr:1.25,fx:1,refl:0,sh:2},
   {pr:1.5,fx:1,refl:0,sh:2},{pr:1.75,fx:1,refl:0,sh:2},{pr:2,fx:1,refl:0,sh:2},{pr:2,fx:1,refl:1,sh:2}];
-const Q={max:Math.min(window.devicePixelRatio||1,2),lv:0,pr:0,shadow:2,times:[],winT:0,good:0,hold:0,bad:{},steady:0,pin:null};
+const Q={max:Math.min(window.devicePixelRatio||1,2),lv:0,pr:0,shadow:2,times:[],winT:0,good:0,hold:0,bad:{},steady:0,pin:null,ups:0};
 (function(){ const pin=new URLSearchParams(location.search).get('q'); if(pin!==null&&QL[+pin]) Q.pin=+pin;
   let saved=null; try{ saved=localStorage.getItem('bt-q'); }catch(e){}
   const coarse=matchMedia('(pointer:coarse)').matches;
@@ -5861,7 +5861,7 @@ function qApply(lv){
   const L=QL[lv], coarse=matchMedia('(pointer:coarse)').matches; Q.lv=lv;
   const pr=Math.min(L.pr,Q.max); if(pr!==Q.pr){ Q.pr=pr; renderer.setPixelRatio(pr); onResize(); }
   const sh=L.sh; if(sh!==Q.shadow){ Q.shadow=sh; sun.shadow.mapSize.set(sh>1?2048:1024,sh>1?2048:1024); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
-    renderer.shadowMap.type=sh>1?THREE.PCFSoftShadowMap:THREE.PCFShadowMap; renderer.shadowMap.needsUpdate=true; }
+    renderer.shadowMap.needsUpdate=true; }   // the map size only: changing the filter type recompiles every material, a visible freeze
   const refl=!!L.refl&&!coarse&&new URLSearchParams(location.search).get('refl')!=='0';
   if(L.fx&&GFX.want&&!GFX.failed){ if(!GFX.on) gfxLoad().then(ok=>{ if(ok&&Q.lv===lv&&!GFX.on){ gfxBuild(); reflEnable(refl); } }); else if(REFL.on!==refl) reflEnable(refl); }
   else if(GFX.on) gfxOff();
@@ -5873,8 +5873,8 @@ function qTick(raw,now){
   const ts=Q.times.sort((a,b)=>a-b), med=ts[ts.length>>1]; Q.times=[]; Q.winT=0;
   if(now<Q.hold) return;
   const fps=1/med;
-  if(fps<42&&Q.lv>0){ Q.bad[Q.lv]=now; Q.good=0; Q.steady=0; qApply(Q.lv-1); Q.hold=now+4000; console.info('quality: down to',Q.lv,'at',fps.toFixed(0),'fps'); return; }
-  if(fps>56){ Q.good++; if(Q.good>=3&&Q.lv<QL.length-1&&!(now-(Q.bad[Q.lv+1]||-1e9)<60000)){ Q.good=0; qApply(Q.lv+1); Q.hold=now+4000; console.info('quality: up to',Q.lv); return; } }
+  if(fps<42&&Q.lv>0){ Q.bad[Q.lv]=true; Q.good=0; Q.steady=0; qApply(Q.lv-1); Q.hold=now+4000; try{ localStorage.setItem('bt-q',String(Q.lv)); }catch(e){} console.info('quality: down to',Q.lv,'at',fps.toFixed(0),'fps'); return; }
+  if(fps>56){ Q.good++; if(Q.good>=4&&Q.lv<QL.length-1&&!Q.bad[Q.lv+1]&&Q.ups<2){ Q.good=0; Q.ups++; qApply(Q.lv+1); Q.hold=now+4000; console.info('quality: up to',Q.lv); return; } }
   else Q.good=0;
   Q.steady+=2; if(Q.steady>=20){ Q.steady=-1e9; try{ localStorage.setItem('bt-q',String(Q.lv)); }catch(e){} }   // this level holds here: start at it next time
 }
