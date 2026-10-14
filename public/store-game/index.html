@@ -2611,7 +2611,8 @@ function meshyHead(model){ if(model.userData.head!==undefined) return model.user
   const bones=sm.skeleton.bones, hi=bones.findIndex(b=>/head$/i.test(b.name)); if(hi<0) return model.userData.head=null;
   const kids=new Set(); bones[hi].traverse(b=>{ const i=bones.indexOf(b); if(i>=0) kids.add(i); });
   dequant(sm.geometry); const P=sm.geometry.attributes.position, I=sm.geometry.attributes.skinIndex, W=sm.geometry.attributes.skinWeight, box=new THREE.Box3(), v=new THREE.Vector3();
-  for(let k=0;k<P.count;k++){ let w=0; for(let j=0;j<4;j++) if(kids.has(I.getComponent(k,j))) w+=W.getComponent(k,j); if(w>.6){ v.fromBufferAttribute(P,k); box.expandByPoint(v); } }
+  const IA=I.array, WA=W.array, iz=I.itemSize, wz=W.itemSize;
+  for(let k=0;k<P.count;k++){ let w=0; for(let j=0;j<4;j++) if(kids.has(IA[k*iz+j])) w+=WA[k*wz+j]; if(w>.6){ v.fromBufferAttribute(P,k); box.expandByPoint(v); } }
   if(box.isEmpty()) return model.userData.head=null;
   return model.userData.head={sm,bone:bones[hi],inv:sm.skeleton.boneInverses[hi],box}; }
 const ACC_MAT={};
@@ -2659,7 +2660,7 @@ function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
       if(own){ t.offset.copy(own.offset); t.repeat.copy(own.repeat); t.rotation=own.rotation; t.center.copy(own.center); t.matrixAutoUpdate=own.matrixAutoUpdate; t.matrix.copy(own.matrix); }
       mt.map=t; mt.needsUpdate=true; }
     if(mt.map){ mt.map.anisotropy=an; mt.map.needsUpdate=true; } }); } });   // sharp at a slant, not smeared
-  if(outfit) meshyLook(model,o,body,outfit); }
+  if(outfit) try{ meshyLook(model,o,body,outfit); }catch(e){ console.warn('meshy look',e); } }   // an extra never costs the figure
 /* the face: painted, not modelled. The wardrobe's faces are two dark blocks for eyes and two for brows; they are
    hidden and a face is painted onto a copy of the front of the head's own skin (same vertices, same bones, so it
    moves with every frame of every clip): eyes with a white, a coloured iris, a pupil and a glint, lids, brows in
