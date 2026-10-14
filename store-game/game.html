@@ -2004,6 +2004,13 @@ function tagTexture(it){
 }
 
 
+/* What stands on a floor (its products, shops' sellers and things, kiosks) hangs on that floor's own group, and only the
+   floor you are on is drawn: the others are behind a ceiling anyway, and drawing them (and their shadows) every
+   frame was most of the weight of a mall with three floors of shops. */
+const FLOOR_ROOT=[0,1,2].map(()=>{ const g=new THREE.Group(); scene.add(g); return g; });
+const floorRoot=f=>FLOOR_ROOT[Math.max(0,Math.min(2,f|0))];
+function floorShow(f){ FLOOR_ROOT.forEach((g,i)=>{ g.visible=i===f; }); }
+floorShow(0);
 const ringGeo=new THREE.RingGeometry(.85,1.05,40);
 function buildItems(){
   // a showroom plinth: navy foot with a lit toe, a white body with the product photo framed on every side,
@@ -2052,7 +2059,7 @@ function shopFixture(it,S,base,P){
 }
 function itemBody(it,base){
   {
-    const g=new THREE.Group(); g.position.set(it.x,base,it.z); scene.add(g);
+    const g=new THREE.Group(); g.position.set(it.x,base,it.z); floorRoot(it.f).add(g);
     let m=flatten(it.mk()); m.scale.setScalar(it.sc); m.position.y=it.top; it.solid=m;
     // the real product: its photo, backdrop cut away by the build, standing on the plinth at the size its
     // kind would have, and turned to whoever looks at it. Products whose photo cannot be cut keep the model.
@@ -2135,14 +2142,14 @@ whenInMall(loadProduct3D);
    the till, the till, its centrepiece, its products in 3D; then the shop windows are dressed with its products */
 const STAFF=[];
 function storeLoad(S){ S.loading=true; const small=PHONE.matches||matchMedia('(pointer:coarse)').matches, base=S.f*FH;
-  const put=(m,uv)=>{ const [x,z]=S.at(...uv); m.position.set(x,base,z); m.rotation.y=S.face; scene.add(m); return m; };
+  const put=(m,uv)=>{ const [x,z]=S.at(...uv); m.position.set(x,base,z); m.rotation.y=S.face; floorRoot(S.f).add(m); return m; };
   loadGLTF(ASSET+'deco/till.glb?v=1').then(gl=>{ const m=fitModel(gl.scene.clone(true),{h:1.15,maxW:2.3,maxD:1.1}), g=new THREE.Group(); g.add(m); put(g,S.till); }).catch(e=>console.warn('till 3D',e));
   loadGLTF(ASSET+'people/K_'+S.id+(small?'-m':'')+'.glb?v=1').then(gl=>{ const G={g:new THREE.Group()}; put(G.g,[S.till[0]+1.1,S.till[1]]); const r=staffReal(G,gl); if(r) STAFF.push({G,r,f:S.f,S,goal:null,path:[],wait:rand(1,4),emo:bubble('emo'),emoUntil:0,inside:false,hiT:0}); }).catch(e=>console.warn('seller 3D '+S.id,e));
   loadGLTF(ASSET+'deco/p_'+S.id+'.glb?v=1').then(gl=>{ const g=new THREE.Group(); g.add(fitModel(gl.scene,STORE_PROP[S.id]||{h:1.4,maxW:1.8,maxD:1.8})); put(g,S.prop); g.rotation.y=S.face+Math.PI/5; }).catch(e=>console.warn('prop 3D '+S.id,e));
   const items=CATALOG.filter(it=>it.zone===S.id);
   Promise.all(items.filter(it=>PROD3D_SHOP.includes(it.slug)).map(product3D)).then(()=>{
     S.vit.forEach(([u,v],k)=>{ const it=items[k%Math.max(1,items.length)]; if(!it) return; const m=it.model.clone(true); const [x,z]=S.at(u,v);
-      m.position.set(x,base+m.position.y,z); m.rotation.y=S.face; m.userData.face=false; scene.add(m); }); }); }
+      m.position.set(x,base+m.position.y,z); m.rotation.y=S.face; m.userData.face=false; floorRoot(S.f).add(m); }); }); }
 /* A kiosk: an island counter (white body, the kiosk's colour as a band, a glass top) round a space for its keeper,
    four thin posts holding a canopy with the name on all four sides. Live in the scene, not baked: it is not in
    the lightmaps, so adding or moving one never asks for a new bake. */
@@ -2162,13 +2169,13 @@ function buildStalls(){ STALLS.forEach(K=>{
   const sm=new THREE.MeshBasicMaterial({map:sign});
   [[0,(D+.5)/2+.005,0,W+.5],[0,-(D+.5)/2-.005,Math.PI,W+.5]].forEach(([x,z,r,w])=>{ const b=box(w,.46,.04,cm,x,top+.35,z*.999,g); plane(w-.06,.42,sm,x,top+.35,z+(z>0?.025:-.025),r,g); });
   [[(W+.5)/2+.005,Math.PI/2],[-(W+.5)/2-.005,-Math.PI/2]].forEach(([x,r])=>{ box(.04,.46,D+.5,cm,x*.999,top+.35,0,g); plane(D+.44,.42,sm,x+(x>0?.025:-.025),top+.35,0,r,g); });
-  g.position.set(K.x,K.f*FH,K.z); scene.add(g); K.g=g;
+  g.position.set(K.x,K.f*FH,K.z); floorRoot(K.f).add(g); K.g=g;
   g.traverse(o=>{ if(o.isMesh&&o.material!==glass&&o.material!==sm){ o.castShadow=true; o.receiveShadow=true; if(K.f>=1){ o.userData.c=true; o.userData.f=K.f; floorCasters.push(o); } } });
   solid(K.f,K.x,K.z,W+.1,D+.1,'ped');
 }); }
 /* the keepers: one figure each, made for its kiosk, standing in it; turns to you and says hello as you come up */
 whenInMall(()=>STALLS.forEach((K,i)=>loadGLTF(ASSET+'people/KK'+i+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=1').then(gl=>{
-  const G={g:new THREE.Group()}; G.g.position.set(K.x,K.f*FH+.04,K.z); G.g.rotation.y=0; scene.add(G.g);
+  const G={g:new THREE.Group()}; G.g.position.set(K.x,K.f*FH+.04,K.z); G.g.rotation.y=0; floorRoot(K.f).add(G.g);
   const r=staffReal(G,gl); if(r) STAFF.push({G,r,f:K.f,K,emo:bubble('emo'),emoUntil:0,near:false}); }).catch(e=>console.warn('kiosk keeper '+K.id,e))));
 function stallTick(x,dt){ const K=x.K, G=x.G, r=x.r, p=G.g.position, now=performance.now();
   const dp=Math.hypot(player.pos.x-p.x,player.pos.z-p.z), near=dp<4.2;
@@ -2183,7 +2190,8 @@ const STORE_PROP={tv:{h:1,maxW:2.2,maxD:1.1},audio:{h:1.5,maxW:1.9,maxD:1},kitch
 let storeT=0;
 function storeTick(dt){ if(!STORE_DEFS.length||G.state!=='play') return;
   storeT-=dt; if(storeT<=0){ storeT=.5; STORE_DEFS.forEach(S=>{ if(!S.loading&&S.f===player.floor&&Math.hypot(player.pos.x-S.c[0],player.pos.z-S.c[1])<20) storeLoad(S); }); }
-  STAFF.forEach(x=>{ if(x.f!==player.floor){ if(x.emo) x.emo.hidden=true; return; } if(x.S) sellerWalk(x,dt); else if(x.K) stallTick(x,dt); else staffTick(x.G,x.r,dt,x.f); }); }
+  STAFF.forEach(x=>{ const far=x.f!==player.floor||Math.hypot(player.pos.x-x.G.g.position.x,player.pos.z-x.G.g.position.z)>30; if(x.G.g.visible===far) x.G.g.visible=!far;
+    if(far){ if(x.emo) x.emo.hidden=true; return; } if(x.S) sellerWalk(x,dt); else if(x.K) stallTick(x,dt); else staffTick(x.G,x.r,dt,x.f); }); }
 /* A shop's seller is on the floor, not stuck behind the till: walks from product to product (now and then back to
    the till), and when you come in, stops, turns to you, waves and says hello with the shop's name. */
 const SELLER_HI=['שלום! ברוכים הבאים ל{n} 👋','היי! כיף שבאת ל{n} 😊','ברוכים הבאים ל{n}! צריך עזרה?','שלום שלום! ב{n} יש מבצעים 🔥'];
@@ -2580,7 +2588,7 @@ const M_HAIR=[['','מקורי',0],['black','שחור',0x16110d],['brown','חום
   ['grey','אפור',0x9c9c9c],['pink','ורוד',0xe0569b],['blue','כחול',0x3a6fd8],['purple','סגול',0x8152d6],['green','ירוק',0x2fae7a]];
 const M_SKIN=[['','מקורי',0],['light','בהיר',0xf7dcc8],['fair','',0xeec3a2],['tan','',0xd69c72],['olive','',0xc08a5e],['brown','',0xa36c49],['deep','',0x7f5036]];
 const M_GLASS=[['none','בלי'],['glasses','משקפיים'],['round','עגולים'],['shades','משקפי שמש']];
-const M_HAT=[['none','בלי'],['cap','כובע BuyToday'],['beanie','כובע גרב'],['phones','אוזניות']];
+const M_HAT=[['none','בלי'],['phones','אוזניות']];   /* hats on top of a finished figure never look part of it: they come back as figures made with them */
 const MESHY_REF={'1':{hair:.049,skin:[.8884,.3873,.2275]},'F1':{hair:.0176,skin:[.8298,.3467,.1903]}};
 const MESHY_MASK={};
 function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
@@ -2645,7 +2653,7 @@ function meshyAcc(model,o){
     [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
     add(g); }
 }
-const HAT_FIT={cap:{w:1.16,d:1.5,drop:.42,yaw:0,fwd:.06},beanie:{w:1.12,d:1.2,drop:.46,yaw:0,fwd:0}};
+const HAT_FIT={cap:{w:1.16,d:1.5,drop:.42,yaw:0,fwd:.06},beanie:{w:1.0,d:1.08,drop:.34,yaw:0,fwd:0}};
 const HAT_TPL={}; const hatTpl=id=>HAT_TPL[id]||(HAT_TPL[id]=loadGLTF(ASSET+'deco/hat_'+id+'.glb?v=1').then(gl=>gl.scene));
 const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42};
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
@@ -3897,7 +3905,7 @@ let hero=(USE_3D_HERO?mkGuy3D:mkGuy)(avOpts(avatar));
 const cart=mkCart(); cart.c.position.set(0,0,1.32); hero.g.add(cart.c); scene.add(hero.g);
 function setAvatar(a){ avatar=a; const p=hero.g.position.clone(), r=hero.g.rotation.y; hero.g.remove(cart.c); scene.remove(hero.g); if(hero.dispose) hero.dispose();
   hero=(USE_3D_HERO?mkGuy3D:mkGuy)(avOpts(a)); hero.g.add(cart.c); hero.g.position.copy(p); hero.g.rotation.y=r; scene.add(hero.g); }
-function setFloor(f){ player.floor=f; player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=FLOOR_SHORT[f]; lastDept=undefined; }
+function setFloor(f){ player.floor=f; floorShow(f); player.pos.y=f*FH; setShadowFloor(f); const fn=document.getElementById('floorName'); if(fn) fn.textContent=FLOOR_SHORT[f]; lastDept=undefined; }
 
 // shoppers on both floors
 const SHIRTS=[0x8fc93a,0xff924c,0x9b5de5,0xf15bb5,0x00bbf9,0xfee440,0xe0e0e0];
