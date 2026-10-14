@@ -1106,8 +1106,9 @@ const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
 const MALL2=!/[?&]mall=1/.test(location.search);   // the mall street: every department a shop (buildStores)
 const FH = 6;                                   // floor height
 const BX = 24, BZ = 32;                         // half size of the building
-const VOID = {minX:-8,maxX:8,minZ:-7,maxZ:7};   // atrium opening in floor 1
+const VOID = MALL2?{minX:-4.5,maxX:4.5,minZ:-7,maxZ:7}:{minX:-8,maxX:8,minZ:-7,maxZ:7};   // atrium opening in floor 1 (narrower on the mall street: a wide walk on both sides of it)
 const SH = {x0:-1.6,x1:1.6,z0:-5.8,z1:-2.6};    // elevator shaft
+const VW=VOID.maxX-VOID.minX, VD=VOID.maxZ-VOID.minZ, VL=SH.x0-VOID.minX, VLc=(VOID.minX+SH.x0)/2;   // the atrium's width, depth, and the rail's run each side of the lift
 const FLOOR_NAME = ['קומת קרקע','קומה 1','קומה 2 · הגג'], FLOOR_SHORT = ['קרקע','קומה 1','הגג'], TOP = 2;
 
 /* ---------- renderer ---------- */
@@ -1555,16 +1556,16 @@ function buildShell(){
   const sky=canvasTex(256,256,(g,W,H)=>{ const gr=g.createRadialGradient(W/2,H/2,10,W/2,H/2,W*.75); gr.addColorStop(0,'#f4f8fc'); gr.addColorStop(1,'#bcd8f0'); g.fillStyle=gr; g.fillRect(0,0,W,H);
     for(let i=0;i<14;i++){ g.fillStyle='rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(Math.random()*W,Math.random()*H,20+Math.random()*30,8,Math.random(),0,7); g.fill(); } });
   ceilPlane(VOID.minX,VOID.maxX,VOID.minZ,VOID.maxZ,12,new THREE.MeshBasicMaterial({map:sky}));
-  for(let x=VOID.minX;x<=VOID.maxX;x+=2) box(.1,.18,14,M.fascia,x,11.88,0,null,false);
-  for(let z=VOID.minZ;z<=VOID.maxZ;z+=2) box(16,.18,.1,M.fascia,0,11.88,z,null,false);
-  const halo=new THREE.Mesh(new THREE.TorusGeometry(5.6,.07,6,72),M.ledWarm); halo.rotation.x=Math.PI/2; halo.scale.set(1.25,1,1); halo.position.set(0,11.2,0); SG.add(halo);
-  [[-5.6*1.25,0],[5.6*1.25,0],[0,-5.6],[0,5.6]].forEach(([x,z])=>box(.02,.8,.02,M.dark,x,11.6,z,null,false));
+  for(let x=VOID.minX;x<=VOID.maxX;x+=2) box(.1,.18,VD,M.fascia,x,11.88,0,null,false);
+  for(let z=VOID.minZ;z<=VOID.maxZ;z+=2) box(VW,.18,.1,M.fascia,0,11.88,z,null,false);
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(5.6,.07,6,72),M.ledWarm); halo.rotation.x=Math.PI/2; const hs=(VW/2-1)/5.6; halo.scale.set(hs,1,1); halo.position.set(0,11.2,0); SG.add(halo);
+  [[-5.6*hs,0],[5.6*hs,0],[0,-5.6],[0,5.6]].forEach(([x,z])=>box(.02,.8,.02,M.dark,x,11.6,z,null,false));
   // glowing slab edge around the atrium and glass railing on floor 1
-  box(.12,.62,14.2,M.fascia,VOID.minX-.02,FH-.22,0,null,false); box(.12,.62,14.2,M.fascia,VOID.maxX+.02,FH-.22,0,null,false);
-  box(16.2,.62,.12,M.fascia,0,FH-.22,VOID.maxZ+.02,null,false); box(6.5,.62,.12,M.fascia,-4.8,FH-.22,VOID.minZ-.02,null,false); box(6.5,.62,.12,M.fascia,4.8,FH-.22,VOID.minZ-.02,null,false);
-  box(.05,.04,14,M.ledWarm,VOID.minX+.06,FH-.55,0,null,false); box(.05,.04,14,M.ledWarm,VOID.maxX-.06,FH-.55,0,null,false);
-  box(16,.04,.05,M.ledWarm,0,FH-.55,VOID.maxZ-.06,null,false); box(6.4,.04,.05,M.ledWarm,-4.8,FH-.55,VOID.minZ+.06,null,false); box(6.4,.04,.05,M.ledWarm,4.8,FH-.55,VOID.minZ+.06,null,false);
-  box(.03,.03,14,M.yellow,VOID.minX-.09,FH-.06,0,null,false); box(.03,.03,14,M.yellow,VOID.maxX+.09,FH-.06,0,null,false); box(16,.03,.03,M.yellow,0,FH-.06,VOID.maxZ+.09,null,false);
+  box(.12,.62,VD+.2,M.fascia,VOID.minX-.02,FH-.22,0,null,false); box(.12,.62,VD+.2,M.fascia,VOID.maxX+.02,FH-.22,0,null,false);
+  box(VW+.2,.62,.12,M.fascia,0,FH-.22,VOID.maxZ+.02,null,false); box(VL+.1,.62,.12,M.fascia,VLc,FH-.22,VOID.minZ-.02,null,false); box(VL+.1,.62,.12,M.fascia,-VLc,FH-.22,VOID.minZ-.02,null,false);
+  box(.05,.04,VD,M.ledWarm,VOID.minX+.06,FH-.55,0,null,false); box(.05,.04,VD,M.ledWarm,VOID.maxX-.06,FH-.55,0,null,false);
+  box(VW,.04,.05,M.ledWarm,0,FH-.55,VOID.maxZ-.06,null,false); box(VL,.04,.05,M.ledWarm,VLc,FH-.55,VOID.minZ+.06,null,false); box(VL,.04,.05,M.ledWarm,-VLc,FH-.55,VOID.minZ+.06,null,false);
+  box(.03,.03,VD,M.yellow,VOID.minX-.09,FH-.06,0,null,false); box(.03,.03,VD,M.yellow,VOID.maxX+.09,FH-.06,0,null,false); box(VW,.03,.03,M.yellow,0,FH-.06,VOID.maxZ+.09,null,false);
   SG=STATIC[1];
   const rail=(x0,z0,x1,z1)=>{ const L=Math.hypot(x1-x0,z1-z0), cx=(x0+x1)/2, cz=(z0+z1)/2, r=Math.atan2(x1-x0,z1-z0)+Math.PI/2;
     plane(L,1.05,M.pane,cx,FH+.55,cz,r); const h=box(L,.07,.12,M.rail,cx,FH+1.1,cz); h.rotation.y=r;
@@ -2049,7 +2050,7 @@ const STAFF=[];
 function storeLoad(S){ S.loading=true; const small=PHONE.matches||matchMedia('(pointer:coarse)').matches, base=S.f*FH;
   const put=(m,uv)=>{ const [x,z]=S.at(...uv); m.position.set(x,base,z); m.rotation.y=S.face; scene.add(m); return m; };
   loadGLTF(ASSET+'deco/till.glb?v=1').then(gl=>{ const m=fitModel(gl.scene.clone(true),{h:1.15,maxW:2.3,maxD:1.1}), g=new THREE.Group(); g.add(m); put(g,S.till); }).catch(e=>console.warn('till 3D',e));
-  loadGLTF(ASSET+'people/K_'+S.id+(small?'-m':'')+'.glb?v=1').then(gl=>{ const G={g:new THREE.Group()}; put(G.g,[S.till[0]+1.1,S.till[1]]); const r=staffReal(G,gl); if(r) STAFF.push({G,r,f:S.f}); }).catch(e=>console.warn('seller 3D '+S.id,e));
+  loadGLTF(ASSET+'people/K_'+S.id+(small?'-m':'')+'.glb?v=1').then(gl=>{ const G={g:new THREE.Group()}; put(G.g,[S.till[0]+1.1,S.till[1]]); const r=staffReal(G,gl); if(r) STAFF.push({G,r,f:S.f,S,goal:null,path:[],wait:rand(1,4),emo:bubble('emo'),emoUntil:0,inside:false,hiT:0}); }).catch(e=>console.warn('seller 3D '+S.id,e));
   loadGLTF(ASSET+'deco/p_'+S.id+'.glb?v=1').then(gl=>{ const g=new THREE.Group(); g.add(fitModel(gl.scene,STORE_PROP[S.id]||{h:1.4,maxW:1.8,maxD:1.8})); put(g,S.prop); g.rotation.y=S.face+Math.PI/5; }).catch(e=>console.warn('prop 3D '+S.id,e));
   const items=CATALOG.filter(it=>it.zone===S.id);
   Promise.all(items.filter(it=>PROD3D_SHOP.includes(it.slug)).map(product3D)).then(()=>{
@@ -2060,7 +2061,34 @@ const STORE_PROP={tv:{h:1,maxW:2.2,maxD:1.1},audio:{h:1.5,maxW:1.9,maxD:1},kitch
 let storeT=0;
 function storeTick(dt){ if(!STORE_DEFS.length||G.state!=='play') return;
   storeT-=dt; if(storeT<=0){ storeT=.5; STORE_DEFS.forEach(S=>{ if(!S.loading&&S.f===player.floor&&Math.hypot(player.pos.x-S.c[0],player.pos.z-S.c[1])<20) storeLoad(S); }); }
-  STAFF.forEach(x=>{ if(x.f===player.floor) staffTick(x.G,x.r,dt,x.f); }); }
+  STAFF.forEach(x=>{ if(x.f!==player.floor){ if(x.emo) x.emo.hidden=true; return; } if(x.S) sellerWalk(x,dt); else staffTick(x.G,x.r,dt,x.f); }); }
+/* A shop's seller is on the floor, not stuck behind the till: walks from product to product (now and then back to
+   the till), and when you come in, stops, turns to you, waves and says hello with the shop's name. */
+const SELLER_HI=['שלום! ברוכים הבאים ל{n} 👋','היי! כיף שבאת ל{n} 😊','ברוכים הבאים ל{n}! צריך עזרה?','שלום שלום! ב{n} יש מבצעים 🔥'];
+const SELLER_MORE=['קח את הזמן, אני כאן אם צריך 🙂','זה אחד הנמכרים אצלנו!','שאלות? אני פה 👍','יש משלוח מהיר על הכול 🚚'];
+function sellerSay(x,t,ms){ x.emo.textContent=t; x.emo.classList.add('txt'); x.emoUntil=performance.now()+(ms||3800); }
+function sellerAnim(x,name){ const r=x.r, a=r.actions[name]||r.actions.Idle; if(r.action===a) return; a.reset().play(); if(r.action) r.action.crossFadeTo(a,HERO_FADE,false); r.action=a; }
+function sellerWalk(x,dt){ const S=x.S, G=x.G, r=x.r, p=G.g.position, now=performance.now();
+  const dp=Math.hypot(player.pos.x-p.x,player.pos.z-p.z), inS=storeAt(player.floor,player.pos.x,player.pos.z)===S;
+  if(inS&&!x.inside){ x.hiT=2.6; x.path=[]; x.goal=null; x.wait=rand(4,7); sellerSay(x,pick(SELLER_HI).replace(/([לב])\{n\}/,(m,c)=>c+S.name.replace(/^ה/,''))); gestStart(r,'Wave',2); }
+  x.inside=inS; r.waveT-=dt;
+  const face=a=>{ let d=a-G.g.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); G.g.rotation.y+=d*Math.min(1,dt*6); };
+  const talking=x.hiT>0||(inS&&dp<3.2);
+  if(talking){ x.hiT-=dt; face(Math.atan2(player.pos.x-p.x,player.pos.z-p.z));   // talking to you: looks at you
+    if(inS&&dp<2.2&&r.waveT<=0&&now>x.emoUntil+9000){ r.waveT=14; sellerSay(x,pick(SELLER_MORE),3200); } }
+  else if(x.path.length){ const w=x.path[0], dx=w.x-p.x, dz=w.z-p.z, d=Math.hypot(dx,dz);
+    if(d<.25) x.path.shift(); else { const v=Math.min(d,1.05*dt); p.x+=dx/d*v; p.z+=dz/d*v; face(Math.atan2(dx,dz)); }
+    if(!x.path.length){ x.wait=rand(3,7); x.look=x.goal&&x.goal.look; } }
+  else { x.wait-=dt; if(x.look!=null) face(x.look);
+    if(x.wait<=0){ // the next stop: in front of one of the shop's products, or back at the till
+      const k=Math.random()<.25?-1:(Math.random()*S.slotsUV.length)|0, [u,v]=k<0?[S.till[0]+1.1,S.till[1]]:S.slotsUV[k];
+      const su=k<0?u:Math.max(1.6,u-1.3), [gx,gz]=S.at(su,v*.82), [lx,lz]=S.at(u,v);
+      const pth=findPath(S.f,p.x,p.z,gx,gz); x.goal={look:k<0?S.face:Math.atan2(lx-gx,lz-gz)}; x.look=null;
+      x.path=(pth||[]).filter(w=>storeAt(S.f,w.x,w.z)===S); if(!x.path.length) x.wait=rand(2,4); } }
+  const walking=x.path.length>0&&!talking;
+  if(!gestTick(r,walking?1:0,dt)) sellerAnim(x,walking?'Walk':'Idle');
+  if(dp<40) r.mixer.update(dt);
+  if(now<x.emoUntil&&dp<16) place2d(x.emo,p,p.y+2.7); else x.emo.hidden=true; }
 const faceCache={};
 const hx=c=>'#'+c.toString(16).padStart(6,'0');
 function faceMat(o){
@@ -2978,7 +3006,7 @@ function npcAdopt(G,o){ if(!USE_3D_NPCS||!USE_3D_HERO||G.npc3d) return; G.npcOpt
 function staffReal(G,gl){ const model=gl.scene; model.scale.setScalar(HERO_MODEL_SCALE); model.rotation.y=HERO_MODEL_ROTATION_OFFSET;
   model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); if(mt.map) mt.map.anisotropy=renderer.capabilities.getMaxAnisotropy(); }); } });
   const mixer=new THREE.AnimationMixer(model), actions={};
-  ['Idle','Wave'].forEach(n=>{ const c=gl.animations.find(x=>x.name===n); if(c){ const x=mixer.clipAction(c); x.setLoop(THREE.LoopRepeat,Infinity); actions[n]=x; } });
+  ['Idle','Walk','Wave'].forEach(n=>{ const c=gl.animations.find(x=>x.name===n); if(c){ const x=mixer.clipAction(c); x.setLoop(THREE.LoopRepeat,Infinity); actions[n]=x; } });
   if(!actions.Idle) return null;
   G.g.children.forEach(c=>c.visible=false); G.g.add(model); actions.Idle.play();
   return {model,mixer,actions,state:'Idle',action:actions.Idle,speed:0,push:0,near:false,waveT:0}; }
@@ -3589,7 +3617,7 @@ function loadBakedShade(){
   if(!BAKED_SHADE) return;
   const img=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
   for(let f=0;f<=TOP;f++){ const F=SHADE.f[f]; if(!F) continue;
-    Promise.all([img(ASSET+'shade/f'+f+'-dark.jpg?v=b1'),f<TOP?img(ASSET+'shade/f'+f+'-light.jpg?v=b1'):null]).then(([dk,li])=>{
+    Promise.all([img(ASSET+'shade/f'+f+'-dark.jpg?v=b2'),f<TOP?img(ASSET+'shade/f'+f+'-light.jpg?v=b2'):null]).then(([dk,li])=>{
       // darkness: the grey image becomes the alpha of black
       const W=F.ao.width, H=F.ao.height, c=document.createElement('canvas'); c.width=W; c.height=H; const cg=c.getContext('2d'); cg.drawImage(dk,0,0,W,H);
       const d=cg.getImageData(0,0,W,H), px=d.data; for(let i=0;i<px.length;i+=4){ px[i+3]=px[i]; px[i]=px[i+1]=px[i+2]=0; } cg.putImageData(d,0,0);
@@ -3620,8 +3648,8 @@ function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) retu
 function loadLightmaps(only){
   if(!BAKED_LM) return;
   for(let f=0;f<=TOP;f++){ if(only!==undefined&&f!==only&&only!=='rest') continue; if(only==='rest'&&f===0) continue;
-    Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l2').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l2').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
-      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l2');   // a phone gets the light at half the size tex.flipY=true;
+    Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l3').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l3').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
+      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l3');   // a phone gets the light at half the size tex.flipY=true;
       const meshes=STATIC[f].children.filter(o=>o.isMesh); let off=0, used=0;
       idx.forEach(e=>{ const m=meshes[e.i], n=e.tris*3;
         if(m&&!m.userData.dyn){ const g=m.geometry, tris=(g.index?g.index.count:g.attributes.position.count)/3;
