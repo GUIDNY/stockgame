@@ -2580,7 +2580,7 @@ const M_HAIR=[['','מקורי',0],['black','שחור',0x16110d],['brown','חום
   ['grey','אפור',0x9c9c9c],['pink','ורוד',0xe0569b],['blue','כחול',0x3a6fd8],['purple','סגול',0x8152d6],['green','ירוק',0x2fae7a]];
 const M_SKIN=[['','מקורי',0],['light','בהיר',0xf7dcc8],['fair','',0xeec3a2],['tan','',0xd69c72],['olive','',0xc08a5e],['brown','',0xa36c49],['deep','',0x7f5036]];
 const M_GLASS=[['none','בלי'],['glasses','משקפיים'],['round','עגולים'],['shades','משקפי שמש']];
-const M_HAT=[['none','בלי'],['cap','כובע BuyToday'],['beanie','כובע גרב'],['phones','אוזניות']];
+const M_HAT=[['none','בלי'],['phones','אוזניות']];
 const MESHY_REF={'1':{hair:.049,skin:[.8884,.3873,.2275]},'F1':{hair:.0176,skin:[.8298,.3467,.1903]}};
 const MESHY_MASK={};
 function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
@@ -2619,7 +2619,7 @@ const ACC_MAT={};
 const accMat=(c,o)=>ACC_MAT[c+(o?JSON.stringify(o):'')]||(ACC_MAT[c+(o?JSON.stringify(o):'')]=new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.45,metalness:.1},o||{})));
 function meshyAcc(model,o){
   (model.userData.acc||[]).forEach(a=>{ if(a.parent) a.parent.remove(a); }); model.userData.acc=[];
-  const glass=o.mGlass&&o.mGlass!=='none'?o.mGlass:null, hat=o.mHat&&o.mHat!=='none'?o.mHat:null; if(!glass&&!hat) return;
+  const glass=o.mGlass&&o.mGlass!=='none'?o.mGlass:null, hat=o.mHat&&o.mHat!=='none'&&M_HAT.some(x=>x[0]===o.mHat)?o.mHat:null;   // only what the list offers today if(!glass&&!hat) return;
   const H=meshyHead(model); if(!H) return;
   const b=H.box, Wd=b.max.x-b.min.x, Ht=b.max.y-b.min.y, Dp=b.max.z-b.min.z, cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
   // built in the mesh's own (bind-pose) space, then hung on the head bone: bone-local = boneInverse × bindMatrix × mesh space
