@@ -189,6 +189,8 @@
   #card .dc{font-size:11px;font-weight:700;color:#fff;background:#e0342a;border-radius:6px;padding:1px 6px;}
   /* the card's actions: one big buy-now with the price, then cart and details as quiet icon tiles */
   #card .cb{grid-column:1/-1;display:flex;gap:8px;margin-top:6px;}
+  #card .cx{display:none;}
+  #mini{display:none;}
   /* the sale card's extras: a gallery of the product's own photos, the stock line, what you save, and what the site
      promises with it (shipping, warranty, instalments), with the description and the main specs one tap away */
   #card .gal{position:relative;align-self:start;}
@@ -832,6 +834,21 @@
     #card .cb{order:6;margin-top:10px;}
     #card .gal{order:2;} #card .perks{order:3;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:4px -16px 0;padding:0 16px;} #card .perks::-webkit-scrollbar{display:none;}
     #card .morebtn{order:4;} #card .more{order:5;max-height:30vh;}
+    /* On a phone the card never pushes the HUD: near a product only a small strip floats above the joystick's
+       area, and the full card opens over the screen when that strip is tapped (✕ or walking on closes it). */
+    #mini:not([hidden]){position:fixed;left:50%;transform:translateX(-50%);bottom:calc(34vh + 6px);z-index:4;display:flex;align-items:center;gap:9px;
+      width:min(330px,calc(100vw - 32px));padding:6px 6px 6px 10px;border:0;border-radius:16px;background:rgba(255,255,255,.96);color:#161a2b;
+      box-shadow:0 8px 24px rgba(4,6,20,.3);font-family:inherit;text-align:right;animation:rise .2s cubic-bezier(.2,.8,.2,1);}
+    #mini img{flex:none;width:42px;height:42px;border-radius:10px;object-fit:contain;background:#f4f5f8;padding:3px;box-sizing:border-box;}
+    #mini .mt{flex:1;min-width:0;display:grid;gap:1px;}
+    #mini b{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    #mini .mp{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:900;}
+    #mini .md{font-size:10.5px;font-weight:800;color:#fff;background:#e0342a;border-radius:6px;padding:1px 5px;}
+    #mini .md:empty{display:none;}
+    #mini i{flex:none;font-style:normal;font-size:12.5px;font-weight:800;color:#fff;background:var(--brand,#f55304);border-radius:11px;padding:9px 11px;}
+    .hud.talking #mini{display:none!important;}
+    #card{z-index:8;max-height:82vh;overflow:auto;}
+    #card .cx{display:grid;place-items:center;position:absolute;top:10px;left:12px;width:32px;height:32px;border-radius:50%;border:0;background:#f1f3f8;color:#2a3150;font-size:15px;font-weight:800;z-index:2;}
     .hud.card-open #act,.hud.card-open #hint{visibility:hidden;}
     .hud.card-open #joyzone{bottom:var(--cardH,0px);height:26vh;}
   }
@@ -890,7 +907,9 @@
   <div id="tour" hidden role="dialog" aria-live="polite"><img id="tourAv" alt=""><div class="tb"><small id="tourStep"></small><b id="tourTitle"></b><p id="tourText"></p>
     <div class="ta"><button id="tourNext" class="btn1">הבא</button><button id="tourSkip">דלגו על הסיור</button></div></div></div>
   <div id="hint" class="sheet glass" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
+  <button id="mini" hidden aria-label="פרטי המוצר"><img id="miniImg" alt=""><span class="mt"><b id="miniName" dir="auto"></b><span class="mp"><span class="num" id="miniPrice"></span><span class="md" id="miniDisc" dir="ltr"></span></span></span><i>פרטים ›</i></button>
   <div id="card" class="sheet" hidden>
+    <button class="cx" id="cardX" aria-label="סגירה">✕</button>
     <div class="gal" id="cardGal"><img id="cardImg" alt=""><div class="ph" id="cardPh" hidden>BuyToday</div><div class="dots" id="cardDots"></div></div>
     <div class="ci">
       <div class="b"><span id="cardBrand"></span><span class="tagw" id="cardWant">ברשימה שלך</span><span class="stk" id="cardStock" hidden></span></div>
@@ -5833,7 +5852,7 @@ function specOf(it){ const n=it.full||'', out=[];
   const c=n.match(/(שחור|לבן|נירוסטה|כסוף|אפור|אדום|כחול|זהב|בז'|ירוק|ורוד)/); if(c) out.push(c[1]);
   if(/wifi|wi-fi|smart|חכם/i.test(n)) out.push('חכם');
   return out.slice(0,3).join(' • '); }
-function syncCardSpace(){ requestAnimationFrame(()=>{ const open=!ui.card.hidden&&PHONE.matches; ui.hud.classList.toggle('card-open',open); ui.hud.style.setProperty('--cardH',open?ui.card.offsetHeight+'px':'0px'); joyHome(); }); }
+function syncCardSpace(){ syncMini(); requestAnimationFrame(()=>{ const open=false; /* the phone's card floats over the HUD, it no longer pushes it */ ui.hud.classList.toggle('card-open',open); ui.hud.style.setProperty('--cardH',open?ui.card.offsetHeight+'px':'0px'); joyHome(); }); }
 function fillCard(it){
   if(it.img) $('#cardImg').src=it.cut||it.img; $('#cardImg').hidden=!it.img; $('#cardPh').hidden=!!it.img; $('#cardBrand').textContent=it.brand||''; $('#cardName').textContent=it.full;
   $('#cardPrice').textContent=shekel(it.price); $('#cardOld').textContent=it.old?shekel(it.old):''; $('#cardDisc').textContent=it.old?`-${it.disc}%`:''; $('#cardDisc').hidden=!it.old;
@@ -5859,6 +5878,10 @@ function fillCard(it){
   cardGal.list=[it.cut||it.img,...(I.imgs||[]).slice(1)].filter(Boolean); cardGal.i=0; cardGalShow();
 }
 const cardGal={list:[],i:0};
+function fillMini(it){ $('#miniImg').src=it.cut||it.img||''; $('#miniName').textContent=it.name||it.full; $('#miniPrice').textContent=shekel(it.price); $('#miniDisc').textContent=it.old?`-${it.disc}%`:''; }
+function syncMini(){ const m=$('#mini'), on=PHONE.matches&&!!shownCard&&ui.card.hidden&&G.state==='play'&&!G.paused; if(m.hidden===!on) return; m.hidden=!on; }
+$('#mini').addEventListener('click',()=>{ if(!shownCard) return; fillCard(shownCard); ui.card.hidden=false; syncMini(); buzz(8); });
+$('#cardX').addEventListener('click',()=>{ ui.card.hidden=true; syncMini(); buzz(6); });
 function cardGalShow(){ const L=cardGal.list, img=$('#cardImg'); if(L.length) img.src=L[cardGal.i];
   $('#cardDots').innerHTML=L.length>1?L.map((_,k)=>`<i class="${k===cardGal.i?'on':''}"></i>`).join(''):''; }
 function cardGalStep(k){ const n=cardGal.list.length; if(n<2) return; cardGal.i=(cardGal.i+k+n)%n; cardGalShow(); buzz(5); }
@@ -5874,7 +5897,7 @@ const liftPad=$('#liftPad');
 liftPad.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ const f=+b.dataset.f; if(!inCabin()||f===elev.floor) return; startRide(f,true); buzz(12); }));
 function showLiftPad(on){ if(liftPad.hidden===!on) return; liftPad.hidden=!on; if(on) liftPad.querySelectorAll('button').forEach(b=>b.classList.toggle('here',+b.dataset.f===elev.floor)); }
 function setHint(name,sub,warn,label){ ui.hint.hidden=false; ui.hintName.textContent=name; ui.hintPrice.textContent=sub; ui.hint.classList.toggle('warn',!!warn); ui.actLabel.textContent=label; ui.act.classList.remove('off'); }
-function updateNear(){
+function updateNear(){ syncMini();
   if(!ALF.el.hidden||ALF.talking){ if(shownCard){ shownCard=null; ui.card.hidden=true; syncCardSpace(); } return; }   // the chat with Alfred has the screen
   near=null; const f=player.floor, p=player.pos;
   if(elev.rider && !auto.on){ ui.hint.hidden=false; ui.hintName.textContent='מעלית'; ui.hintPrice.textContent=(elev.to*FH>elev.from?'עולים ל':'יורדים ל')+FLOOR_NAME[elev.to]+'…'; ui.hint.classList.remove('warn'); ui.act.classList.add('off'); showLiftPad(false); if(shownCard){ shownCard=null; ui.card.hidden=true; } return; }
@@ -5898,7 +5921,8 @@ function updateNear(){
     if(!near && alfNear(p,cx,cz)) near={type:'alfred'};
     if(!near && f===0){ for(const x of COUNTERS){ if(Math.hypot(x-p.x,24-p.z)<3.2 || Math.hypot(x-cx,24-cz)<2.4){ near={type:'checkout'}; break; } } } }
   const cardIt = near&&near.type==='item' ? near.it : null;
-  if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=!cardIt; if(cardIt) fillCard(cardIt); syncCardSpace(); }
+  if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=PHONE.matches||!cardIt; if(cardIt){ fillCard(cardIt); fillMini(cardIt); } syncCardSpace(); }
+  syncMini();
   showLiftPad(!!near&&near.type==='ride');
   if(!near){ ui.hint.hidden=true; ui.act.classList.add('off'); ui.actLabel.textContent='קח'; setActKind('item'); return; }
   setActKind(near.type==='ride'?(near.to>elev.floor?'up':'down'):near.type);
