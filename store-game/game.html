@@ -189,6 +189,28 @@
   #card .dc{font-size:11px;font-weight:700;color:#fff;background:#e0342a;border-radius:6px;padding:1px 6px;}
   /* the card's actions: one big buy-now with the price, then cart and details as quiet icon tiles */
   #card .cb{grid-column:1/-1;display:flex;gap:8px;margin-top:6px;}
+  /* the sale card's extras: a gallery of the product's own photos, the stock line, what you save, and what the site
+     promises with it (shipping, warranty, instalments), with the description and the main specs one tap away */
+  #card .gal{position:relative;align-self:start;}
+  #card .gal img{cursor:pointer;transition:opacity .18s;}
+  #card .dots{position:absolute;left:0;right:0;bottom:4px;display:flex;justify-content:center;gap:4px;pointer-events:none;}
+  #card .dots i{width:5px;height:5px;border-radius:3px;background:#c9cdd8;transition:width .2s,background .2s;}
+  #card .dots i.on{width:12px;background:var(--brand,#f55304);}
+  #card .stk{font-size:10.5px;letter-spacing:0;border-radius:6px;padding:1px 6px;font-weight:800;}
+  #card .stk.in{color:#0f7a43;background:#dff6e8;} #card .stk.low{color:#b42318;background:#ffe4e0;} #card .stk.out{color:#5b6070;background:#eceef3;}
+  #card .save{font-size:11.5px;font-weight:800;color:#0f7a43;}
+  #card .perks{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+  #card .perks span{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#2a3150;background:#f3f5fa;border:1px solid #e6e9f1;border-radius:999px;padding:4px 9px;white-space:nowrap;}
+  #card .perks span.hot{color:#0f7a43;background:#eafaf1;border-color:#c9efd9;}
+  #card .morebtn{grid-column:1/-1;justify-self:start;display:inline-flex;align-items:center;gap:4px;background:none;border:0;padding:2px 0;color:#e04600;font:800 12.5px Rubik,sans-serif;cursor:pointer;}
+  #card .morebtn i{font-style:normal;transition:transform .2s;display:inline-block;}
+  #card .morebtn[aria-expanded="true"] i{transform:rotate(180deg);}
+  #card .more{grid-column:1/-1;font-size:12.5px;line-height:1.45;color:#3a4058;max-height:34vh;overflow:auto;}
+  #card .more[hidden]{display:none;}
+  #card .more p{margin:0 0 8px;}
+  #card .more dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 6px;}
+  #card .more dt{color:#8a90a3;font-weight:600;} #card .more dd{margin:0;font-weight:700;color:#161a2b;}
+  #card .more .ret{font-size:11.5px;color:#5b6070;}
   #card .cbuy{flex:1;min-width:0;height:54px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 8px 0 16px;border-radius:15px;text-decoration:none;color:#fff;
     position:relative;overflow:hidden;background:linear-gradient(180deg,#ff8b2c 0%,#f55304 58%,#e04600 100%);
     box-shadow:0 3px 0 #b23a00,0 10px 22px rgba(245,83,4,.32),inset 0 1px 0 rgba(255,255,255,.38);}
@@ -807,7 +829,9 @@
     #card .row{margin-top:2px;}
     #card .pr{font-size:24px;font-weight:900;letter-spacing:-.3px;}
     #card .note{display:none;}
-    #card .cb{order:3;margin-top:10px;}
+    #card .cb{order:6;margin-top:10px;}
+    #card .gal{order:2;} #card .perks{order:3;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:4px -16px 0;padding:0 16px;} #card .perks::-webkit-scrollbar{display:none;}
+    #card .morebtn{order:4;} #card .more{order:5;max-height:30vh;}
     .hud.card-open #act,.hud.card-open #hint{visibility:hidden;}
     .hud.card-open #joyzone{bottom:var(--cardH,0px);height:26vh;}
   }
@@ -867,14 +891,17 @@
     <div class="ta"><button id="tourNext" class="btn1">הבא</button><button id="tourSkip">דלגו על הסיור</button></div></div></div>
   <div id="hint" class="sheet glass" hidden><b id="hintName" dir="auto"></b><span id="hintPrice"></span></div>
   <div id="card" class="sheet" hidden>
-    <img id="cardImg" alt=""><div class="ph" id="cardPh" hidden>BuyToday</div>
+    <div class="gal" id="cardGal"><img id="cardImg" alt=""><div class="ph" id="cardPh" hidden>BuyToday</div><div class="dots" id="cardDots"></div></div>
     <div class="ci">
-      <div class="b"><span id="cardBrand"></span><span class="tagw" id="cardWant">ברשימה שלך</span></div>
+      <div class="b"><span id="cardBrand"></span><span class="tagw" id="cardWant">ברשימה שלך</span><span class="stk" id="cardStock" hidden></span></div>
       <div class="nm" id="cardName"></div>
       <div class="spec" id="cardSpec" hidden></div>
-      <div class="row"><span class="pr num" id="cardPrice"></span><s class="num" id="cardOld"></s><span class="dc" id="cardDisc" dir="ltr"></span></div>
+      <div class="row"><span class="pr num" id="cardPrice"></span><s class="num" id="cardOld"></s><span class="dc" id="cardDisc" dir="ltr"></span><span class="save num" id="cardSave" hidden></span></div>
       <div class="note">המחיר הסופי כפי שמופיע באתר</div>
     </div>
+    <div class="perks" id="cardPerks"></div>
+    <button class="morebtn" id="cardMoreBtn" aria-expanded="false" hidden><span>על המוצר</span><i>⌄</i></button>
+    <div class="more" id="cardMore" hidden><p id="cardDesc"></p><dl id="cardSpecs"></dl><div class="ret" id="cardRet"></div></div>
     <div class="cb">
       <a class="cbuy" id="cardBuy" target="_blank" rel="noopener" hidden><span class="l"><b>קנה עכשיו</b><small>תשלום מאובטח ומהיר</small></span><span class="p" id="cardBuyP"></span></a>
       <button class="cbtn" id="cardAdd" aria-label="הוספה לעגלה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7"/><circle cx="9.5" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg><span>לעגלה</span></button>
@@ -5813,7 +5840,32 @@ function fillCard(it){
   $('#cardWant').hidden=!it.wanted; $('#cardLink').href=utm(it.url,'product-card'); $('#cardBuyP').textContent=shekel(it.price);
   $('#cardBuy').hidden=!CHECKOUT_URL||!it.slug; if(!$('#cardBuy').hidden) $('#cardBuy').href=buyUrl([it],'buy-now');
   const sp=specOf(it); $('#cardSpec').textContent=sp; $('#cardSpec').hidden=!sp;
+  const I=it.info||{}, el=id=>$('#'+id);
+  // what you save, and whether it is in stock
+  const save=it.old?it.old-it.price:0; el('cardSave').hidden=!save; el('cardSave').textContent=save?'חוסכים '+shekel(save):'';
+  const st=I.stock; el('cardStock').hidden=!st; el('cardStock').className='stk '+(st||''); el('cardStock').textContent=st==='low'?'🔥 מלאי אחרון':st==='out'?'אזל מהמלאי':'✓ במלאי';
+  // what comes with it: only what the site itself says (this product's page, or the policy on every page of it)
+  const perks=[], d=I.days?(I.days[0]===I.days[1]?I.days[0]:I.days[0]+'–'+I.days[1]):'';
+  if(I.shipFree||it.price>=600) perks.push(['hot','🚚 משלוח חינם'+(d?' · '+d+' ימי עסקים':'')]); else if(d) perks.push(['','🚚 עד הבית · '+d+' ימי עסקים']);
+  perks.push(['','🛡️ '+(I.warranty?'אחריות '+I.warranty+' חודשים':'אחריות יבואן רשמי')]);
+  perks.push(['','💳 פריסה לתשלומים']);
+  el('cardPerks').innerHTML=perks.map(([c,t])=>`<span class="${c}">${t}</span>`).join('');
+  // the description and the main specs, one tap away
+  const has=!!(I.desc||(I.specs&&I.specs.length)); el('cardMoreBtn').hidden=!has; el('cardMore').hidden=true; el('cardMoreBtn').setAttribute('aria-expanded','false');
+  el('cardDesc').textContent=I.desc||''; el('cardDesc').hidden=!I.desc;
+  el('cardSpecs').innerHTML=''; (I.specs||[]).forEach(([n,v])=>{ const dt=document.createElement('dt'), dd=document.createElement('dd'); dt.textContent=n; dd.textContent=v; el('cardSpecs').append(dt,dd); });
+  el('cardRet').textContent=I.ret?`↩️ ${I.ret} יום להחזרה · ביטול לפי חוק`:'';
+  // the gallery: the cut-out first, then the product's own photos; tap (or swipe) for the next
+  cardGal.list=[it.cut||it.img,...(I.imgs||[]).slice(1)].filter(Boolean); cardGal.i=0; cardGalShow();
 }
+const cardGal={list:[],i:0};
+function cardGalShow(){ const L=cardGal.list, img=$('#cardImg'); if(L.length) img.src=L[cardGal.i];
+  $('#cardDots').innerHTML=L.length>1?L.map((_,k)=>`<i class="${k===cardGal.i?'on':''}"></i>`).join(''):''; }
+function cardGalStep(k){ const n=cardGal.list.length; if(n<2) return; cardGal.i=(cardGal.i+k+n)%n; cardGalShow(); buzz(5); }
+$('#cardImg').addEventListener('click',()=>cardGalStep(1));
+{ let sx=null; $('#cardGal').addEventListener('touchstart',e=>{ sx=e.touches[0].clientX; },{passive:true});
+  $('#cardGal').addEventListener('touchend',e=>{ if(sx===null) return; const dx=e.changedTouches[0].clientX-sx; sx=null; if(Math.abs(dx)>28) cardGalStep(dx<0?1:-1); },{passive:true}); }
+$('#cardMoreBtn').addEventListener('click',()=>{ const m=$('#cardMore'), open=m.hidden; m.hidden=!open; $('#cardMoreBtn').setAttribute('aria-expanded',String(open)); syncCardSpace(); buzz(6); });
 
 const ACT_ICON={exit:'door',enter:'door',car:'car',kids:'view',alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
 let actKind='';

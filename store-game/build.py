@@ -188,6 +188,54 @@ def main():
     write_catalog(crawl_catalog(cfg))
     write(data, cfg)
 
+def details(url):
+    """What the product page itself says, for the sale card: its own description, the first few technical specs,
+    its other photos, whether it is in stock (or the last ones), shipping (price, days), warranty and returns.
+    Read from the page's schema.org data and, for the warranty and last-stock line, from the page text."""
+    try: page = get(url)
+    except Exception as e:
+        print(f"  no details for {url}: {e}", file=sys.stderr); return None
+    out = {}
+    for m in re.finditer(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', page, re.S):
+        try: d = json.loads(m.group(1))
+        except Exception: continue
+        if d.get('@type') != 'Product': continue
+        desc = (d.get('description') or '').strip()
+        if desc: out['desc'] = desc if len(desc) <= 230 else desc[:227].rsplit(' ', 1)[0] + '…'
+        specs, names = [], set()
+        for p in d.get('additionalProperty') or []:
+            n, v = str(p.get('name', '')).strip(), str(p.get('value', '')).strip()
+            num = re.sub(r'\D', '', v)
+            if not n or not v or len(v) > 34 or n in names or n in ('צבע', 'גוון', 'סוג מוצר') or v in ('כן', 'לא') or (num and num in names): continue
+            names.add(n); specs.append([n, v])
+            if num: names.add(num)   # "2000 וואט" and "2000W" under two names are one spec
+            if len(specs) == 4: break
+        if specs: out['specs'] = specs
+        imgs = [i for i in (d.get('image') or []) if isinstance(i, str)][:5]
+        if len(imgs) > 1: out['imgs'] = imgs
+        o = d.get('offers') or {}
+        if isinstance(o, list): o = o[0] if o else {}
+        av = str(o.get('availability', ''))
+        out['stock'] = 'out' if 'OutOfStock' in av else 'low' if 'Limited' in av else 'in'
+        sh = o.get('shippingDetails') or {}
+        try:
+            rate = float(((sh.get('shippingRate') or {}).get('value')))
+            out['shipFree'] = rate == 0
+        except Exception: pass
+        dt = sh.get('deliveryTime') or {}
+        try:
+            h, t = dt.get('handlingTime') or {}, dt.get('transitTime') or {}
+            lo, hi = int(h.get('minValue', 0)) + int(t.get('minValue', 0)), int(h.get('maxValue', 0)) + int(t.get('maxValue', 0))
+            if hi: out['days'] = [max(1, lo), hi]
+        except Exception: pass
+        rp = o.get('hasMerchantReturnPolicy') or {}
+        if rp.get('merchantReturnDays'): out['ret'] = int(rp['merchantReturnDays'])
+        break
+    text = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', re.sub(r'<script.*?</script>|<style.*?</style>', '', page, flags=re.S)))
+    w = re.search(r'אחריות(?: יבואן רשמי)?\s*[·:\-]?\s*(\d{1,2})\s*חודשים', text)
+    if w: out['warranty'] = int(w.group(1))
+    return out or None
+
 def collect(cfg, seen):
     """The showroom: the first products of each category that are in stock AND whose photo
     really downloads (some suppliers block servers, and a pedestal without a photo looks broken)."""
@@ -218,10 +266,11 @@ def collect(cfg, seen):
                 try: cut = cutout(raw)
                 except Exception as e: cut = None; print(f"  no cut-out for {c['slug']}: {e}", file=sys.stderr)
                 seen.add(c['slug']); got += 1
+                info = details(f"{SITE}/product/{c['slug']}")
                 items.append({'slug': c['slug'], 'url': f"{SITE}/product/{c['slug']}", 'cat': cat['slug'], 'kind': kind_of(c['name'], cat['zone']),
                               'short': short_of(c['name'], c['brand']), 'name': c['name'], 'brand': c['brand'], 'price': c['price'],
                               'old': c['old'] if c['old'] and c['old'] > c['price'] else None, 'disc': c['disc'] if c['old'] else 0, 'img': img,
-                              **({'cut': cut[0], 'ca': cut[1]} if cut else {}), **({'zone': cat['zone']} if cat['zone'].startswith('kiosk') else {})})
+                              **({'cut': cut[0], 'ca': cut[1]} if cut else {}), **({'zone': cat['zone']} if cat['zone'].startswith('kiosk') else {}), **({'info': info} if info else {})})
                 time.sleep(.15)
             if f'page={n + 1}' not in page: break
         print(f"  {cat['name']:<24} {got} מוצרים" + (f" (דילגתי על {skipped}: בלי תמונה, אביזר, כפול או בלי דגם תלת־ממד מתאים)" if skipped else ''))
