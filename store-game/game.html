@@ -1956,7 +1956,9 @@ function buildItems(){
   const pedW=mat(0xf7f8fa,{roughness:.35}), pedTop=mat(0x1b2131,{roughness:.22,metalness:.4}), frameM=new THREE.MeshBasicMaterial({color:0x232a3c});
   const pg=new THREE.PlaneGeometry(.66,.5), fg=new THREE.PlaneGeometry(.74,.58);
   CATALOG.forEach(it=>{
-    const base=it.f*FH+it.y, P=STATIC[it.f];
+    const base=it.f*FH+it.y, P=STATIC[it.f], S=MALL2&&STORE_DEFS.find(S=>S.id===it.zone);
+    if(S){ shopFixture(it,S,base,P); itemBody(it,base); return; }
+    it.top=.845;
     box(1.1,.08,1.1,M.navy,it.x,base+.04,it.z,P); box(1.12,.018,1.12,M.led,it.x,base+.088,it.z,P,false);
     box(.96,.7,.96,pedW,it.x,base+.43,it.z,P);
     box(1.02,.02,1.02,M.led,it.x,base+.775,it.z,P,false); box(1.1,.06,1.1,pedTop,it.x,base+.815,it.z,P);
@@ -1965,14 +1967,43 @@ function buildItems(){
         const fr=new THREE.Mesh(fg,frameM); fr.position.set(it.x+sx*.482,base+.45,it.z+sz*.482); fr.rotation.y=a; P.add(fr);
         const ph=new THREE.Mesh(pg,pm); ph.position.set(it.x+sx*.486,base+.45,it.z+sz*.486); ph.rotation.y=a; P.add(ph); } }
     solid(it.f,it.x,it.z,1.15,1.15,'ped');
+    itemBody(it,base);
+  });
+}
+/* In a shop the products stand the way a real shop shows them, not on columns: the big ones (fridges, washers,
+   fans, heaters, tower speakers) on a low platform on the floor, screens on a media console, ovens and hobs on a
+   kitchen counter, the small appliances on a display table. The price tag over each one and the tap to buy stay. */
+const FIX_KIND={fridge:'floor',washer:'floor',speaker:'floor',fan:'floor',heater:'floor',ac:'floor',stickvac:'floor',
+  tv:'tv',oven:'counter',cooktop:'counter',hood:'counter',microwave:'counter'};
+function shopFixture(it,S,base,P){
+  const kind=FIX_KIND[it.kind]||'table', g=new THREE.Group();
+  const white=mat(0xf6f7f9,{roughness:.4}), oak=M.oak, dark=mat(0x2a2f3d,{roughness:.35}), steel=M.steel;
+  let w,d,top;
+  if(kind==='floor'){ w=1.25; d=1.15; top=.1;   // a low white platform, the shop's colour as a lit toe
+    box(w,.08,d,white,0,.06,0,g); box(w+.02,.02,d+.02,M.led,0,.015,0,g,false); }
+  else if(kind==='tv'){ w=1.7; d=.5; top=.52;   // a media console: dark wood, two doors and a handle line
+    box(w,.46,d,dark,0,.27,0,g); box(w+.02,.04,d+.02,oak,0,.5,0,g); box(.02,.3,.01,steel,0,.27,d/2+.005,g,false);
+    [-1,1].forEach(k=>box(.06,.04,.4,dark,k*(w/2-.1),.02,0,g)); }
+  else if(kind==='counter'){ w=1.3; d=.66; top=.94;   // a kitchen counter: white cabinet, stone top, a handle on each door
+    box(w,.86,d,white,0,.47,0,g); box(w+.04,.05,d+.04,mat(0xd9d4cc,{roughness:.3}),0,.915,0,g); box(w-.04,.04,d-.02,dark,0,.02,0,g);
+    [-1,1].forEach(k=>box(.32,.02,.02,steel,k*w/4,.78,d/2+.01,g,false)); }
+  else { w=1.3; d=.8; top=.86;   // a display table: oak top on four thin legs, with a low shelf
+    box(w,.05,d,oak,0,.835,0,g); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>box(.045,.81,.045,steel,a*(w/2-.07),.405,b*(d/2-.07),g));
+    box(w-.14,.03,d-.14,white,0,.22,0,g); }
+  it.top=top;
+  place(g,it.x,base,it.z,S.face,0,P);
+  const side=Math.abs(Math.sin(S.face))>.5; solid(it.f,it.x,it.z,(side?d:w)+.15,(side?w:d)+.15,'ped');
+}
+function itemBody(it,base){
+  {
     const g=new THREE.Group(); g.position.set(it.x,base,it.z); scene.add(g);
-    let m=flatten(it.mk()); m.scale.setScalar(it.sc); m.position.y=.845; it.solid=m;
+    let m=flatten(it.mk()); m.scale.setScalar(it.sc); m.position.y=it.top; it.solid=m;
     // the real product: its photo, backdrop cut away by the build, standing on the plinth at the size its
     // kind would have, and turned to whoever looks at it. Products whose photo cannot be cut keep the model.
     if(it.cut){ m.updateMatrixWorld(true); const sz=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
       const H=Math.max(.42,Math.min(sz.y*1.12,Math.max(sz.x,sz.z)*1.35/it.ca)), Wd=H*it.ca;
       const tx=new THREE.TextureLoader().load(it.cut); tx.encoding=THREE.sRGBEncoding; tx.anisotropy=4;
-      const c=new THREE.Group(); c.position.y=.85; c.userData.face=true;
+      const c=new THREE.Group(); c.position.y=it.top+.005; c.userData.face=true;
       const pl=new THREE.Mesh(new THREE.PlaneGeometry(Wd,H),new THREE.MeshBasicMaterial({map:tx,transparent:true,alphaTest:.08,side:THREE.DoubleSide,color:0xf4f4f4}));
       pl.position.y=H/2+.005; c.add(pl); it.cutPlane=pl; it.cutSize=[Wd,H];
       const sh=new THREE.Mesh(blobGeo,BLOB); sh.rotation.x=-Math.PI/2; sh.scale.set(Math.min(1,Wd*.8),.45,1); sh.position.y=.004; sh.renderOrder=1; c.add(sh);
@@ -1985,7 +2016,7 @@ function buildItems(){
     const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:it.tagTex,transparent:true})); tag.scale.set(2.05,.8,1); tag.position.y=top+.62; tag.userData.top=top; g.add(tag);
     Object.assign(it,{group:g,model:m,ring,tag,taken:false,wanted:false,baseRot:Math.random()*6});
     if(it.f===1){ m.userData.c=true; floorCasters.push(m); }
-  });
+  }
 }
 
 /* Products in relief (store-game/prodfx.py): each cut-out photo again at 512 px and a depth map of it from
@@ -3617,7 +3648,7 @@ function loadBakedShade(){
   if(!BAKED_SHADE) return;
   const img=src=>new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src; });
   for(let f=0;f<=TOP;f++){ const F=SHADE.f[f]; if(!F) continue;
-    Promise.all([img(ASSET+'shade/f'+f+'-dark.jpg?v=b2'),f<TOP?img(ASSET+'shade/f'+f+'-light.jpg?v=b2'):null]).then(([dk,li])=>{
+    Promise.all([img(ASSET+'shade/f'+f+'-dark.jpg?v=b3'),f<TOP?img(ASSET+'shade/f'+f+'-light.jpg?v=b3'):null]).then(([dk,li])=>{
       // darkness: the grey image becomes the alpha of black
       const W=F.ao.width, H=F.ao.height, c=document.createElement('canvas'); c.width=W; c.height=H; const cg=c.getContext('2d'); cg.drawImage(dk,0,0,W,H);
       const d=cg.getImageData(0,0,W,H), px=d.data; for(let i=0;i<px.length;i+=4){ px[i+3]=px[i]; px[i]=px[i+1]=px[i+2]=0; } cg.putImageData(d,0,0);
@@ -3648,8 +3679,8 @@ function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) retu
 function loadLightmaps(only){
   if(!BAKED_LM) return;
   for(let f=0;f<=TOP;f++){ if(only!==undefined&&f!==only&&only!=='rest') continue; if(only==='rest'&&f===0) continue;
-    Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l3').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l3').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
-      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l3');   // a phone gets the light at half the size tex.flipY=true;
+    Promise.all([fetch(ASSET+'lm/f'+f+'.json?v=l4').then(r=>r.ok?r.json():Promise.reject()),fetch(ASSET+'lm/f'+f+'.uv?v=l4').then(r=>r.ok?r.arrayBuffer():Promise.reject())]).then(([idx,buf])=>{
+      const uv=new Uint16Array(buf), tex=new THREE.TextureLoader().load(ASSET+'lm/f'+f+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=l4');   // a phone gets the light at half the size tex.flipY=true;
       const meshes=STATIC[f].children.filter(o=>o.isMesh); let off=0, used=0;
       idx.forEach(e=>{ const m=meshes[e.i], n=e.tris*3;
         if(m&&!m.userData.dyn){ const g=m.geometry, tris=(g.index?g.index.count:g.attributes.position.count)/3;
