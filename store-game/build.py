@@ -129,6 +129,7 @@ def crawl_catalog(cfg):
     """Every product of every category, all pages, text only."""
     out = {}
     for cat in cfg['categories']:
+        if cat['zone'].startswith('kiosk'): continue   # a kiosk takes more of a category that is already crawled
         base = SITE + cat.get('path', f"/category/{cat['slug']}")
         rows, seen = [], set()
         for page in range(1, 60):
@@ -201,13 +202,15 @@ def collect(cfg, seen):
                 page = get(base + (f'?page={n}' if n > 1 else ''))
             except Exception as e:
                 print(f"  skip {cat['slug']} page {n}: {e}", file=sys.stderr); break
-            if n == 1: cats.append({'slug': cat['slug'], 'zone': cat['zone'], 'name': cat['name']})
+            if n == 1 and not cat['zone'].startswith('kiosk'): cats.append({'slug': cat['slug'], 'zone': cat['zone'], 'name': cat['name']})
             for c in cards(page):
                 if got >= want: break
                 if c['soldOut'] or c['slug'] in seen or not c['image']: continue
                 if base_name(c['name']) in {base_name(i['name']) for i in items} or any(w in c['name'] for w in ACCESSORY_WORDS) \
                         or not any(w in c['name'] for w, _ in KIND_WORDS):
                     skipped += 1; print(f"  no 3D model fits {c['slug']}: {c['name'][:50]}", file=sys.stderr); continue
+                if cat.get('kinds') and kind_of(c['name'], cat['zone']) not in cat['kinds']:
+                    skipped += 1; continue   # a kiosk only takes the small things
                 src = SITE + c['image'] if c['image'].startswith('/') else c['image']
                 try: raw = get(src, binary=True); img = thumb(src, raw)
                 except Exception as e:
@@ -218,7 +221,7 @@ def collect(cfg, seen):
                 items.append({'slug': c['slug'], 'url': f"{SITE}/product/{c['slug']}", 'cat': cat['slug'], 'kind': kind_of(c['name'], cat['zone']),
                               'short': short_of(c['name'], c['brand']), 'name': c['name'], 'brand': c['brand'], 'price': c['price'],
                               'old': c['old'] if c['old'] and c['old'] > c['price'] else None, 'disc': c['disc'] if c['old'] else 0, 'img': img,
-                              **({'cut': cut[0], 'ca': cut[1]} if cut else {})})
+                              **({'cut': cut[0], 'ca': cut[1]} if cut else {}), **({'zone': cat['zone']} if cat['zone'].startswith('kiosk') else {})})
                 time.sleep(.15)
             if f'page={n + 1}' not in page: break
         print(f"  {cat['name']:<24} {got} מוצרים" + (f" (דילגתי על {skipped}: בלי תמונה, אביזר, כפול או בלי דגם תלת־ממד מתאים)" if skipped else ''))

@@ -66,6 +66,63 @@
       "slug": "heating-ventilation",
       "zone": "heat",
       "name": "חימום ואוורור"
+    },
+    {
+      "slug": "personal-care",
+      "zone": "kiosk0",
+      "name": "גאדג'ט פוינט",
+      "count": 6,
+      "kinds": [
+        "shaver",
+        "hairdryer",
+        "iron",
+        "kettle",
+        "blender",
+        "coffee",
+        "processor",
+        "airfryer",
+        "toasteroven",
+        "grill",
+        "receiver"
+      ]
+    },
+    {
+      "slug": "home-appliances",
+      "zone": "kiosk1",
+      "name": "קטנים וטובים",
+      "count": 6,
+      "kinds": [
+        "shaver",
+        "hairdryer",
+        "iron",
+        "kettle",
+        "blender",
+        "coffee",
+        "processor",
+        "airfryer",
+        "toasteroven",
+        "grill",
+        "receiver"
+      ]
+    },
+    {
+      "slug": "small-kitchen-appliances",
+      "zone": "kiosk2",
+      "name": "קיוסק הגג",
+      "count": 6,
+      "kinds": [
+        "shaver",
+        "hairdryer",
+        "iron",
+        "kettle",
+        "blender",
+        "coffee",
+        "processor",
+        "airfryer",
+        "toasteroven",
+        "grill",
+        "receiver"
+      ]
     }
   ]
 }

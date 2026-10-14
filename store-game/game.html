@@ -1900,6 +1900,13 @@ const ZONES={
   heat:S1([[-12,19],[0,19],[12,19],[-12,26],[0,26],[12,26]]),
 };
 if(MALL2) STORE_DEFS.forEach(S=>{ ZONES[S.id]=S.slotsUV.map(([u,v])=>{ const [x,z]=S.at(u,v); return {f:S.f,x,z}; }); });
+/* the mall kiosks: an island stall in the walk of each floor, small things on its counter and someone behind it */
+const STALLS=MALL2?[
+  {id:'kiosk0',f:0,x:0,z:8.6,name:"גאדג'ט פוינט",tag:'קטנים שעושים את היום',col:0x16b3a3,hi:['היי! בוא תראה מה יש לי 😊','מבצעים קטנים, הנאה גדולה 🎁','משהו קטן לעצמך? 😉']},
+  {id:'kiosk1',f:1,x:0,z:-18,name:'קטנים וטובים',tag:'הכול לבית, בקטן',col:0xe9a21a,hi:['שלום שלום! מה מחפשים היום?','יש לי בדיוק את מה שחסר לך בבית 🏠','בוא, תסתכל, אין חובה 🙂']},
+  {id:'kiosk2',f:2,x:0,z:-15,name:'קיוסק הגג',tag:'פינוקים למטבח',col:0xe5483b,hi:['אהלן! איזה נוף, אה? 😎','קפה, קומקום, בלנדר: הכול פה 🍹','ברוך הבא לגג! צריך משהו?']}]:[];
+const STALL_SLOTS=[[-1.12,-.5],[1.12,-.5],[-1.12,.5],[1.12,.5],[-.42,.56],[.42,.56]];
+STALLS.forEach(K=>{ ZONES[K.id]=STALL_SLOTS.map(([a,b])=>({f:K.f,x:K.x+a,z:K.z+b,kiosk:1})); });
 const CAT_ZONE={}; (STORE.cats||[]).forEach(c=>CAT_ZONE[c.slug]=c.zone);
 const CATALOG=(function(){
   const items=STORE.items.slice(), used={}, out=[];
@@ -1907,7 +1914,7 @@ const CATALOG=(function(){
   const add=(p,slot)=>{ const m=MODELS[p.kind]||MODELS.microwave; out.push(Object.assign({},p,{id:p.slug,name:p.short,full:p.name,f:slot.f,x:slot.x,z:slot.z,y:slot.y||0,zone:slot.zone,mk:m[0],sc:m[1]})); };
   // the biggest discounts go on the hot-deal stage, the rest to their own department
   items.filter(p=>p.old).sort((a,b)=>b.disc-a.disc).slice(0,ZONES.deal.length).forEach(p=>{ add(p,take('deal')); items.splice(items.indexOf(p),1); });
-  items.forEach(p=>{ const s=take(CAT_ZONE[p.cat]||'kitchen'); if(s) add(p,s); });
+  items.forEach(p=>{ const s=take(p.zone||CAT_ZONE[p.cat]||'kitchen'); if(s) add(p,s); });
   return out;
 })();
 
@@ -1958,6 +1965,7 @@ function buildItems(){
   CATALOG.forEach(it=>{
     const base=it.f*FH+it.y, P=STATIC[it.f], S=MALL2&&STORE_DEFS.find(S=>S.id===it.zone);
     if(S){ shopFixture(it,S,base,P); itemBody(it,base); return; }
+    if(/^kiosk/.test(it.zone)){ it.top=1.04; itemBody(it,base); it.ring.position.y=it.top+.01; it.ring.scale.setScalar(.42); return; }   // on a kiosk's counter (buildStalls)
     it.top=.845;
     box(1.1,.08,1.1,M.navy,it.x,base+.04,it.z,P); box(1.12,.018,1.12,M.led,it.x,base+.088,it.z,P,false);
     box(.96,.7,.96,pedW,it.x,base+.43,it.z,P);
@@ -2087,12 +2095,47 @@ function storeLoad(S){ S.loading=true; const small=PHONE.matches||matchMedia('(p
   Promise.all(items.filter(it=>PROD3D_SHOP.includes(it.slug)).map(product3D)).then(()=>{
     S.vit.forEach(([u,v],k)=>{ const it=items[k%Math.max(1,items.length)]; if(!it) return; const m=it.model.clone(true); const [x,z]=S.at(u,v);
       m.position.set(x,base+m.position.y,z); m.rotation.y=S.face; m.userData.face=false; scene.add(m); }); }); }
+/* A kiosk: an island counter (white body, the kiosk's colour as a band, a glass top) round a space for its keeper,
+   four thin posts holding a canopy with the name on all four sides. Live in the scene, not baked: it is not in
+   the lightmaps, so adding or moving one never asks for a new bake. */
+function buildStalls(){ STALLS.forEach(K=>{
+  const g=new THREE.Group(), col=new THREE.Color(K.col), cm=mat(K.col,{roughness:.45}), white=mat(0xf7f8fa,{roughness:.35}), dark=mat(0x1d2232,{roughness:.3,metalness:.3});
+  const glass=new THREE.MeshStandardMaterial({color:0xcfe9f5,transparent:true,opacity:.35,roughness:.05,metalness:.1,depthWrite:false});
+  const W=3.1, D=1.9, H=.98, t=.42;   // outer size, counter height, counter depth
+  const ring=(fn)=>{ fn(0,-(D-t)/2,W,t); fn(0,(D-t)/2,W,t); fn(-(W-t)/2,0,t,D-2*t); fn((W-t)/2,0,t,D-2*t); };
+  ring((x,z,w,d)=>{ box(w,H-.12,d,white,x,(H-.12)/2+.06,z,g); box(w+.02,.06,d+.02,dark,x,.03,z,g); box(w+.01,.1,d+.01,cm,x,H-.22,z,g,false);
+    const gt=box(w+.04,.03,d+.04,glass,x,H+.005,z,g,false); gt.renderOrder=2; box(w+.05,.02,d+.05,M.steel,x,H-.02,z,g,false); });
+  box(W-2*t,.04,D-2*t,mat(0xe8e2d6,{roughness:.8}),0,.02,0,g);   // the keeper's floor mat
+  const top=3.05;
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>box(.07,top-H,.07,M.steel,a*(W/2-.08),H+(top-H)/2,b*(D/2-.08),g));
+  box(W+.5,.12,D+.5,white,0,top+.06,0,g); box(W+.52,.03,D+.52,M.led,0,top-.005,0,g,false);
+  const sign=canvasTex(1024,190,(c,w,h)=>{ c.fillStyle='#'+col.getHexString(); c.fillRect(0,0,w,h); c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(0,h-26,w,26);
+    c.direction='rtl'; c.textAlign='center'; c.fillStyle='#fff'; c.font='800 92px Rubik, sans-serif'; c.fillText(K.name,w/2,98); c.font='600 40px Rubik, sans-serif'; c.fillText(K.tag,w/2,158); });
+  const sm=new THREE.MeshBasicMaterial({map:sign});
+  [[0,(D+.5)/2+.005,0,W+.5],[0,-(D+.5)/2-.005,Math.PI,W+.5]].forEach(([x,z,r,w])=>{ const b=box(w,.46,.04,cm,x,top+.35,z*.999,g); plane(w-.06,.42,sm,x,top+.35,z+(z>0?.025:-.025),r,g); });
+  [[(W+.5)/2+.005,Math.PI/2],[-(W+.5)/2-.005,-Math.PI/2]].forEach(([x,r])=>{ box(.04,.46,D+.5,cm,x*.999,top+.35,0,g); plane(D+.44,.42,sm,x+(x>0?.025:-.025),top+.35,0,r,g); });
+  g.position.set(K.x,K.f*FH,K.z); scene.add(g); K.g=g;
+  g.traverse(o=>{ if(o.isMesh&&o.material!==glass&&o.material!==sm){ o.castShadow=true; o.receiveShadow=true; if(K.f>=1){ o.userData.c=true; o.userData.f=K.f; floorCasters.push(o); } } });
+  solid(K.f,K.x,K.z,W+.1,D+.1,'ped');
+}); }
+/* the keepers: one figure each, made for its kiosk, standing in it; turns to you and says hello as you come up */
+whenInMall(()=>STALLS.forEach((K,i)=>loadGLTF(ASSET+'people/KK'+i+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.glb?v=1').then(gl=>{
+  const G={g:new THREE.Group()}; G.g.position.set(K.x,K.f*FH+.04,K.z); G.g.rotation.y=0; scene.add(G.g);
+  const r=staffReal(G,gl); if(r) STAFF.push({G,r,f:K.f,K,emo:bubble('emo'),emoUntil:0,near:false}); }).catch(e=>console.warn('kiosk keeper '+K.id,e))));
+function stallTick(x,dt){ const K=x.K, G=x.G, r=x.r, p=G.g.position, now=performance.now();
+  const dp=Math.hypot(player.pos.x-p.x,player.pos.z-p.z), near=dp<4.2;
+  if(dp<9){ let d=Math.atan2(player.pos.x-p.x,player.pos.z-p.z)-G.g.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); G.g.rotation.y+=d*Math.min(1,dt*4); }
+  r.waveT-=dt; if(near&&!x.near&&r.waveT<=0){ r.waveT=20; gestStart(r,'Wave',2); sellerSay(x,pick(K.hi)); }
+  x.near=near;
+  if(!gestTick(r,0,dt)) sellerAnim(x,'Idle');
+  if(dp<40) r.mixer.update(dt);
+  if(now<x.emoUntil&&dp<16) place2d(x.emo,p,p.y+2.7); else x.emo.hidden=true; }
 const STORE_PROP={tv:{h:1,maxW:2.2,maxD:1.1},audio:{h:1.5,maxW:1.9,maxD:1},kitchen:{h:1.2,maxW:2.3,maxD:1.4},ovens:{h:1.8,maxW:1.8,maxD:1.6},care:{h:1.3,maxW:1,maxD:1.2},
   fridge:{h:1.2,maxW:1.4,maxD:1.4},laundry:{h:1.3,maxW:1.4,maxD:1},home:{h:1.7,maxW:1.3,maxD:1.3},ac:{h:2.2,maxW:1.6,maxD:1},heat:{h:1.6,maxW:2,maxD:.9}};
 let storeT=0;
 function storeTick(dt){ if(!STORE_DEFS.length||G.state!=='play') return;
   storeT-=dt; if(storeT<=0){ storeT=.5; STORE_DEFS.forEach(S=>{ if(!S.loading&&S.f===player.floor&&Math.hypot(player.pos.x-S.c[0],player.pos.z-S.c[1])<20) storeLoad(S); }); }
-  STAFF.forEach(x=>{ if(x.f!==player.floor){ if(x.emo) x.emo.hidden=true; return; } if(x.S) sellerWalk(x,dt); else staffTick(x.G,x.r,dt,x.f); }); }
+  STAFF.forEach(x=>{ if(x.f!==player.floor){ if(x.emo) x.emo.hidden=true; return; } if(x.S) sellerWalk(x,dt); else if(x.K) stallTick(x,dt); else staffTick(x.G,x.r,dt,x.f); }); }
 /* A shop's seller is on the floor, not stuck behind the till: walks from product to product (now and then back to
    the till), and when you come in, stops, turns to you, waves and says hello with the shop's name. */
 const SELLER_HI=['שלום! ברוכים הבאים ל{n} 👋','היי! כיף שבאת ל{n} 😊','ברוכים הבאים ל{n}! צריך עזרה?','שלום שלום! ב{n} יש מבצעים 🔥'];
@@ -2237,7 +2280,7 @@ function gltfReady(){ if(GLTF_READY) return GLTF_READY;
 function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   return GLTF_CACHE[url] = gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb|CASHIER(-m)?\.glb|K_[a-z]+(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb|CASHIER(-m)?\.glb|K_[a-z]+(-m)?\.glb|KK\d(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
 }
 const HEAD_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -3371,7 +3414,7 @@ function buildKiosks(){
 /* what follows the catalogue (plinths, kiosks, the fronts' columns, signs and bins placed round them) moves
    when the catalogue does: it is kept apart from the fixed building, which is all the baked lighting covers */
 function markDyn(fn){ const n=STATIC.map(g=>g.children.length); fn(); STATIC.forEach((g,i)=>{ for(let k=n[i];k<g.children.length;k++) g.children[k].userData.dyn=true; }); }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); if(MALL2) buildStores(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard();
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); if(MALL2) buildStores(); buildStalls(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
