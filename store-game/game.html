@@ -2578,7 +2578,7 @@ const meshyTexReady=name=>new Promise(res=>{ const t=meshyTex(name); if(t.btOk) 
    keeping the painted light and shade; and glasses or a hat fitted to the head, riding its bone. */
 const M_HAIR=[['','מקורי',0],['black','שחור',0x16110d],['brown','חום',0x5a3a22],['ginger','ג׳ינג׳י',0xb4471e],['blond','בלונד',0xdcb56c],['plat','פלטינה',0xeee3cc],
   ['grey','אפור',0x9c9c9c],['pink','ורוד',0xe0569b],['blue','כחול',0x3a6fd8],['purple','סגול',0x8152d6],['green','ירוק',0x2fae7a]];
-const M_SKIN=[['','מקורי',0],['light','בהיר',0xf7dcc8],['fair','',0xeec3a2],['tan','',0xd69c72],['olive','',0xb88456],['brown','',0x8d5b3c],['deep','',0x5e3a25]];
+const M_SKIN=[['','מקורי',0],['light','בהיר',0xf7dcc8],['fair','',0xeec3a2],['tan','',0xd69c72],['olive','',0xc08a5e],['brown','',0xa36c49],['deep','',0x7f5036]];
 const M_GLASS=[['none','בלי'],['glasses','משקפיים'],['round','עגולים'],['shades','משקפי שמש']];
 const M_HAT=[['none','בלי'],['cap','כובע BuyToday'],['beanie','כובע גרב'],['phones','אוזניות']];
 const MESHY_REF={'1':{hair:.049,skin:[.8884,.3873,.2275]},'F1':{hair:.0176,skin:[.8298,.3467,.1903]}};
@@ -2635,21 +2635,21 @@ function meshyAcc(model,o){
       const arm=new THREE.Mesh(new THREE.BoxGeometry(u*.016,u*.016,Dp*.55),frame); arm.position.set(cx+s*(sp+r*1.15),ey+u*.01,ez-Dp*.27); g.add(arm); });
     const br=new THREE.Mesh(new THREE.BoxGeometry(sp*2-u*.2,u*.014,u*.014),frame); br.position.set(cx,ey+u*.03,ez); g.add(br);
     add(g); }
-  if(hat==='cap'||hat==='beanie'){ const g=new THREE.Group(), top=b.max.y, col=hat==='cap'?BRAND:0x22305f;
+  if(hat==='cap'||hat==='beanie'){ const g=new THREE.Group(), top=b.max.y, col=hat==='cap'?BRAND:0x1a2450;
     const dome=new THREE.Mesh(new THREE.SphereGeometry(.5,32,16,0,Math.PI*2,0,Math.PI*(hat==='cap'?.5:.56)),accMat(col,{roughness:.8,metalness:0}));
-    dome.scale.set(Wd*ACC_FIT.hatW,Ht*(hat==='cap'?.62:.78),Dp*ACC_FIT.hatD); dome.position.set(cx,top-Ht*ACC_FIT.hatDrop,cz); g.add(dome);
+    dome.scale.set(Wd*ACC_FIT.hatW,Ht*(hat==='cap'?1:1.1),Dp*ACC_FIT.hatD); dome.position.set(cx,top-Ht*ACC_FIT.hatDrop,cz); g.add(dome);
     if(hat==='cap'){ const brim=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.03,28,1,false,-Math.PI/2,Math.PI),accMat(BRAND,{roughness:.7,metalness:0}));
       brim.scale.set(Wd*.82,Ht*.4,Dp*.55); brim.position.set(cx,top-Ht*ACC_FIT.hatDrop+Ht*.02,cz+Dp*.4); g.add(brim);
       const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.03,6,40),accMat(0xffffff,{roughness:.6,metalness:0})); band.rotation.x=Math.PI/2; band.scale.set(Wd*ACC_FIT.hatW,Dp*ACC_FIT.hatD,Ht*.3); band.position.set(cx,top-Ht*ACC_FIT.hatDrop+Ht*.03,cz); g.add(band); }
     else { const cuff=new THREE.Mesh(new THREE.TorusGeometry(.5,.08,10,40),accMat(0x2f3f80,{roughness:.9,metalness:0})); cuff.rotation.x=Math.PI/2; cuff.scale.set(Wd*ACC_FIT.hatW,Dp*ACC_FIT.hatD,Ht*.5); cuff.position.set(cx,top-Ht*ACC_FIT.hatDrop,cz); g.add(cuff);
-      const pom=new THREE.Mesh(new THREE.SphereGeometry(Ht*.08,14,10),accMat(0xffffff,{roughness:1,metalness:0})); pom.position.set(cx,top-Ht*ACC_FIT.hatDrop+Ht*.45,cz); g.add(pom); }
+      const pom=new THREE.Mesh(new THREE.SphereGeometry(Ht*.08,14,10),accMat(0xffffff,{roughness:1,metalness:0})); pom.position.set(cx,top-Ht*ACC_FIT.hatDrop+Ht*.58,cz); g.add(pom); }
     add(g); }
   if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*ACC_FIT.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
     const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.045,8,40,Math.PI),dark); band.scale.set(Wd*1.08,(b.max.y-my)*2*1.02,Dp*.6); band.position.set(cx,my,cz); g.add(band);
     [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
     add(g); }
 }
-const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.12,hatD:1.12,hatDrop:.4,ear:.42};
+const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42};
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   // the player's own figure wears the chosen outfit: the same body painted another way (the face stays the same)
   const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
