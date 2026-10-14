@@ -2573,6 +2573,82 @@ function meshyTex(name){ if(MESHY_TEX[name]) return MESHY_TEX[name];
   t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return MESHY_TEX[name]=t; }
 // resolves once the outfit's picture is in (a texture shown before that can stay black)
 const meshyTexReady=name=>new Promise(res=>{ const t=meshyTex(name); if(t.btOk) res(t); else (t.btWait=t.btWait||[]).push(()=>res(t)); });
+/* The Meshy figure's own look on top of its outfit: hair colour and skin tone recoloured in the shader through a mask
+   per outfit texture (people/tex/mask/<body>-<outfit>.png, red = hair, green = skin; store-game build: hairmask.py),
+   keeping the painted light and shade; and glasses or a hat fitted to the head, riding its bone. */
+const M_HAIR=[['','מקורי',0],['black','שחור',0x16110d],['brown','חום',0x5a3a22],['ginger','ג׳ינג׳י',0xb4471e],['blond','בלונד',0xdcb56c],['plat','פלטינה',0xeee3cc],
+  ['grey','אפור',0x9c9c9c],['pink','ורוד',0xe0569b],['blue','כחול',0x3a6fd8],['purple','סגול',0x8152d6],['green','ירוק',0x2fae7a]];
+const M_SKIN=[['','מקורי',0],['light','בהיר',0xf7dcc8],['fair','',0xeec3a2],['tan','',0xd69c72],['olive','',0xb88456],['brown','',0x8d5b3c],['deep','',0x5e3a25]];
+const M_GLASS=[['none','בלי'],['glasses','משקפיים'],['round','עגולים'],['shades','משקפי שמש']];
+const M_HAT=[['none','בלי'],['cap','כובע BuyToday'],['beanie','כובע גרב'],['phones','אוזניות']];
+const MESHY_REF={'1':{hair:.049,skin:[.8884,.3873,.2275]},'F1':{hair:.0176,skin:[.8298,.3467,.1903]}};
+const MESHY_MASK={};
+function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=1'); t.flipY=false; return MESHY_MASK[name]=t; }
+function meshyLook(model,o,body,outfit){
+  const ref=MESHY_REF[body]; if(!ref) return;
+  const hc=(M_HAIR.find(x=>x[0]===o.mHair)||M_HAIR[0])[2], sc=(M_SKIN.find(x=>x[0]===o.mSkin)||M_SKIN[0])[2];
+  const hair=new THREE.Color(hc||0).convertSRGBToLinear(), skin=new THREE.Color(sc||0).convertSRGBToLinear();
+  model.traverse(x=>{ if(!x.isMesh) return; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ if(!mt.map) return;
+    let U=mt.userData.look;
+    if(!U){ U=mt.userData.look={uMask:{value:null},uHair:{value:new THREE.Color()},uHairOn:{value:0},uHairRef:{value:ref.hair},uSkin:{value:new THREE.Vector3(1,1,1)},uSkinOn:{value:0}};
+      mt.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,U);
+        sh.fragmentShader='uniform sampler2D uMask; uniform vec3 uHair; uniform float uHairOn; uniform float uHairRef; uniform vec3 uSkin; uniform float uSkinOn;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
+          vec4 texelColor=texture2D(map,vUv); texelColor=mapTexelToLinear(texelColor);
+          vec3 mk=texture2D(uMask,vUv).rgb; float lum=dot(texelColor.rgb,vec3(.3,.59,.11));
+          texelColor.rgb=mix(texelColor.rgb,uHair*clamp(lum/uHairRef,.25,2.4),mk.r*uHairOn);   // the new colour, with the hair's own light and shade
+          texelColor.rgb=mix(texelColor.rgb,texelColor.rgb*uSkin,mk.g*uSkinOn);
+          diffuseColor*=texelColor;
+        #endif`); };
+      mt.customProgramCacheKey=()=>'meshylook'; mt.needsUpdate=true; }
+    U.uMask.value=meshyMask(body+'-'+outfit); U.uHairOn.value=hc?1:0; U.uHair.value.copy(hair); U.uHairRef.value=ref.hair;
+    U.uSkinOn.value=sc?1:0; U.uSkin.value.set(skin.r/ref.skin[0],skin.g/ref.skin[1],skin.b/ref.skin[2]); }); });
+  meshyAcc(model,o); }
+/* The head, measured once per figure: the bind-pose box of everything the head bone carries, in the mesh's own space. */
+function meshyHead(model){ if(model.userData.head!==undefined) return model.userData.head;
+  let sm=null; model.traverse(x=>{ if(x.isSkinnedMesh&&(!sm||x.geometry.attributes.position.count>sm.geometry.attributes.position.count)) sm=x; });
+  if(!sm) return model.userData.head=null;
+  const bones=sm.skeleton.bones, hi=bones.findIndex(b=>/head$/i.test(b.name)); if(hi<0) return model.userData.head=null;
+  const kids=new Set(); bones[hi].traverse(b=>{ const i=bones.indexOf(b); if(i>=0) kids.add(i); });
+  dequant(sm.geometry); const P=sm.geometry.attributes.position, I=sm.geometry.attributes.skinIndex, W=sm.geometry.attributes.skinWeight, box=new THREE.Box3(), v=new THREE.Vector3();
+  for(let k=0;k<P.count;k++){ let w=0; for(let j=0;j<4;j++) if(kids.has(I.getComponent(k,j))) w+=W.getComponent(k,j); if(w>.6){ v.fromBufferAttribute(P,k); box.expandByPoint(v); } }
+  if(box.isEmpty()) return model.userData.head=null;
+  return model.userData.head={sm,bone:bones[hi],inv:sm.skeleton.boneInverses[hi],box}; }
+const ACC_MAT={};
+const accMat=(c,o)=>ACC_MAT[c+(o?JSON.stringify(o):'')]||(ACC_MAT[c+(o?JSON.stringify(o):'')]=new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.45,metalness:.1},o||{})));
+function meshyAcc(model,o){
+  (model.userData.acc||[]).forEach(a=>{ if(a.parent) a.parent.remove(a); }); model.userData.acc=[];
+  const glass=o.mGlass&&o.mGlass!=='none'?o.mGlass:null, hat=o.mHat&&o.mHat!=='none'?o.mHat:null; if(!glass&&!hat) return;
+  const H=meshyHead(model); if(!H) return;
+  const b=H.box, Wd=b.max.x-b.min.x, Ht=b.max.y-b.min.y, Dp=b.max.z-b.min.z, cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
+  // built in the mesh's own (bind-pose) space, then hung on the head bone: bone-local = boneInverse × bindMatrix × mesh space
+  const add=g=>{ const wrap=new THREE.Group(); wrap.matrixAutoUpdate=false; wrap.matrix.copy(H.inv).multiply(H.sm.bindMatrix); wrap.add(g);
+    wrap.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } }); H.bone.add(wrap); model.userData.acc.push(wrap); };
+  const u=Ht;   // the unit: the head's height
+  if(glass){ const g=new THREE.Group(), ey=b.min.y+Ht*ACC_FIT.eye, ez=b.max.z-Dp*ACC_FIT.front, sp=Wd*ACC_FIT.spread;
+    const frame=accMat(glass==='round'?0xc9a24a:0x1b1d24,{metalness:glass==='round'?.6:.2,roughness:.35});
+    const lens=glass==='shades'?accMat(0x14161c,{roughness:.1,metalness:.3}):null;
+    [-1,1].forEach(s=>{ const r=glass==='round'?u*.085:u*.09;
+      const t=new THREE.Mesh(new THREE.TorusGeometry(r,u*.011,8,28),frame); if(glass!=='round') t.scale.set(1.18,.86,1); t.position.set(cx+s*sp,ey,ez); g.add(t);
+      if(lens){ const l=new THREE.Mesh(new THREE.CircleGeometry(r,24),lens); l.scale.copy(t.scale); l.position.set(cx+s*sp,ey,ez-.002*u); g.add(l); }
+      const arm=new THREE.Mesh(new THREE.BoxGeometry(u*.016,u*.016,Dp*.55),frame); arm.position.set(cx+s*(sp+r*1.15),ey+u*.01,ez-Dp*.27); g.add(arm); });
+    const br=new THREE.Mesh(new THREE.BoxGeometry(sp*2-u*.2,u*.014,u*.014),frame); br.position.set(cx,ey+u*.03,ez); g.add(br);
+    add(g); }
+  if(hat==='cap'||hat==='beanie'){ const g=new THREE.Group(), top=b.max.y, col=hat==='cap'?BRAND:0x22305f;
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(.5,32,16,0,Math.PI*2,0,Math.PI*(hat==='cap'?.5:.56)),accMat(col,{roughness:.8,metalness:0}));
+    dome.scale.set(Wd*ACC_FIT.hatW,Ht*(hat==='cap'?.62:.78),Dp*ACC_FIT.hatD); dome.position.set(cx,top-Ht*ACC_FIT.hatDrop,cz); g.add(dome);
+    if(hat==='cap'){ const brim=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.03,28,1,false,-Math.PI/2,Math.PI),accMat(BRAND,{roughness:.7,metalness:0}));
+      brim.scale.set(Wd*.82,Ht*.4,Dp*.55); brim.position.set(cx,top-Ht*ACC_FIT.hatDrop+Ht*.02,cz+Dp*.4); g.add(brim);
+      const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.03,6,40),accMat(0xffffff,{roughness:.6,metalness:0})); band.rotation.x=Math.PI/2; band.scale.set(Wd*ACC_FIT.hatW,Dp*ACC_FIT.hatD,Ht*.3); band.position.set(cx,top-Ht*ACC_FIT.hatDrop+Ht*.03,cz); g.add(band); }
+    else { const cuff=new THREE.Mesh(new THREE.TorusGeometry(.5,.08,10,40),accMat(0x2f3f80,{roughness:.9,metalness:0})); cuff.rotation.x=Math.PI/2; cuff.scale.set(Wd*ACC_FIT.hatW,Dp*ACC_FIT.hatD,Ht*.5); cuff.position.set(cx,top-Ht*ACC_FIT.hatDrop,cz); g.add(cuff);
+      const pom=new THREE.Mesh(new THREE.SphereGeometry(Ht*.08,14,10),accMat(0xffffff,{roughness:1,metalness:0})); pom.position.set(cx,top-Ht*ACC_FIT.hatDrop+Ht*.45,cz); g.add(pom); }
+    add(g); }
+  if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*ACC_FIT.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
+    const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.045,8,40,Math.PI),dark); band.scale.set(Wd*1.08,(b.max.y-my)*2*1.02,Dp*.6); band.position.set(cx,my,cz); g.add(band);
+    [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
+    add(g); }
+}
+const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.12,hatD:1.12,hatDrop:.4,ear:.42};
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   // the player's own figure wears the chosen outfit: the same body painted another way (the face stays the same)
   const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
@@ -2582,7 +2658,8 @@ function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
       // a packed model squeezes its texture coordinates and undoes it with a transform on its own texture: the outfit takes the same one
       if(own){ t.offset.copy(own.offset); t.repeat.copy(own.repeat); t.rotation=own.rotation; t.center.copy(own.center); t.matrixAutoUpdate=own.matrixAutoUpdate; t.matrix.copy(own.matrix); }
       mt.map=t; mt.needsUpdate=true; }
-    if(mt.map){ mt.map.anisotropy=an; mt.map.needsUpdate=true; } }); } }); }   // sharp at a slant, not smeared
+    if(mt.map){ mt.map.anisotropy=an; mt.map.needsUpdate=true; } }); } });   // sharp at a slant, not smeared
+  if(outfit) meshyLook(model,o,body,outfit); }
 /* the face: painted, not modelled. The wardrobe's faces are two dark blocks for eyes and two for brows; they are
    hidden and a face is painted onto a copy of the front of the head's own skin (same vertices, same bones, so it
    moves with every frame of every clip): eyes with a white, a coloured iris, a pupil and a glint, lids, brows in
@@ -3110,7 +3187,7 @@ function meshyPeer(G,av){
     if(!G.g.parent||G.npc3d) return;
     const m=gl.scene;
     m.traverse(x=>{ if(x.isMesh){ x.castShadow=false; x.frustumCulled=false; } });
-    meshyDress(m,{girl:!!av.girl,outfit:o});   // exactly as the player's own figure is dressed
+    meshyDress(m,{girl:!!av.girl,outfit:o,mHair:av.mHair,mSkin:av.mSkin,mGlass:av.mGlass,mHat:av.mHat});   // exactly as the player's own figure is dressed
     m.scale.setScalar(HERO_MODEL_SCALE); m.rotation.y=HERO_MODEL_ROTATION_OFFSET;
     const r=new THREE.Group(); r.add(m);
     const mixer=new THREE.AnimationMixer(m), actions={};
@@ -3798,7 +3875,7 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 
 // player
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
-const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:'',hairStyle:'',top:'',body:'regular',eyes:0x4a3222,eyewear:'none'};
+const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:'',hairStyle:'',top:'',body:'regular',eyes:0x4a3222,eyewear:'none',mHair:'',mSkin:'',mGlass:'none',mHat:'none'};
 const AV_BODY=[['regular','רגיל'],['slim','רזה'],['full','מלא'],['strong','שרירי']], AV_EYEWEAR=['none','glasses','shades'];
 // was there a character on this device before this visit? (it wins over an older copy on the account)
 const HAD_LOCAL=(()=>{ try{ return !!localStorage.getItem('bt-avatar'); }catch(e){ return false; } })();
@@ -4139,8 +4216,8 @@ const light=c=>{ const r=c>>16&255, g=c>>8&255, b=c&255; return .299*r+.587*g+.1
 let ctab='body';
 /* the creator: four tabs, every choice shows on the character at once (it is rebuilt and saved on each tap) */
 function renderCreator(){
-  const tabs=MESHY_HERO?[['body','דמות'],['clothes','בגדים']]:[['body','גוף'],['face','פנים ושיער'],['clothes','בגדים'],['acc','אביזרים']];
-  if(MESHY_HERO&&!['body','clothes'].includes(ctab)) ctab='body';
+  const tabs=MESHY_HERO?[['body','דמות'],['look','שיער ופנים'],['clothes','בגדים']]:[['body','גוף'],['face','פנים ושיער'],['clothes','בגדים'],['acc','אביזרים']];
+  if(MESHY_HERO&&!['body','look','clothes'].includes(ctab)) ctab='body';
   const tb=$('#ctabs'); tb.innerHTML='';
   tabs.forEach(([k,t])=>{ const b=document.createElement('button'); b.textContent=t; b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(k===ctab)); if(k===ctab) b.className='on';
     b.addEventListener('click',()=>{ ctab=k; renderCreator(); buzz(6); }); tb.appendChild(b); });
@@ -4157,6 +4234,18 @@ function renderCreator(){
   const mine=slot=>SH_.filter(i=>i.slot===slot&&owned.includes(i.id));
   if(MESHY_HERO){   // the Meshy figures: a man or a woman, and a whole outfit
     if(ctab==='body') seg('דמות','girl',[[false,'בן'],[true,'בת']],!!avatar.girl);
+    else if(ctab==='look'){
+      // colour tiles, the first one the figure as it was made ("מקורי")
+      const msw=(label,key,list)=>{ const r=row(label), c=document.createElement('div'); c.className='tiles'; r.appendChild(c);
+        list.forEach(([id,name,col])=>{ const b=document.createElement('button'); const on=(avatar[key]||'')===id; b.setAttribute('aria-pressed',String(on)); if(on) b.className='on';
+          b.setAttribute('aria-label',name||id||'מקורי');
+          if(!id){ b.style.background='repeating-linear-gradient(45deg,#f1f2f6 0 6px,#dfe2ea 6px 12px)'; b.style.color='#161a2b'; b.innerHTML=on?CHECK:'<small style="font:800 9px Rubik,sans-serif">מקורי</small>'; }
+          else { b.style.background=hex(col); b.style.color=light(col)?'#161a2b':'#fff'; b.innerHTML=CHECK; }
+          b.addEventListener('click',()=>set(key,id)); c.appendChild(b); }); };
+      msw('צבע שיער','mHair',M_HAIR);
+      msw('גוון עור','mSkin',M_SKIN);
+      seg('משקפיים','mGlass',M_GLASS,avatar.mGlass||'none');
+      seg('על הראש','mHat',M_HAT,avatar.mHat||'none'); }
     else { const g=avatar.girl?'f':'m', L2=MESHY_OUTFITS[g], mineO=L2.filter(x=>outfitOwned(g,x[0])), more=L2.length-mineO.length;
       seg('תלבושת','outfit',mineO,mineO.some(x=>x[0]===avatar.outfit)?avatar.outfit:L2[0][0]);
       if(more){ const p=document.createElement('p'); p.style.cssText='margin:0;font-size:12.5px;color:#5b6280'; p.textContent='עוד '+more+' תלבושות מחכות בחנות BuyToday על הגג. קונים במטבעות ולובשים מיד'; pane.appendChild(p); } }
@@ -5436,16 +5525,41 @@ const PET_BLOB=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opac
 function petSpawn(id){ const root=new THREE.Group(), bob=new THREE.Group(); root.add(bob);
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.24,18),PET_BLOB); shadow.rotation.x=-Math.PI/2; shadow.position.y=.03; root.add(shadow);
   const p={id,root,bob,shadow,phase:Math.random()*6,yaw:0,speed:0,nextTrick:2+Math.random()*4,trick:0,spin:0};
-  petTpl(id).then(t=>{ if(!p.dead) bob.add(t.clone(true)); }).catch(e=>console.warn('pet '+id,e));
+  petTpl(id).then(t=>{ if(p.dead) return; const c=t.clone(true); if(PET_GAIT[id]==='trot') petLegs(c,p); bob.add(c); }).catch(e=>console.warn('pet '+id,e));
   scene.add(root); return p; }
+/* How each one moves: on four legs at a trot, a rabbit hops, a penguin waddles. */
+const PET_GAIT={dog:'trot',cat:'trot',panda:'trot',dragon:'trot',bunny:'hop',penguin:'waddle'};
+/* Legs without a skeleton: the models are one piece each, so the vertex shader finds the legs itself (everything
+   below the hips, split left/right and front/back about the body's middle) and swings each about its hip, the
+   diagonal pairs together as in a real trot. The swing grows with the distance from the hip, so the body stays put. */
+function petLegs(model,p){ p.u={uPhase:{value:0},uAmp:{value:0}};
+  model.traverse(o=>{ if(!o.isMesh) return; const b=o.geometry.boundingBox||(o.geometry.computeBoundingBox(),o.geometry.boundingBox), H=b.max.y-b.min.y;
+    const leg=new THREE.Vector4(b.min.y+H*.3,b.min.y,(b.min.x+b.max.x)/2,(b.min.z+b.max.z)/2);
+    o.material=(Array.isArray(o.material)?o.material[0]:o.material).clone();
+    o.material.onBeforeCompile=sh=>{ sh.uniforms.uPhase=p.u.uPhase; sh.uniforms.uAmp=p.u.uAmp; sh.uniforms.uLeg={value:leg};
+      sh.vertexShader='uniform float uPhase; uniform float uAmp; uniform vec4 uLeg;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+        if(transformed.y<uLeg.x){ float dy=uLeg.x-transformed.y;
+          float pair=(transformed.x-uLeg.z)*(transformed.z-uLeg.w)>0.?0.:3.14159;
+          float a=sin(uPhase+pair)*uAmp, lift=max(0.,cos(uPhase+pair))*uAmp*.35;
+          transformed.z+=dy*sin(a); transformed.y+=dy*(1.-cos(a))+lift*dy; }`); };
+    o.material.customProgramCacheKey=()=>'petlegs'; }); }
 function petKill(p){ if(!p) return; p.dead=true; if(p.root.parent) p.root.parent.remove(p.root); }
 function petAnim(p,dt){
-  if(p.speed>.4){ p.phase+=dt*(7+p.speed*2); const h=Math.abs(Math.sin(p.phase)); p.bob.position.y=h*.12;
+  const gait=PET_GAIT[p.id]||'trot';
+  if(p.u) p.u.uAmp.value+=((p.speed>.4?Math.min(.55,.22+p.speed*.07):0)-p.u.uAmp.value)*(1-Math.exp(-dt*8));
+  if(p.speed>.4&&gait==='trot'){ p.phase+=dt*(6+p.speed*1.6); if(p.u) p.u.uPhase.value=p.phase;
+    // a walk, not a jump: the body rides a little over each step, with a slight roll from side to side
+    p.bob.position.y=Math.abs(Math.sin(p.phase))*.018; p.bob.rotation.z=Math.sin(p.phase)*.03; p.bob.rotation.x=Math.cos(p.phase*2)*.02;
+    p.bob.scale.set(1,1,1); p.trick=0; p.spin=0; }
+  else if(p.speed>.4&&gait==='waddle'){ p.phase+=dt*(7+p.speed*1.5);
+    p.bob.rotation.z=Math.sin(p.phase)*.2; p.bob.position.y=Math.abs(Math.cos(p.phase))*.025; p.bob.rotation.x=.06; p.bob.scale.set(1,1,1); p.trick=0; p.spin=0; }
+  else if(p.speed>.4){ p.phase+=dt*(7+p.speed*2); const h=Math.abs(Math.sin(p.phase)); p.bob.position.y=h*.12;
     p.bob.scale.set(1+(1-h)*.07,1-(1-h)*.09+h*.04,1+(1-h)*.07); p.bob.rotation.x=Math.cos(p.phase)*.13; p.trick=0; p.spin=0; }
-  else { p.nextTrick-=dt; if(p.nextTrick<=0&&!p.trick){ p.trick=1; p.trickT=0; p.trickKind=Math.random()<.55?'hop':'spin'; p.nextTrick=4+Math.random()*6; }
-    if(p.trick){ p.trickT+=dt; const u=Math.min(1,p.trickT/.75); p.bob.position.y=Math.sin(u*Math.PI)*(p.trickKind==='hop'?.3:.16); p.spin=p.trickKind==='spin'?u*Math.PI*2:0; if(u>=1){ p.trick=0; p.spin=0; } }
+  else { p.nextTrick-=dt; if(p.nextTrick<=0&&!p.trick){ p.trick=1; p.trickT=0; p.trickKind=gait==='hop'?(Math.random()<.55?'hop':'spin'):(Math.random()<.7?'look':'spin'); p.nextTrick=4+Math.random()*6; }
+    if(p.trick){ p.trickT+=dt; const look=p.trickKind==='look', u=Math.min(1,p.trickT/(look?1.6:.75));
+      p.bob.position.y=look?0:Math.sin(u*Math.PI)*(p.trickKind==='hop'?.3:gait==='hop'?.16:.02); p.spin=look?Math.sin(u*Math.PI*2)*.5:p.trickKind==='spin'?u*Math.PI*2:0; if(u>=1){ p.trick=0; p.spin=0; } }
     else p.bob.position.y*=Math.exp(-dt*12);
-    const br=Math.sin(performance.now()/330+p.phase)*.025; p.bob.scale.set(1-br*.5,1+br,1-br*.5); p.bob.rotation.x*=Math.exp(-dt*8); }
+    const br=Math.sin(performance.now()/330+p.phase)*.025; p.bob.scale.set(1-br*.5,1+br,1-br*.5); p.bob.rotation.x*=Math.exp(-dt*8); p.bob.rotation.z*=Math.exp(-dt*8); }
   p.root.rotation.y=p.yaw+p.spin; p.shadow.scale.setScalar(Math.max(.5,1-p.bob.position.y*1.6)); }
 // at its owner's heel: a little behind and to the side, catching up at a trot, popping back to them if left far behind
 function petFollow(p,dt,o){
@@ -5974,7 +6088,8 @@ const packAv=a=>{ const S=HERO_STYLES[a.girl?'f':'m'], L=heroLook(a);
     S.head.findIndex(x=>x[0]===(a.hairStyle||L.head)),S.top.findIndex(x=>x[0]===L.top),   // 8, 9: the 3D haircut and shirt style
     Math.max(0,AV_BODY.findIndex(b=>b[0]===a.body)),Math.max(0,AV_CHOICES.eyes.indexOf(a.eyes)),Math.max(0,AV_EYEWEAR.indexOf(a.eyewear||'none')),   // 10-12: build, eyes, glasses
     MESHY_HERO?Math.max(0,MESHY_OUTFITS[a.girl?'f':'m'].findIndex(x=>x[0]===a.outfit)):-1,   // 13: the Meshy outfit (-1: the wardrobe figure)
-    PET_IDS.indexOf(a===avatar?petWant():a.pet)]; };   // 14: the pet at their heel (-1: none)
+    PET_IDS.indexOf(a===avatar?petWant():a.pet),   // 14: the pet at their heel (-1: none)
+    M_HAIR.findIndex(x=>x[0]===(a.mHair||'')),M_SKIN.findIndex(x=>x[0]===(a.mSkin||'')),M_GLASS.findIndex(x=>x[0]===(a.mGlass||'none')),M_HAT.findIndex(x=>x[0]===(a.mHat||'none'))]; };   // 15-18: the Meshy figure's hair colour, skin tone, glasses, hat
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
@@ -5982,7 +6097,8 @@ function unpackAv(v){ if(!Array.isArray(v)) return null;
   return {girl:v[0]===1,skin:c(v[1],'skin',0xf1c7a0),hair:c(v[2],'hair',0x3a2618),shirt:c(v[3],'shirt',0x2f7de1),pants:c(v[4],'pants',0x2b2f3a),bottom:AV_BOTTOM[v[5]]||'pants',extra:AV_EXTRA[v[6]]||'none',merch:AV_MERCH[v[7]]||'none',
     hairStyle:st(S.head,v[8]),top:st(S.top,v[9]),body:(AV_BODY[v[10]]||AV_BODY[0])[0],eyes:AV_CHOICES.eyes[v[11]]||AV_CHOICES.eyes[0],eyewear:AV_EYEWEAR[v[12]]||'none',
     outfit:Number.isInteger(v[13])&&MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]]?MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]][0]:'',
-    pet:Number.isInteger(v[14])&&PET_IDS[v[14]]?PET_IDS[v[14]]:'none'}; }
+    pet:Number.isInteger(v[14])&&PET_IDS[v[14]]?PET_IDS[v[14]]:'none',
+    mHair:(M_HAIR[v[15]]||M_HAIR[0])[0],mSkin:(M_SKIN[v[16]]||M_SKIN[0])[0],mGlass:(M_GLASS[v[17]]||M_GLASS[0])[0],mHat:(M_HAT[v[18]]||M_HAT[0])[0]}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
