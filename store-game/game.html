@@ -1833,7 +1833,7 @@ function buildUpper(){
   if(!MALL2) [[-4,-18],[4,-18]].forEach(([x,z])=>bench(x,Y,z,0,1));
   SG=STATIC[0];
   // spinning pedestal fans (live, not baked)
-  [[-20,18],[20,18],[-20,28],[20,28],[-6,30.2],[6,30.2]].forEach(([x,z])=>{ const f=mkFan(); f.scale.setScalar(1.5); f.position.set(x,Y,z); f.rotation.y=Math.PI; scene.add(f); fans.push(f);
+  [[-20,18],[20,18],[-20,28],[20,28],[-6,30.2],[6,30.2]].forEach(([x,z])=>{ const f=mkFan(); f.scale.setScalar(1.5); f.position.set(x,Y,z); f.rotation.y=Math.PI; floorRoot(1).add(f); fans.push(f);
     f.traverse(o=>{ if(o.isMesh){ o.userData.c=true; floorCasters.push(o); } }); solid(1,x,z,.8,.8); });
 }
 let robotArena=null;
@@ -2169,7 +2169,7 @@ function buildStalls(){ STALLS.forEach(K=>{
   const sm=new THREE.MeshBasicMaterial({map:sign});
   [[0,(D+.5)/2+.005,0,W+.5],[0,-(D+.5)/2-.005,Math.PI,W+.5]].forEach(([x,z,r,w])=>{ const b=box(w,.46,.04,cm,x,top+.35,z*.999,g); plane(w-.06,.42,sm,x,top+.35,z+(z>0?.025:-.025),r,g); });
   [[(W+.5)/2+.005,Math.PI/2],[-(W+.5)/2-.005,-Math.PI/2]].forEach(([x,r])=>{ box(.04,.46,D+.5,cm,x*.999,top+.35,0,g); plane(D+.44,.42,sm,x+(x>0?.025:-.025),top+.35,0,r,g); });
-  g.position.set(K.x,K.f*FH,K.z); floorRoot(K.f).add(g); K.g=g;
+  mergeParts(g); g.position.set(K.x,K.f*FH,K.z); floorRoot(K.f).add(g); K.g=g;
   g.traverse(o=>{ if(o.isMesh&&o.material!==glass&&o.material!==sm){ o.castShadow=true; o.receiveShadow=true; if(K.f>=1){ o.userData.c=true; o.userData.f=K.f; floorCasters.push(o); } } });
   solid(K.f,K.x,K.z,W+.1,D+.1,'ped');
 }); }
@@ -3242,6 +3242,14 @@ function npcAnimTick(G,speed,dt,pushing){
   else if(n.push){ n.push=0; n.model.position.z=0; }
 }
 
+/* One mesh per material for the parts of a group that never move relative to each other (a cart of thirty boxes
+   drew thirty times a frame, and again for its shadow). Keeps each part's own transform; skips the named exceptions. */
+function mergeParts(group,keep){
+  group.updateMatrix(); const parts=group.children.filter(o=>o.isMesh&&!o.isSkinnedMesh&&!(keep||[]).includes(o)), buckets=new Map();
+  parts.forEach(o=>{ o.updateMatrix(); const k=o.material.uuid+'|'+o.castShadow+'|'+o.renderOrder; if(!buckets.has(k)) buckets.set(k,{m:o.material,cast:o.castShadow,ro:o.renderOrder,g:[]});
+    const g=o.geometry.index?o.geometry.clone():o.geometry.clone(); g.applyMatrix4(o.matrix); if(!g.attributes.uv) g.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(g.attributes.position.count*2),2)); buckets.get(k).g.push(g); group.remove(o); });
+  buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.m); m.castShadow=b.cast; m.receiveShadow=true; m.renderOrder=b.ro; group.add(m); });
+  return group; }
 function mkCart(){
   const c=new THREE.Group(); const metal=mat(0xc9ced6,{metalness:.6,roughness:.35}); const red=mat(0xe63946,{roughness:.4});
   const wire=new THREE.MeshStandardMaterial({color:0xd4d9e1,metalness:.5,roughness:.35,transparent:true,opacity:.42,depthWrite:false});
@@ -3252,6 +3260,7 @@ function mkCart(){
   box(.94,.07,.07,red,0,1.17,-.66,c); box(.04,.04,.16,metal,-.43,1.14,-.6,c); box(.04,.04,.16,metal,.43,1.14,-.6,c);
   box(.05,.05,1.05,metal,-.34,.2,0,c); box(.05,.05,1.05,metal,.34,.2,0,c);
   [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{ box(.04,.42,.04,metal,a*.36,.36,b*.45,c); const w=cyl(.08,.08,.05,M.black,a*.34,.08,b*.45,c,12); w.rotation.z=Math.PI/2; });
+  mergeParts(c);
   const load=new THREE.Group(); load.position.y=.58; c.add(load);
   return {c,load,count:0};
 }
@@ -6340,7 +6349,7 @@ const QL=[{pr:.75,fx:0,refl:0,sh:1},{pr:1,fx:0,refl:0,sh:1},{pr:1.25,fx:1,refl:0
   {pr:1.75,fx:1,refl:0,sh:2},{pr:2,fx:1,refl:0,sh:2},{pr:2,fx:2,refl:0,sh:2},{pr:2,fx:2,refl:1,sh:2}];   // fx 1: grade and sharpening, fx 2: and the bloom
 const Q={max:Math.min(window.devicePixelRatio||1,2),lv:0,pr:0,shadow:2,times:[],winT:0,good:0,hold:0,bad:{},steady:0,pin:null,ups:0,slow:0};
 (function(){ const pin=new URLSearchParams(location.search).get('q'); if(pin!==null&&QL[+pin]) Q.pin=+pin;
-  let saved=null; try{ saved=localStorage.getItem('bt-q3'); }catch(e){}
+  let saved=null; try{ saved=localStorage.getItem('bt-q4'); }catch(e){}
   const coarse=matchMedia('(pointer:coarse)').matches;
   Q.lv=Q.pin!==null?Q.pin:saved!==null&&QL[+saved]?+saved:coarse?4:QL.length-1; })();   // a phone starts at 1.75x, no post-processing
 function qApply(lv){
@@ -6362,10 +6371,10 @@ function qTick(raw,now){
   const fps=1/med;
   if(fps<42&&Q.lv>0&&++Q.slow<2) return;
   if(fps>=42) Q.slow=0;
-  if(fps<42&&Q.lv>0){ Q.slow=0; Q.bad[Q.lv]=true; Q.good=0; Q.steady=0; qApply(Q.lv-1); Q.hold=now+4000; try{ localStorage.setItem('bt-q3',String(Q.lv)); }catch(e){} console.info('quality: down to',Q.lv,'at',fps.toFixed(0),'fps'); return; }
+  if(fps<42&&Q.lv>0){ Q.slow=0; Q.bad[Q.lv]=true; Q.good=0; Q.steady=0; qApply(Q.lv-1); Q.hold=now+4000; try{ localStorage.setItem('bt-q4',String(Q.lv)); }catch(e){} console.info('quality: down to',Q.lv,'at',fps.toFixed(0),'fps'); return; }
   if(fps>56){ Q.good++; if(Q.good>=4&&Q.lv<QL.length-1&&!Q.bad[Q.lv+1]&&Q.ups<2){ Q.good=0; Q.ups++; qApply(Q.lv+1); Q.hold=now+4000; console.info('quality: up to',Q.lv); return; } }
   else Q.good=0;
-  Q.steady+=2; if(Q.steady>=20){ Q.steady=-1e9; try{ localStorage.setItem('bt-q3',String(Q.lv)); }catch(e){} }   // this level holds here: start at it next time
+  Q.steady+=2; if(Q.steady>=20){ Q.steady=-1e9; try{ localStorage.setItem('bt-q4',String(Q.lv)); }catch(e){} }   // this level holds here: start at it next time
 }
 function fadeTapMark(){ if(!tapMark||!tapMark.visible) return; const a=1-(performance.now()-tapMark.userData.t)/900; if(a<=0||!auto.on) tapMark.visible=false; else { tapMark.material.opacity=a; tapMark.scale.setScalar(1+(1-a)*.4); } }
 function loop(now){ fadeTapMark(); kioskGlow(now/1000);
@@ -6376,7 +6385,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
   if(G.paused && G.state!=='edit'){ if(mgEl.hidden) gfxRender(); requestAnimationFrame(loop); return; }
   if(frame%3===0) drawScreen(screens[(frame/3)%3|0],t);
   if(frame%10===0){ const menu=G.state!=='play', ph=PHONE.matches;
-    CATALOG.forEach(it=>{ it.dist=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); const near=menu||(it.f===player.floor&&it.dist<24); it.tag.visible=!it.taken&&near&&!ph; it.near=near; });
+    CATALOG.forEach(it=>{ it.dist=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); const show=menu||it.dist<28; if(it.group.visible!==show) it.group.visible=show; const near=menu||(it.f===player.floor&&it.dist<24); it.tag.visible=!it.taken&&near&&!ph; it.near=near; });
     // on a phone the labels would bury the scene: the six closest, and nothing further than 13 m
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
