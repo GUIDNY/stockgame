@@ -2600,7 +2600,7 @@ const M_HAIR=[['','מקורי',0],['black','שחור',0x16110d],['brown','חום
   ['grey','אפור',0x9c9c9c],['pink','ורוד',0xe0569b],['blue','כחול',0x3a6fd8],['purple','סגול',0x8152d6],['green','ירוק',0x2fae7a]];
 const M_SKIN=[['','מקורי',0],['light','בהיר',0xf7dcc8],['fair','',0xeec3a2],['tan','',0xd69c72],['olive','',0xc08a5e],['brown','',0xa36c49],['deep','',0x7f5036]];
 const M_GLASS=[['none','בלי'],['glasses','משקפיים'],['round','עגולים'],['shades','משקפי שמש']];
-const M_HAT=[['none','בלי'],['phones','אוזניות']];   /* hats on top of a finished figure never look part of it: they come back as figures made with them */
+const M_HAT=[['none','בלי'],['cap','כובע BuyToday'],['beanie','כובע גרב'],['phones','אוזניות']];   /* hats on top of a finished figure never look part of it: they come back as figures made with them */
 const MESHY_REF={'1':{hair:.049,skin:[.8884,.3873,.2275]},'F1':{hair:.0176,skin:[.8298,.3467,.1903]}};
 const MESHY_MASK={};
 function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
@@ -2609,7 +2609,7 @@ function meshyLook(model,o,body,outfit){
   const ref=MESHY_REF[body]; if(!ref) return;
   const hc=(M_HAIR.find(x=>x[0]===o.mHair)||M_HAIR[0])[2], sc=(M_SKIN.find(x=>x[0]===o.mSkin)||M_SKIN[0])[2];
   const hair=new THREE.Color(hc||0).convertSRGBToLinear(), skin=new THREE.Color(sc||0).convertSRGBToLinear();
-  model.traverse(x=>{ if(!x.isMesh) return; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ if(!mt.map) return;
+  model.traverse(x=>{ if(!x.isMesh||x.userData.acc) return; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ if(!mt.map) return;
     let U=mt.userData.look;
     if(!U){ U=mt.userData.look={uMask:{value:null},uHair:{value:new THREE.Color()},uHairOn:{value:0},uHairRef:{value:ref.hair},uSkin:{value:new THREE.Vector3(1,1,1)},uSkinOn:{value:0}};
       mt.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,U);
@@ -2644,7 +2644,7 @@ function meshyAcc(model,o){
   const b=H.box, Wd=b.max.x-b.min.x, Ht=b.max.y-b.min.y, Dp=b.max.z-b.min.z, cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
   // built in the mesh's own (bind-pose) space, then hung on the head bone: bone-local = boneInverse × bindMatrix × mesh space
   const add=g=>{ const wrap=new THREE.Group(); wrap.matrixAutoUpdate=false; wrap.matrix.copy(H.inv).multiply(H.sm.bindMatrix); wrap.add(g);
-    wrap.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } }); H.bone.add(wrap); model.userData.acc.push(wrap); };
+    wrap.traverse(x=>{ x.userData.acc=true; if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } }); H.bone.add(wrap); model.userData.acc.push(wrap); };   // marked: the outfit painter leaves it alone
   const u=Ht;   // the unit: the head's height
   if(glass){ const g=new THREE.Group(), ey=b.min.y+Ht*ACC_FIT.eye, ez=b.max.z-Dp*ACC_FIT.front, sp=Wd*ACC_FIT.spread;
     const frame=accMat(glass==='round'?0xc9a24a:0x1b1d24,{metalness:glass==='round'?.6:.2,roughness:.35});
@@ -2656,23 +2656,23 @@ function meshyAcc(model,o){
     const br=new THREE.Mesh(new THREE.BoxGeometry(sp*2-u*.2,u*.014,u*.014),frame); br.position.set(cx,ey+u*.03,ez); g.add(br);
     add(g); }
   if(hat==='cap'||hat==='beanie'){   // a real hat (Meshy, deco/hat_<id>.glb), as wide as the head and sat down over the hair
-    const F=HAT_FIT[hat], tok=model.userData.accTok;
+    const F=Object.assign({},HAT_FIT[hat],o.girl?HAT_FIT[hat].f:null), tok=model.userData.accTok;   // the girl's head (with her hair) is taller: a fit of her own
     hatTpl(hat).then(t=>{ if(model.userData.accTok!==tok) return;
-      const m=fitModel(t.clone(true),{maxW:Wd*F.w,maxD:Dp*F.d}), g=new THREE.Group(); g.add(m); m.rotation.y=F.yaw;
+      const m=fitModel(t.clone(true),F.wh?{maxW:Ht*F.wh}:{maxW:Wd*F.w,maxD:Dp*F.d}), g=new THREE.Group(); g.add(m); m.rotation.set(F.pitch||0,F.yaw,0);   // wh: sized by the head's height (long hair makes it wide)
       g.position.set(cx,b.max.y-Ht*F.drop,cz+Dp*F.fwd); add(g); }).catch(e=>console.warn('hat '+hat,e)); }
   if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*ACC_FIT.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
     const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.045,8,40,Math.PI),dark); band.scale.set(Wd*1.08,(b.max.y-my)*2*1.02,Dp*.6); band.position.set(cx,my,cz); g.add(band);
     [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
     add(g); }
 }
-const HAT_FIT={cap:{w:1.16,d:1.5,drop:.42,yaw:0,fwd:.06},beanie:{w:1.0,d:1.08,drop:.34,yaw:0,fwd:0}};
+const HAT_FIT={cap:{w:1.5,d:1.85,drop:.54,pitch:.2,yaw:0,fwd:.06,f:{w:1.25,d:1.6,drop:.38,pitch:.08}},beanie:{wh:.8,drop:.34,yaw:0,fwd:0}};   // fitted by eye, front and three-quarter, on both figures
 const HAT_TPL={}; const hatTpl=id=>HAT_TPL[id]||(HAT_TPL[id]=loadGLTF(ASSET+'deco/hat_'+id+'.glb?v=1').then(gl=>gl.scene));
 const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42};
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   // the player's own figure wears the chosen outfit: the same body painted another way (the face stays the same)
   const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
   const outfit=list?(list.some(x=>x[0]===o.outfit)?o.outfit:list[0][0]):null;
-  model.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6);
+  model.traverse(x=>{ if(x.isMesh&&!x.userData.acc){ x.castShadow=true; x.frustumCulled=false; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6);
     if(outfit){ if(!mt.userData.own) mt.userData.own=mt.map; const own=mt.userData.own, t=meshyTex(body+'-'+outfit);
       // a packed model squeezes its texture coordinates and undoes it with a transform on its own texture: the outfit takes the same one
       if(own){ t.offset.copy(own.offset); t.repeat.copy(own.repeat); t.rotation=own.rotation; t.center.copy(own.center); t.matrixAutoUpdate=own.matrixAutoUpdate; t.matrix.copy(own.matrix); }
