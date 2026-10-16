@@ -1172,7 +1172,7 @@ renderer.toneMappingExposure = .86;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe4e7ed);
 // a light haze far away gives the long aisles depth without hiding anything near
-scene.fog = new THREE.Fog(0xe9ebf0, 42, 105);
+scene.fog = new THREE.Fog(0xe9ebf0, 60, 140);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 180);
 /* Image-based light: a small procedural mall, warm-white walls, a pale stone floor, rows of bright ceiling
    strips and a little BuyToday orange, pre-filtered once. Every standard material picks up its soft ambient
@@ -2128,11 +2128,11 @@ function fitModel(obj,{h,maxW,maxD,len}){
 const PROD3D=['ninja-food-processors-og853','ninja-food-processors-dg553','ninja-food-processors-dt203','ninja-coffee-machines-es603','ninja-food-processors-oo103'];
 // the products the shops have in 3D (Meshy, from their photos); the rest keep the photo relief
 const PROD3D_SHOP=['lg-tvs-55ua8000','vivitek-projectors-dx380-589426a8','klipsch-speakers-the-nines','monitor-audio-speakers-bronze-500-6g','onkyo-speakers-gx-30arc',
-  'magimix-food-processors-cs5200jn','bosch-food-processors-mcm3101b','moulinex-small-kitchen-appliances-ju370127','blomberg-combi-oven-okw9440x','bosch-built-in-oven-cmg7241w1',
+  'magimix-food-processors-cs5200jn','moulinex-small-kitchen-appliances-ju370127','blomberg-combi-oven-okw9440x','bosch-built-in-oven-cmg7241w1',
   'gorenje-built-in-oven-bcm4547a10bg','philips-hair-straighteners-bhs37700','remington-hair-clippers-hc3000','wahl-shavers-7061-916','sharp-fridge-4-door-sj-8942bk',
-  'sauter-fridge-integrated-svri396r','sharp-fridge-4-door-sj-r9732wh','bosch-washing-machines-wgg256z0il','aeg-dishwasher-standard-fse63817p','beko-dishwasher-standard-din36423',
-  'dreame-vacuum-cleaners-x50-ultra-complete','bosch-vacuum-cleaners-bcs711pet','tefal-irons-sv612al3','tornado-split-ac-smart-16-inv','electra-portable-ac-classic-portable-140',
-  'saga-split-ac-saga-pro-inv-22-x-wifi-eu','hamilton-beach-fans-hem-607','sap-heaters-tx20','westinghouse-fans-73179-2848'];
+  'bosch-washing-machines-wgg256z0il','aeg-dishwasher-standard-fse63817p','beko-dishwasher-standard-din36423',
+  'dreame-vacuum-cleaners-x50-ultra-complete','tefal-irons-sv612al3',
+  'hamilton-beach-fans-hem-607','sap-heaters-tx20'];   // the models that came out blank or in pieces show the product's photo instead
 function product3D(it){ if(!it.cutPlane||it.m3dP) return it.m3dP||Promise.resolve(); const [Wd,H]=it.cutSize;
   return it.m3dP=loadGLTF(ASSET+'prod3d/'+it.slug+'.glb?v=1').then(gl=>{ if(it.m3d) return;
     const w=fitModel(gl.scene,{h:Math.max(H*1.05,.5),maxW:1.05,maxD:1.05}); it.m3d=w; it.cutPlane.visible=false; it.model.add(w); it.model.userData.face=false; }).catch(e=>console.warn('product 3D '+it.slug,e)); }
@@ -2149,7 +2149,9 @@ function storeLoad(S){ S.loading=true; const small=PHONE.matches||matchMedia('(p
   const items=CATALOG.filter(it=>it.zone===S.id);
   Promise.all(items.filter(it=>PROD3D_SHOP.includes(it.slug)).map(product3D)).then(()=>{
     S.vit.forEach(([u,v],k)=>{ const it=items[k%Math.max(1,items.length)]; if(!it) return; const m=it.model.clone(true); const [x,z]=S.at(u,v);
-      m.position.set(x,base+m.position.y,z); m.rotation.y=S.face; m.userData.face=false; floorRoot(S.f).add(m); }); }); }
+      m.position.set(x,base+m.position.y,z); m.rotation.y=S.face; m.userData.face=false; floorRoot(S.f).add(m); if(!it.m3d) STORE_WIN.push(m); }); }); }
+/* the product photos in the windows turn to whoever looks at them, like the ones on the floor: seen from the side they were a sliver */
+const STORE_WIN=[];
 /* A kiosk: an island counter (white body, the kiosk's colour as a band, a glass top) round a space for its keeper,
    four thin posts holding a canopy with the name on all four sides. Live in the scene, not baked: it is not in
    the lightmaps, so adding or moving one never asks for a new bake. */
@@ -2189,6 +2191,7 @@ const STORE_PROP={tv:{h:1,maxW:2.2,maxD:1.1},audio:{h:1.5,maxW:1.9,maxD:1},kitch
   fridge:{h:1.2,maxW:1.4,maxD:1.4},laundry:{h:1.3,maxW:1.4,maxD:1},home:{h:1.7,maxW:1.3,maxD:1.3},ac:{h:2.2,maxW:1.6,maxD:1},heat:{h:1.6,maxW:2,maxD:.9}};
 let storeT=0;
 function storeTick(dt){ if(!STORE_DEFS.length||G.state!=='play') return;
+  for(const m of STORE_WIN) if(m.parent.visible&&Math.abs(m.position.y-player.pos.y)<3) m.rotation.y=Math.atan2(camera.position.x-m.position.x,camera.position.z-m.position.z);
   storeT-=dt; if(storeT<=0){ storeT=.5; STORE_DEFS.forEach(S=>{ if(!S.loading&&S.f===player.floor&&Math.hypot(player.pos.x-S.c[0],player.pos.z-S.c[1])<20) storeLoad(S); }); }
   STAFF.forEach(x=>{ const far=x.f!==player.floor||Math.hypot(player.pos.x-x.G.g.position.x,player.pos.z-x.G.g.position.z)>30; if(x.G.g.visible===far) x.G.g.visible=!far;
     if(far){ if(x.emo) x.emo.hidden=true; return; } if(x.S) sellerWalk(x,dt); else if(x.K) stallTick(x,dt); else staffTick(x.G,x.r,dt,x.f); }); }
@@ -3576,7 +3579,7 @@ function bake(group){
   list.forEach(o=>{ const dyn=dynOf(o), key=o.material.uuid+'|'+(o.castShadow?1:0)+'|'+(dyn?1:0); if(!buckets.has(key)) buckets.set(key,{mat:o.material,cast:o.castShadow,dyn,g:[]});
     const gg=o.geometry.clone(); gg.applyMatrix4(o.matrixWorld); buckets.get(key).g.push(gg); });
   while(group.children.length) group.remove(group.children[0]);
-  buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.mat); m.castShadow=b.cast; m.receiveShadow=true; m.userData.c=b.cast; m.userData.dyn=b.dyn; group.add(m); });
+  buckets.forEach(b=>{ const m=new THREE.Mesh(mergeGeos(b.g),b.mat); m.castShadow=false; m.receiveShadow=true; m.userData.c=b.cast; m.userData.dyn=b.dyn; group.add(m); });   // its shadows are baked into its light (lightmaps, floor shading): drawing them again into the sun's map every frame was the dearest pass
 }
 /* ---------- department fronts ----------
    The departments are open floor zones (walls would block walking, the bots and the auto-route), so a front
@@ -3765,7 +3768,7 @@ function outWarp(out){ const w=$('#warp'); w.classList.add('on'); buzz(12);
 let outsideNow=false;
 function setOutside(on){ if(outsideNow===on) return; outsideNow=on;
   if(OUT.backdrop) OUT.backdrop.visible=!on;
-  scene.background.setHex(on?0xbfdcf2:0xe4e7ed); scene.fog.color.setHex(on?0xd4e6f4:0xe9ebf0); scene.fog.far=on?160:105; }
+  scene.background.setHex(on?0xbfdcf2:0xe4e7ed); scene.fog.color.setHex(on?0xd4e6f4:0xe9ebf0); scene.fog.far=on?160:140; }
 /* the drive: in, up the road (or back down it), out by the car */
 function startDrive(){ if(OUT.drive) return; const toKids=OUT.parked==='home', a=toKids?OUT.home:OUT.kids, b=toKids?OUT.kids:OUT.home;
   stopAuto(); OUT.drive={a,b,t:-.6,dur:6.5,toKids}; hero.g.visible=false; OUT.car.rotation.y=toKids?0:Math.PI; OUT.solid.off=true;
@@ -6056,6 +6059,7 @@ function updateNear(){ syncMini();
   if(cardIt!==shownCard){ shownCard=cardIt; ui.card.hidden=PHONE.matches||!cardIt; if(cardIt){ fillCard(cardIt); fillMini(cardIt); } syncCardSpace(); }
   syncMini();
   showLiftPad(!!near&&near.type==='ride');
+  if(!near&&MALL2){ const S=storeAt(player.floor,p.x,p.z), d=S&&DEPTS.find(d=>d.id===S.id); if(d) near={type:'kiosk',d,store:true}; }   // in a shop, the button is its catalogue
   if(!near){ ui.hint.hidden=true; ui.act.classList.add('off'); ui.actLabel.textContent='קח'; setActKind('item'); return; }
   setActKind(near.type==='ride'?(near.to>elev.floor?'up':'down'):near.type);
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
@@ -6069,6 +6073,7 @@ function updateNear(){ syncMini();
   else if(near.type==='pets') setHint('פינת החיות','חבר שהולך איתכם · יש לכם '+Coins.n+' מטבעות',false,'לבחור');
   else if(near.type==='shop') setHint('חנות BuyToday',(MESHY_HERO?'תלבושות חדשות למטבעות':'חולצות וכובעים למטבעות')+' · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
+  else if(near.type==='kiosk'&&near.store){ ui.hint.hidden=true; ui.actLabel.textContent='לקטלוג'; ui.act.classList.remove('off'); }   // quietly: just the button
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
@@ -6345,7 +6350,7 @@ document.addEventListener('visibilitychange',()=>{ if(!ONLINE) return; if(docume
    The level that held is kept on the device, so the next visit starts there. ?q=0..7 pins a level. */
 // sharpness goes last: on the way down the reflections and the post-processing give way before the resolution does,
 // because a soft picture is what people notice (the canvas keeps its own antialiasing without the post-processing)
-const QL=[{pr:.75,fx:0,refl:0,sh:1},{pr:1,fx:0,refl:0,sh:1},{pr:1.25,fx:1,refl:0,sh:2},{pr:1.5,fx:1,refl:0,sh:2},
+const QL=[{pr:.75,fx:1,refl:0,sh:1},{pr:1,fx:1,refl:0,sh:1},{pr:1.25,fx:1,refl:0,sh:2},{pr:1.5,fx:1,refl:0,sh:2},
   {pr:1.75,fx:1,refl:0,sh:2},{pr:2,fx:1,refl:0,sh:2},{pr:2,fx:2,refl:0,sh:2},{pr:2,fx:2,refl:1,sh:2}];   // fx 1: grade and sharpening, fx 2: and the bloom
 const Q={max:Math.min(window.devicePixelRatio||1,2),lv:0,pr:0,shadow:2,times:[],winT:0,good:0,hold:0,bad:{},steady:0,pin:null,ups:0,slow:0};
 (function(){ const pin=new URLSearchParams(location.search).get('q'); if(pin!==null&&QL[+pin]) Q.pin=+pin;
