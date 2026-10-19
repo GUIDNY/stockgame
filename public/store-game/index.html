@@ -1370,7 +1370,7 @@ const M = {
    light lines (emissive, no real lights) in warm white; BuyToday orange is kept for small accents */
 Object.assign(M,{
   ledWarm: new THREE.MeshBasicMaterial({color:0xfff0d8}), navyDeep: mat(0x0d1330,{roughness:.7,envMapIntensity:.35}),
-  quartz: mat(0xf6f4f0,{roughness:.2}), oak: mat(0xcda57c,{roughness:.55}), wallW: mat(0xeeeae3,{roughness:.85}),
+  quartz: mat(0xf6f4f0,{roughness:.2}), oak: mat(0xcda57c,{roughness:.55}), wallW: new THREE.MeshStandardMaterial({color:0xeeeae3,roughness:.85}),
   column: mat(0xf4f2ee,{roughness:.3}), rail: mat(0xe9ebee,{roughness:.25,metalness:.55}), fascia: mat(0xf7f6f3,{roughness:.4})
 });
 const overlay = o => Object.assign({polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-4},o||{});
@@ -1470,16 +1470,48 @@ const FLOOR_TEX={loaded:null};
 /* The departments' own floors, the same way: oak planks (ambientCG WoodFloor051) and a fine low carpet
    (ambientCG Carpet016, turned grey so each department tints it its own colour), with normal maps. */
 const SURF_MATS=[];
-function surfMat(kind,tint,m){ m.userData.surf={kind,tint}; SURF_MATS.push(m); return m; }
+function surfMat(kind,tint,m){ m.userData.surf={kind,tint}; SURF_MATS.push(m); if(WALL_T[kind]){ m.onBeforeCompile=sh=>worldTexPatch(sh,kind); m.customProgramCacheKey=()=>'wt-'+kind; } return m; }
+/* Walls and ceilings (review notes 03 and 12): a sharp texture of their own at a real size, painted plaster and
+   60 cm ceiling tiles, laid by world position, so a wall of any length has the same detail per metre as the floor
+   instead of one picture stretched over it. */
+const WALL_T={wall:1.6,ceil:3.6};
+function worldTexPatch(sh,kind){ sh.uniforms.uWT={value:1/WALL_T[kind]};
+  sh.vertexShader='varying vec3 vWP; varying vec3 vWN;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  vWP=(modelMatrix*vec4(transformed,1.)).xyz; vWN=normalize(mat3(modelMatrix)*objectNormal);');
+  sh.fragmentShader='uniform float uWT; varying vec3 vWP; varying vec3 vWN;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
+    vec3 an=abs(vWN); vec2 wuv=an.y>max(an.x,an.z)?vWP.xz:(an.x>an.z?vWP.zy:vWP.xy);
+    vec4 texelColor=mapTexelToLinear(texture2D(map,wuv*uWT)); diffuseColor*=texelColor;
+  #endif`); }
+/* The world outside (review notes 04 and 14). The ground is real material at its real size (ambientCG, CC0: grass,
+   asphalt, hexagonal paving), and all round there is a photographed modern city under a real sky (Poly Haven's
+   Canary Wharf, CC0) in place of the drawn skyline. The panorama rides with the camera, so it always sits on the
+   horizon; it is seen from the street and through the ground floor's glass, and is hidden on the night roof. */
+const OUT_MATS=[];
+const OUT_FLAT={grass:0x86b86a,asph:0x3b3f48,pave:0xd9d6cf};   // until the textures are in
+function outMat(kind,tint,rough){ const m=new THREE.MeshStandardMaterial({color:OUT_FLAT[kind],roughness:rough}); m.userData.out={kind,tint}; OUT_MATS.push(m); return m; }
+function loadOutTex(){ const L=new THREE.TextureLoader(), ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v=1',res,undefined,rej));
+  ['grass','asph','pave'].forEach(k=>Promise.all([ld('out-'+k+'-c.jpg'),ld('out-'+k+'-n.jpg')]).then(([c,n])=>{ c.encoding=THREE.sRGBEncoding;
+    [c,n].forEach(t=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); });
+    const mats=new Set(OUT_MATS); scene.traverse(o=>{ if(o.isMesh&&o.material&&o.material.userData&&o.material.userData.out) mats.add(o.material); });
+    mats.forEach(m=>{ if(m.userData.out.kind!==k) return; m.map=c; m.normalMap=n; m.color.setHex(m.userData.out.tint); m.needsUpdate=true; }); }).catch(e=>console.warn('outside '+k,e))); }
+const CITY={mesh:null, tex:null};
+function cityPano(){ const t=new THREE.TextureLoader().load(ASSET+'tex/city'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=1',t=>{
+    // the first floor's windows: a strip of the same city, the towers just above its horizon
+    if(!OUT.winMat) return; const w=t.clone(); w.needsUpdate=true; w.repeat.set(.16,.17); w.offset.set(.62,.47); OUT.winMat.map=w; OUT.winMat.needsUpdate=true; });
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=4; CITY.tex=t;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(165,48,24),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
+  m.rotation.y=CITY_YAW; m.renderOrder=-10; m.frustumCulled=false; scene.add(m); CITY.mesh=m; return t; }
+const CITY_YAW=Math.PI*.5;   // the towers ahead as you come out of the doors
+function cityTick(){ if(!CITY.mesh) return; CITY.mesh.visible=player.floor===0; if(CITY.mesh.visible) CITY.mesh.position.copy(camera.position); }
 function loadSurfaces(){
   const L=new THREE.TextureLoader(); L.setCrossOrigin('anonymous');
   const ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v='+FLOOR_TEX_V,res,undefined,rej));
-  Promise.all(['wood-c.jpg','wood-n.jpg','wood-r.jpg','carpet-c.jpg','carpet-n.jpg'].map(ld)).then(([wc,wn,wr,cc,cn])=>{
-    wc.encoding=cc.encoding=THREE.sRGBEncoding;
-    [wc,wn,wr,cc,cn].forEach(t=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); });
+  Promise.all(['wood-c.jpg','wood-n.jpg','wood-r.jpg','carpet-c.jpg','carpet-n.jpg','wall-c.jpg','ceil-c.jpg'].map(ld)).then(([wc,wn,wr,cc,cn,lc,ec])=>{
+    wc.encoding=cc.encoding=lc.encoding=ec.encoding=THREE.sRGBEncoding;
+    [wc,wn,wr,cc,cn,lc,ec].forEach(t=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); });
     const mats=new Set(SURF_MATS); scene.traverse(o=>{ if(o.isMesh&&o.material&&o.material.userData&&o.material.userData.surf) mats.add(o.material); });
     mats.forEach(m=>{ const S=m.userData.surf;
-      if(S.kind==='wood'){ m.map=wc; m.normalMap=wn; m.roughnessMap=wr; m.roughness=1; m.color.setHex(0xffffff); }
+      if(WALL_T[S.kind]){ m.map=S.kind==='wall'?lc:ec; }
+      else if(S.kind==='wood'){ m.map=wc; m.normalMap=wn; m.roughnessMap=wr; m.roughness=1; m.color.setHex(0xffffff); }
       else { m.map=cc; m.normalMap=cn; m.normalScale.set(.8,.8); m.roughness=1; m.color.set(S.tint).convertSRGBToLinear().multiplyScalar(1.08); }
       m.needsUpdate=true; });
   }).catch(e=>console.warn('department floors: keeping the painted ones',e));
@@ -1568,10 +1600,10 @@ function buildShell(){
   floorPlane(-BX,BX,-BZ,BZ,0,fm0,null,6);
   // floor 1 slab around the atrium, plus the bridge to the elevator's back door
   const slabs=[[-BX,VOID.minX,-BZ,BZ],[VOID.maxX,BX,-BZ,BZ],[VOID.minX,VOID.maxX,-BZ,VOID.minZ],[VOID.minX,VOID.maxX,VOID.maxZ,BZ],[SH.x0,SH.x1,VOID.minZ,SH.z0]];
-  const under=mat(0xeef0f3,{roughness:.9});
+  const under=surfMat('ceil','#f6f7f9',new THREE.MeshStandardMaterial({color:0xf6f7f9,roughness:.9}));
   slabs.forEach(([x0,x1,z0,z1])=>{ box(x1-x0,.3,z1-z0,under,(x0+x1)/2,FH-.15,(z0+z1)/2,STATIC[1],false); floorPlane(x0,x1,z0,z1,FH+.002,fm1,STATIC[1],6); });
   // walls
-  const wall=M.wallW;
+  const wall=surfMat('wall','#eeeae3',M.wallW);
   box(48.8,12,.4,wall,0,6,-BZ-.2,null,false); box(.4,12,64.8,wall,-BX-.2,6,0,null,false); box(.4,12,64.8,wall,BX+.2,6,0,null,false);
   box(48.8,6.2,.4,wall,0,9.1,BZ+.2,null,false);
   [[0,-BZ+.03,48,0],[-BX+.03,0,64,Math.PI/2],[BX-.03,0,64,-Math.PI/2]].forEach(([x,z,L,r])=>[0,FH].forEach(y=>{
@@ -1594,7 +1626,7 @@ function buildShell(){
   const nightTex=canvasTex(1024,256,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#9fc4e6'); gr.addColorStop(1,'#eaf1f7'); g.fillStyle=gr; g.fillRect(0,0,W,H);
     for(let i=0;i<9;i++){ g.fillStyle='rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(Math.random()*W,20+Math.random()*60,60+Math.random()*60,12,0,0,7); g.fill(); }
     for(let i=0;i<22;i++){ const x=i*48, h=60+Math.random()*120; g.fillStyle=i%3?'#aab9cb':'#bcc8d6'; g.fillRect(x,H-h,42,h); for(let k=0;k<10;k++){ if(Math.random()<.6){ g.fillStyle='#e6edf4'; g.fillRect(x+5+(k%3)*12,H-h+10+((k/3)|0)*18,6,8);} } } });
-  const nm=new THREE.MeshBasicMaterial({map:nightTex});
+  const nm=new THREE.MeshBasicMaterial({map:nightTex}); OUT.winMat=nm;   // the drawn city until the photographed one is in (cityPano)
   [-21,-7,7,21].forEach(z=>{ plane(12,3.2,nm,-BX+.05,9,z,Math.PI/2); plane(12,3.2,nm,BX-.05,9,z,-Math.PI/2);  });
   [-BX+.12,BX-.12].forEach(x=>[-21,-7,7,21].forEach(z=>{ for(let k=-6;k<=6;k+=3) box(.1,3.3,.1,M.navyDeep,x,9,z+k,null,false); box(.1,.1,12,M.navyDeep,x,10.6,z,null,false); box(.1,.1,12,M.navyDeep,x,7.4,z,null,false); }));
   // ceilings and light panels
@@ -1603,7 +1635,7 @@ function buildShell(){
   const inVoid=(x,z,m)=>x>VOID.minX-m&&x<VOID.maxX+m&&z>VOID.minZ-m&&z<VOID.maxZ+m;
   for(let x=-21;x<=21;x+=6) for(let z=-27;z<=27;z+=6){ if(inVoid(x,z,1.5)) continue;
     [[FH-.31,STATIC[0]],[11.98,STATIC[1]]].forEach(([y,P])=>{ const p=new THREE.Mesh(pg,M.ledWarm); p.rotation.x=Math.PI/2; p.position.set(x,y,z); P.add(p); }); }
-  const roof=mat(0xf0f1f4,{roughness:.9});
+  const roof=surfMat('ceil','#f6f7f9',new THREE.MeshStandardMaterial({color:0xf6f7f9,roughness:.9}));
   [[-BX,VOID.minX,-BZ,BZ],[VOID.maxX,BX,-BZ,BZ],[VOID.minX,VOID.maxX,-BZ,VOID.minZ],[VOID.minX,VOID.maxX,VOID.maxZ,BZ]].forEach(([x0,x1,z0,z1])=>ceilPlane(x0,x1,z0,z1,12,roof));
   const sky=canvasTex(256,256,(g,W,H)=>{ const gr=g.createRadialGradient(W/2,H/2,10,W/2,H/2,W*.75); gr.addColorStop(0,'#f4f8fc'); gr.addColorStop(1,'#bcd8f0'); g.fillStyle=gr; g.fillRect(0,0,W,H);
     for(let i=0;i<14;i++){ g.fillStyle='rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(Math.random()*W,Math.random()*H,20+Math.random()*30,8,Math.random(),0,7); g.fill(); } });
@@ -3625,7 +3657,7 @@ function storeBanner(S){ return canvasTex(1024,320,(g,W,H)=>{ const c=S.d?S.d.co
   g.fillStyle=c; g.font='700 48px Rubik, sans-serif'; g.fillText(S.tag,W/2,H/2+62); }); }
 function buildStores(){
   const glassM=new THREE.MeshStandardMaterial({color:0xd6ecff,transparent:true,opacity:.14,roughness:.04,metalness:.25,depthWrite:false});
-  const wallM=mat(0xf6f3ee,{roughness:.55}), frameM=mat(0x1b2340,{roughness:.35,metalness:.35}), plinthM=mat(0xffffff,{roughness:.3});
+  const wallM=surfMat('wall','#f6f3ee',new THREE.MeshStandardMaterial({color:0xf6f3ee,roughness:.55})), frameM=mat(0x1b2340,{roughness:.35,metalness:.35}), plinthM=mat(0xffffff,{roughness:.3});
   STORE_DEFS.forEach(S=>{
     S.d=DEPTS.find(d=>d.id===S.id)||{color:'#f55304',name:S.name,sub:''};
     const P=STATIC[S.f], base=S.f*FH, top=(S.f===0?FH-.3:2*FH-.02)-base, col=new THREE.Color(S.d.color), accM=new THREE.MeshBasicMaterial({color:col});
@@ -3749,16 +3781,17 @@ function soonTex(){ return canvasTex(1024,300,(g,W,H)=>{ const gr=g.createLinear
   g.direction='rtl'; g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff'; g.font='900 120px Rubik, sans-serif'; g.fillText('נפתח בקרוב!',W/2,H/2-30);
   g.font='600 46px Rubik, sans-serif'; g.fillText('צעצועים · תינוקות · משחקים · ריהוט לחדר ילדים',W/2,H/2+70); }); }
 function buildOutside(){
+  whenInMall(loadOutTex);
   const keep=SG; SG=STATIC[0];
-  const pave=mat(0xd9d6cf,{roughness:.85}), asph=mat(0x3b3f48,{roughness:.9}), grass=mat(0x86b86a,{roughness:1}), line=mat(0xf4f4f0,{roughness:.6});
-  floorPlane(-70,70,BZ+.25,190,-.02,grass,null,8);
-  floorPlane(-40,40,BZ+.25,BZ+5,.004,pave,null,2);                       // pavement along the front
+  const pave=outMat('pave',0xffffff,.85), asph=outMat('asph',0x8a8d93,.9), grass=outMat('grass',0xffffff,1), line=mat(0xf4f4f0,{roughness:.6});
+  floorPlane(-70,70,BZ+.25,190,-.02,grass,null,3.5);
+  floorPlane(-40,40,BZ+.25,BZ+5,.004,pave,null,2.4);                     // pavement along the front
   floorPlane(-40,40,BZ+5,BZ+12,.006,asph,null,4);                        // the street
   for(let x=-38;x<=38;x+=4) floorPlane(x,x+2,BZ+8.4,BZ+8.6,.009,line,null,1);
   floorPlane(1.5,9.7,BZ+12,OUT.front-8,.006,asph,null,4);                // the road to Kids
   [1.7,9.5].forEach(x=>floorPlane(x-.08,x+.08,BZ+12,OUT.front-8,.009,line,null,1));
   for(let z=BZ+14;z<OUT.front-9;z+=4) floorPlane(5.5,5.7,z,z+2,.009,line,null,1);
-  floorPlane(-22,22,OUT.front-8,OUT.front,.007,mat(0xf3e6d6,{roughness:.8}),null,2);   // the plaza
+  floorPlane(-22,22,OUT.front-8,OUT.front,.007,outMat('pave',0xfff4e8,.8),null,2.4);   // the plaza
   [[-12,'#ffb800'],[-4,'#2fb592'],[4,'#3f8fd0'],[12,'#e63946']].forEach(([x,c])=>{ const d=new THREE.Mesh(new THREE.CircleGeometry(1.6,32),mat(new THREE.Color(c).getHex(),overlay({roughness:.7}))); d.rotation.x=-Math.PI/2; d.position.set(x,.012,OUT.front-4); SG.add(d); });
   // street lamps up the road
   for(let z=BZ+16;z<OUT.front-8;z+=12) [0,11.2].forEach(x=>{ cyl(.07,.09,4.4,M.dark,x,2.2,z,null,8); box(.9,.08,.18,M.dark,x+(x?-.4:.4),4.38,z,null,false); box(.4,.05,.16,M.ledWarm,x+(x?-.7:.7),4.33,z,null,false); solid(0,x,z,.3,.3); });
@@ -3775,7 +3808,15 @@ function buildOutside(){
   [[-6.8,0xe63946],[-6.2,0xffb800],[6.2,0x3f8fd0],[6.8,0x9b5de5]].forEach(([x,c],i)=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(.42,16,12),mat(c,{roughness:.3})); b.scale.set(1,1.15,1); b.position.set(x,3.2+(i%2)*.5,F-.8); SG.add(b);
     box(.012,2.6,.012,M.dark,x,1.6+(i%2)*.25,F-.8,null,false); });
   // the mall's own name over its front, seen from the street
-  plane(10,2.5,new THREE.MeshBasicMaterial({map:logoTex()}),0,7.6,BZ+.25,0);
+  plane(10,2.5,new THREE.MeshBasicMaterial({map:logoTex()}),0,8.4,BZ+.47,0);   // in front of the wall (at .25 it was inside it)
+  // the upper front, a blank wall before: aluminium fins over a dark glass band, a navy cornice and an orange line
+  // (its own group, outside the bake, so the baked meshes and their lightmaps stay as they were)
+  { const fac=new THREE.Group(), glassD=new THREE.MeshStandardMaterial({color:0x22324a,roughness:.12,metalness:.7}), orange=mat(BRAND,{roughness:.45});
+    box(48,4.2,.05,glassD,0,8.6,BZ+.43,fac,false); box(48.8,.6,.5,M.navyDeep,0,11.7,BZ+.45,fac,false); box(48.8,.14,.52,orange,0,11.33,BZ+.45,fac,false);
+    box(48.8,.3,.6,M.navyDeep,0,6.35,BZ+.5,fac,false);
+    for(let x=-23.6;x<=23.61;x+=1.6) if(Math.abs(x)>5.8) box(.12,4.6,.35,M.steel,x,8.75,BZ+.6,fac,false);
+    box(8,.25,3,M.navyDeep,0,4.9,BZ+1.6,fac,false); box(8.2,.08,3.1,orange,0,4.75,BZ+1.6,fac,false);   // a canopy over the doors
+    mergeParts(fac); floorRoot(0).add(fac); }
   // where the walk stops: the end of the grass
   solidR(0,-41,-40,BZ,191); solidR(0,40,41,BZ,191); solidR(0,-41,41,190,191);
   SG=keep;
@@ -3793,7 +3834,7 @@ function outWarp(out){ const w=$('#warp'); w.classList.add('on'); buzz(12);
     player.vel.set(0,0,0); camYawSm=null; hero.g.position.copy(player.pos); setOutside(out); setTimeout(()=>w.classList.remove('on'),60); },170); }
 let outsideNow=false;
 function setOutside(on){ if(outsideNow===on) return; outsideNow=on;
-  if(OUT.backdrop) OUT.backdrop.visible=!on;
+  if(OUT.backdrop) OUT.backdrop.visible=false;   // the real street and the photographed city show through the glass now
   scene.background.setHex(on?0xbfdcf2:0xe4e7ed); scene.fog.color.setHex(on?0xd4e6f4:0xe9ebf0); scene.fog.far=on?160:140; }
 /* the drive: in, up the road (or back down it), out by the car */
 function startDrive(){ if(OUT.drive) return; const toKids=OUT.parked==='home', a=toKids?OUT.home:OUT.kids, b=toKids?OUT.kids:OUT.home;
@@ -3882,13 +3923,18 @@ setTimeout(loadBakedShade,0);
    triangle count does not match (the building changed since the bake) is left as it is. */
 const BAKED_LM=true, LM_SCALE=1.6, LM_MATS=new Map();
 function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) return LM_MATS.get(k);
-  const c=m.clone(); c.aoMap=tex; c.aoMapIntensity=1;
-  c.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <aomap_fragment>',`#ifdef USE_AOMAP
-      float lmv = texture2D( aoMap, vUv2 ).r * ${LM_SCALE.toFixed(2)};
+  const c=m.clone(); c.aoMap=tex; c.aoMapIntensity=1; const wt=c.userData.surf&&WALL_T[c.userData.surf.kind]?c.userData.surf.kind:null;
+  // on a wall or a ceiling the bake's noise showed as big grey clouds: there it gives only the broad light, blurred
+  // and the same on anything else that does not face up (cabinets, columns, fronts): only the floor keeps the bake's
+  // fine detail, its contact shadows; elsewhere the light is blurred and flattened by how far the surface turns away
+  const sharp=`texture2D( aoMap, vUv2 ).r * ${LM_SCALE.toFixed(2)}`, soft=`mix(.95, texture2D( aoMap, vUv2, 3.0 ).r * ${LM_SCALE.toFixed(2)}, .4)`;
+  const lmExpr=wt?soft:`mix(${soft}, ${sharp}, smoothstep(.55, .9, inverseTransformDirection( normal, viewMatrix ).y))`;
+  c.onBeforeCompile=sh=>{ if(wt) worldTexPatch(sh,wt); sh.fragmentShader=sh.fragmentShader.replace('#include <aomap_fragment>',`#ifdef USE_AOMAP
+      float lmv = ${lmExpr};
       reflectedLight.indirectDiffuse *= lmv; reflectedLight.directDiffuse *= mix(1.0, lmv, .75);
       reflectedLight.indirectSpecular *= lmv; reflectedLight.directSpecular *= mix(1.0, lmv, .75);
     #endif`); if(c.userData.floor!==undefined) reflPatch(sh); };
-  c.customProgramCacheKey=()=>c.userData.floor!==undefined?'lmfloor':'lm'; LM_MATS.set(k,c); return c; }
+  c.customProgramCacheKey=()=>c.userData.floor!==undefined?'lmfloor':wt?'lm-'+wt:'lm'; LM_MATS.set(k,c); return c; }
 function loadLightmaps(only){
   if(!BAKED_LM) return;
   for(let f=0;f<=TOP;f++){ if(only!==undefined&&f!==only&&only!=='rest') continue; if(only==='rest'&&f===0) continue;
@@ -3907,7 +3953,7 @@ function loadLightmaps(only){
 // the ground floor's light first (it is what the entrance shows); the floors above once the shopper is inside
 setTimeout(()=>loadLightmaps(0),0); whenInMall(()=>loadLightmaps('rest'));
 bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
-OUT.backdrop=STATIC[0].children.find(m=>m.material===OUT_BACKDROP)||null;
+OUT.backdrop=STATIC[0].children.find(m=>m.material===OUT_BACKDROP)||null; if(OUT.backdrop) OUT.backdrop.visible=false; cityPano();
 STATIC[1].children.forEach(m=>floorCasters.push(m));
 STATIC[2].children.forEach(m=>{ m.userData.f=2; floorCasters.push(m); });
 floorCasters.forEach(m=>{ if(m.userData.c===undefined) m.userData.c=m.castShadow; });
@@ -6436,7 +6482,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
   CATALOG.forEach(it=>{ if(it.taken||!it.near) return; it.model.rotation.y=it.model.userData.face?Math.atan2(camera.position.x-it.x,camera.position.z-it.z):Math.sin(t*.8+it.baseRot)*.6; if(it.wanted){ const s=1+Math.sin(t*4)*.06; it.ring.scale.set(s,s,s); } });
-  alfTick(dt,t); sellerTick(dt); petTick(dt); storeTick(dt);
+  alfTick(dt,t); sellerTick(dt); petTick(dt); storeTick(dt); cityTick();
   fans.forEach((f,i)=>{ f.userData.spin.rotation.z+=dt*14; f.children[2].rotation.y=Math.sin(t*.6+i)*.7; });
   if(jumbo) jumbo.rotation.y=t*.25;
   AD.update(dt);
