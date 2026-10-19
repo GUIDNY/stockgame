@@ -101,13 +101,13 @@ def thumb(url, raw=None):
     buf = io.BytesIO(); bg.save(buf, 'JPEG', quality=70, optimize=True)
     return 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
 
-def cutout(raw):
+def cutout(raw, size=240, q=78):
     """The product on its own: the photo's plain white backdrop cut away, so the real product can stand on
     its pedestal instead of a look-alike model. None when it cannot be cut cleanly (a photo in a room, a
     grey studio backdrop, a product touching every edge); that product keeps its 3D model."""
     im = Image.open(io.BytesIO(raw)).convert('RGBA')
     bg = Image.new('RGBA', im.size, (255, 255, 255, 255)); bg.alpha_composite(im); im = bg.convert('RGB')
-    im.thumbnail((240, 240))
+    im.thumbnail((size, size), Image.LANCZOS)
     W, H = im.size; px = im.load()
     border = [px[x, 0] for x in range(W)] + [px[x, H - 1] for x in range(W)] + [px[0, y] for y in range(H)] + [px[W - 1, y] for y in range(H)]
     if sum(1 for p in border if min(p) >= 232) / len(border) < .9: return None
@@ -122,7 +122,7 @@ def cutout(raw):
     bb = mask.point(lambda v: 255 if v > 40 else 0).getbbox()
     if not bb or (bb[2] - bb[0] >= W - 2 and bb[3] - bb[1] >= H - 2): return None
     out = im.convert('RGBA'); out.putalpha(mask); out = out.crop(bb)
-    buf = io.BytesIO(); out.save(buf, 'WEBP', quality=78, method=6)
+    buf = io.BytesIO(); out.save(buf, 'WEBP', quality=q, method=6)
     return 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode(), round(out.width / out.height, 3)
 
 def crawl_catalog(cfg):
@@ -265,12 +265,15 @@ def collect(cfg, seen):
                     skipped += 1; print(f"  no photo for {c['slug']}: {e}", file=sys.stderr); continue
                 try: cut = cutout(raw)
                 except Exception as e: cut = None; print(f"  no cut-out for {c['slug']}: {e}", file=sys.stderr)
+                # a sharp one too, fetched by the game only when you come near the product (the small one loads with the page)
+                try: hi = cutout(raw, 720, 86) if cut else None
+                except Exception: hi = None
                 seen.add(c['slug']); got += 1
                 info = details(f"{SITE}/product/{c['slug']}")
                 items.append({'slug': c['slug'], 'url': f"{SITE}/product/{c['slug']}", 'cat': cat['slug'], 'kind': kind_of(c['name'], cat['zone']),
                               'short': short_of(c['name'], c['brand']), 'name': c['name'], 'brand': c['brand'], 'price': c['price'],
                               'old': c['old'] if c['old'] and c['old'] > c['price'] else None, 'disc': c['disc'] if c['old'] else 0, 'img': img,
-                              **({'cut': cut[0], 'ca': cut[1]} if cut else {}), **({'zone': cat['zone']} if cat['zone'].startswith('kiosk') else {}), **({'info': info} if info else {})})
+                              **({'cut': cut[0], 'ca': cut[1]} if cut else {}), **({'cutHi': hi[0]} if hi else {}), **({'zone': cat['zone']} if cat['zone'].startswith('kiosk') else {}), **({'info': info} if info else {})})
                 time.sleep(.15)
             if f'page={n + 1}' not in page: break
         print(f"  {cat['name']:<24} {got} מוצרים" + (f" (דילגתי על {skipped}: בלי תמונה, אביזר, כפול או בלי דגם תלת־ממד מתאים)" if skipped else ''))
@@ -281,7 +284,7 @@ def externalize(data):
     shrinks by half and each photo loads only when something shows it, from the browser cache after that."""
     d = json.loads(json.dumps(data)); (OUT / 'img').mkdir(parents=True, exist_ok=True)
     for it in d.get('items', []):
-        for k in ('img', 'cut'):
+        for k in ('img', 'cut', 'cutHi'):
             v = it.get(k)
             if isinstance(v, str) and v.startswith('data:image/'):
                 ext = 'webp' if v.startswith('data:image/webp') else 'jpg'
@@ -295,6 +298,7 @@ def inline(data):
     """The single-file copy (the artifact) keeps every photo inside it."""
     d = json.loads(json.dumps(data))
     for it in d.get('items', []):
+        it.pop('cutHi', None)
         for k in ('img', 'cut'):
             v = it.get(k)
             if isinstance(v, str) and v.startswith('img/') and (OUT / v).exists():

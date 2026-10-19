@@ -6019,10 +6019,14 @@ function fillCard(it){
   el('cardSpecs').innerHTML=''; (I.specs||[]).forEach(([n,v])=>{ const dt=document.createElement('dt'), dd=document.createElement('dd'); dt.textContent=n; dd.textContent=v; el('cardSpecs').append(dt,dd); });
   el('cardRet').textContent=I.ret?`↩️ ${I.ret} יום להחזרה · ביטול לפי חוק`:'';
   // the gallery: the cut-out first, then the product's own photos; tap (or swipe) for the next
-  cardGal.list=[it.cut||it.img,...(I.imgs||[]).slice(1)].filter(Boolean); cardGal.i=0; cardGalShow();
+  cardGal.list=[it.cutHi||it.cut||it.img,...(I.imgs||[]).slice(1)].filter(Boolean); cardGal.i=0; cardGalShow();
 }
 const cardGal={list:[],i:0};
-function fillMini(it){ $('#miniImg').src=it.cut||it.img||''; $('#miniName').textContent=it.name||it.full; $('#miniPrice').textContent=shekel(it.price); $('#miniDisc').textContent=it.old?`-${it.disc}%`:''; }
+/* The product's photo is small with the page (240 px, it loads with everything); come within 10 m and the sharp one
+   (720 px) takes its place, on the product and its copies in the window. */
+function cutHiLoad(it){ it.hiOn=true; if(!it.cutPlane) return;
+  new THREE.TextureLoader().load(it.cutHi,tx=>{ tx.encoding=THREE.sRGBEncoding; tx.anisotropy=renderer.capabilities.getMaxAnisotropy(); const m=it.cutPlane.material, old=m.map; m.map=tx; m.needsUpdate=true; if(old&&old!==tx) old.dispose(); }); }
+function fillMini(it){ $('#miniImg').src=it.cutHi||it.cut||it.img||''; $('#miniName').textContent=it.name||it.full; $('#miniPrice').textContent=shekel(it.price); $('#miniDisc').textContent=it.old?`-${it.disc}%`:''; }
 function syncMini(){ const m=$('#mini'), on=PHONE.matches&&!!shownCard&&ui.card.hidden&&G.state==='play'&&!G.paused; if(m.hidden===!on) return; m.hidden=!on; }
 $('#mini').addEventListener('click',()=>{ if(!shownCard) return; fillCard(shownCard); ui.card.hidden=false; syncMini(); buzz(8); });
 $('#cardX').addEventListener('click',()=>{ ui.card.hidden=true; syncMini(); buzz(6); });
@@ -6399,7 +6403,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
   if(G.paused && G.state!=='edit'){ if(mgEl.hidden) gfxRender(); requestAnimationFrame(loop); return; }
   if(frame%3===0) drawScreen(screens[(frame/3)%3|0],t);
   if(frame%10===0){ const menu=G.state!=='play', ph=PHONE.matches;
-    CATALOG.forEach(it=>{ it.dist=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); const show=menu||it.dist<28; if(it.group.visible!==show) it.group.visible=show; const near=menu||(it.f===player.floor&&it.dist<24); it.tag.visible=!it.taken&&near&&!ph; it.near=near; });
+    CATALOG.forEach(it=>{ it.dist=Math.hypot(it.x-player.pos.x,it.z-player.pos.z); const show=menu||it.dist<28; if(it.group.visible!==show) it.group.visible=show; if(it.cutHi&&!it.hiOn&&it.dist<10&&it.f===player.floor) cutHiLoad(it); const near=menu||(it.f===player.floor&&it.dist<24); it.tag.visible=!it.taken&&near&&!ph; it.near=near; });
     // on a phone the labels would bury the scene: the six closest, and nothing further than 13 m
     if(ph){ CATALOG.filter(it=>!it.taken&&it.f===player.floor&&it.dist<13).sort((a,b)=>a.dist-b.dist).slice(0,6).forEach(it=>{ it.tag.visible=true; }); }
     const tw=ph?1.25:2.05, th=ph?.49:.8; CATALOG.forEach(it=>{ if(!it.tag.visible) return; const k=menu?1:Math.max(.42,Math.min(1,(camera.position.distanceTo(it.group.position)-1)/7)); it.tag.scale.set(tw*k,th*k,1); }); }
