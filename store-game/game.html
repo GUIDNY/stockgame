@@ -96,6 +96,7 @@
   .coin{width:1.15em;height:1.15em;vertical-align:-.2em;display:inline-block;}
   #coins .coin{width:20px;height:20px;display:block;}
   .mgover .big .coin{width:.9em;height:.9em;vertical-align:-.1em;}
+  .mgwhy{margin:10px auto 4px;max-width:420px;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.1);font-size:13.5px;line-height:1.5;text-align:right;} .mgwhy b:first-child{display:block;color:#ffd166;margin-bottom:2px;} .mgover{overflow-y:auto;}
   #coins.bump{animation:bump .5s;}
   /* rooftop mini-games and the merch shop */
   .screen.mg{padding:0;background:#0b0e26;align-items:stretch;z-index:16;}
@@ -107,6 +108,7 @@
   .mgtop button{height:36px;padding:0 12px;border-radius:11px;background:rgba(255,255,255,.12);color:#fff;font-weight:700;}
   #mgCanvas{flex:1;width:100%;min-height:0;display:block;touch-action:none;}
   .mgover{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;background:rgba(8,11,28,.82);color:#fff;padding:24px;}
+  @media (max-height:560px){ .mgover{place-content:start center;padding-top:64px;gap:8px;} .mgover h3{font-size:21px;} .mgover p,.mgwhy{font-size:12.5px;margin:0 auto;} }   /* a phone on its side: from the top, nothing cut off */
   .mgover h3{margin:0;font-size:26px;font-weight:900;}
   .mgover p{margin:0;color:#c9cfe6;font-size:15px;line-height:1.5;max-width:30ch;}
   .mgover .big{font-size:44px;font-weight:900;color:#ffd166;}
@@ -247,7 +249,7 @@
     background:radial-gradient(circle,rgba(255,255,255,.05),rgba(255,255,255,.14));border:1.5px solid rgba(255,255,255,.35);}
   #camstick i{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(250,250,252,.88);box-shadow:0 3px 10px rgba(0,0,0,.28);display:grid;place-items:center;pointer-events:none;}
   #camstick i svg{width:18px;height:18px;color:#f55304;}
-  @media (pointer:coarse){ #camstick{display:block;} }
+  /* the camera follows on its own; a drag on any free part of the screen turns it (review note 05) */
   .hud.card-open #camstick,.hud.talking #camstick{display:none!important;}
   /* the prize machine's controls, over the 3D view */
   #claw3{position:fixed;inset:0;z-index:30;pointer-events:none;direction:rtl;}
@@ -870,6 +872,8 @@
     .mh-logo{padding:0 8px;font-size:12px;}
     #card{grid-template-columns:minmax(0,1fr) 76px;} #card img,#card .ph{width:76px;height:76px;}
   }
+  @media (pointer:coarse) and (max-height:560px) and (min-width:701px){ .quest{display:none!important;}
+    #helpBtn{right:104px;bottom:calc(var(--sb) + 36px);} }   /* a phone on its side: no room above the action button, so help sits beside it */
 </style>
 
 <div id="game"><canvas id="c"></canvas></div>
@@ -901,7 +905,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/><path id="xmark" d="M3 3l18 18" stroke-width="2.4"/></svg>
   </button>
   <button id="online" class="glass" hidden aria-label="שחקנים מחוברים עכשיו"><i></i><span class="num" id="onlineN">1</span><span>מחוברים</span></button>
-  <button id="emoBtn" class="glass capr" data-cap="אימוג'י" hidden aria-label="שליחת אימוג'י" aria-expanded="false">😀</button>
+  <button id="emoBtn" class="glass capr" data-cap="צ'אט" hidden aria-label="צ'אט ואימוג'י" aria-expanded="false">😀</button>
   <div id="emoTray" class="glass" hidden></div>
   <button id="coins" class="glass capr" data-cap="רמה ומטבעות" aria-label="הרמה והמטבעות שלי"><span aria-hidden="true" id="coinsIc"></span><b class="num" id="coinsN">0</b><span class="lv" id="coinsLv">1</span></button>
   <button id="helpBtn" class="glass capr" data-cap="אלפרד" aria-label="עזרה: אלפרד, הנציג של BuyToday"><img id="helpAv" alt=""><span>עזרה</span></button>
@@ -1950,9 +1954,9 @@ const ZONES={
 if(MALL2) STORE_DEFS.forEach(S=>{ ZONES[S.id]=S.slotsUV.map(([u,v])=>{ const [x,z]=S.at(u,v); return {f:S.f,x,z}; }); });
 /* the mall kiosks: an island stall in the walk of each floor, small things on its counter and someone behind it */
 const STALLS=MALL2?[
-  {id:'kiosk0',f:0,x:0,z:8.6,name:"גאדג'ט פוינט",tag:'קטנים שעושים את היום',col:0x16b3a3,hi:['היי! בוא תראה מה יש לי 😊','מבצעים קטנים, הנאה גדולה 🎁','משהו קטן לעצמך? 😉']},
-  {id:'kiosk1',f:1,x:0,z:-18,name:'קטנים וטובים',tag:'הכול לבית, בקטן',col:0xe9a21a,hi:['שלום שלום! מה מחפשים היום?','יש לי בדיוק את מה שחסר לך בבית 🏠','בוא, תסתכל, אין חובה 🙂']},
-  {id:'kiosk2',f:2,x:0,z:-15,name:'קיוסק הגג',tag:'פינוקים למטבח',col:0xe5483b,hi:['אהלן! איזה נוף, אה? 😎','קפה, קומקום, בלנדר: הכול פה 🍹','ברוך הבא לגג! צריך משהו?']}]:[];
+  {id:'kiosk0',f:0,x:0,z:8.6,name:"גאדג'ט פוינט",tag:'קטנים שעושים את היום',col:0x16b3a3,hi:['היי! {בוא|בואי} {תראה|תראי} מה יש לי 😊','מבצעים קטנים, הנאה גדולה 🎁','משהו קטן {לעצמך|לעצמך}? 😉']},
+  {id:'kiosk1',f:1,x:0,z:-18,name:'קטנים וטובים',tag:'הכול לבית, בקטן',col:0xe9a21a,hi:['שלום שלום! מה מחפשים היום?','יש לי בדיוק את מה שחסר לך בבית 🏠','{בוא|בואי}, {תסתכל|תסתכלי}, אין חובה 🙂']},
+  {id:'kiosk2',f:2,x:0,z:-15,name:'קיוסק הגג',tag:'פינוקים למטבח',col:0xe5483b,hi:['אהלן! איזה נוף, אה? 😎','קפה, קומקום, בלנדר: הכול פה 🍹','{ברוך הבא|ברוכה הבאה} לגג! {צריך|צריכה} משהו?']}]:[];
 const STALL_SLOTS=[[-1.12,-.5],[1.12,-.5],[-1.12,.5],[1.12,.5],[-.42,.56],[.42,.56]];
 STALLS.forEach(K=>{ ZONES[K.id]=STALL_SLOTS.map(([a,b])=>({f:K.f,x:K.x+a,z:K.z+b,kiosk:1})); });
 const CAT_ZONE={}; (STORE.cats||[]).forEach(c=>CAT_ZONE[c.slug]=c.zone);
@@ -2206,9 +2210,11 @@ function storeTick(dt){ castSweep(dt); if(!STORE_DEFS.length||G.state!=='play') 
     if(far){ if(x.emo) x.emo.hidden=true; return; } if(x.S) sellerWalk(x,dt); else if(x.K) stallTick(x,dt); else staffTick(x.G,x.r,dt,x.f); }); }
 /* A shop's seller is on the floor, not stuck behind the till: walks from product to product (now and then back to
    the till), and when you come in, stops, turns to you, waves and says hello with the shop's name. */
-const SELLER_HI=['שלום! ברוכים הבאים ל{n} 👋','היי! כיף שבאת ל{n} 😊','ברוכים הבאים ל{n}! צריך עזרה?','שלום שלום! ב{n} יש מבצעים 🔥'];
-const SELLER_MORE=['קח את הזמן, אני כאן אם צריך 🙂','זה אחד הנמכרים אצלנו!','שאלות? אני פה 👍','יש משלוח מהיר על הכול 🚚'];
-function sellerSay(x,t,ms){ x.emo.textContent=t; x.emo.classList.add('txt'); x.emoUntil=performance.now()+(ms||3800); }
+const SELLER_HI=['שלום! ברוכים הבאים ל{n} 👋','היי! כיף {שבאת|שבאת} ל{n} 😊','ברוכים הבאים ל{n}! {צריך|צריכה} עזרה?','שלום שלום! ב{n} יש מבצעים 🔥'];
+const SELLER_MORE=['{קח|קחי} את הזמן, אני כאן אם צריך 🙂','זה אחד הנמכרים אצלנו!','שאלות? אני פה 👍','יש משלוח מהיר על הכול 🚚'];
+// lines to the player come in both genders, {m|f}: the player's own character picks the form
+const toPlayer=t=>String(t).replace(/\{([^|{}]*)\|([^|{}]*)\}/g,(m,a,b)=>avatar&&avatar.girl?b:a);
+function sellerSay(x,t,ms){ x.emo.textContent=toPlayer(t); x.emo.classList.add('txt'); x.emoUntil=performance.now()+(ms||3800); }
 function sellerAnim(x,name){ const r=x.r, a=r.actions[name]||r.actions.Idle; if(r.action===a) return; a.reset().play(); if(r.action) r.action.crossFadeTo(a,HERO_FADE,false); r.action=a; }
 function sellerWalk(x,dt){ const S=x.S, G=x.G, r=x.r, p=G.g.position, now=performance.now();
   const dp=Math.hypot(player.pos.x-p.x,player.pos.z-p.z), inS=storeAt(player.floor,player.pos.x,player.pos.z)===S;
@@ -2348,10 +2354,21 @@ function gltfReady(){ if(GLTF_READY) return GLTF_READY;
 function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
   return GLTF_CACHE[url] = gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb|CASHIER(-m)?\.glb|K_[a-z]+(-m)?\.glb|KK\d(-m)?\.glb/.test(url)) return meshyAnims(gl); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb|CASHIER(-m)?\.glb|K_[a-z]+(-m)?\.glb|KK\d(-m)?\.glb/.test(url)) return meshyAnims(gl).then(g=>armsOut(g,url)); return gl; });
 }
 const HEAD_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
+/* A wide figure (the ovens grandma, her apron and her round middle) swallows an arm in the crowd's clips, whose arms
+   hang close to a slim body: hers are turned out from the shoulder, in every clip, so both hang clear (review note 01). */
+const ARMS_OUT={K_ovens:[.8,.3]};   // [out from the sides, forward], radians at the shoulder: measured on her rig
+const ARM_T=(()=>{ const m=/[?&]armt=([-\d.]+),([-\d.]+)/.exec(location.search); return m?[+m[1],+m[2]]:null; })();
+function armsOut(gl,url){ const id=(/people\/([A-Za-z_]+?)(-m)?\.glb/.exec(url)||[])[1], A=ARM_T||ARMS_OUT[id]; if(!A) return gl;
+  const q=new THREE.Quaternion(), r={}, Z=new THREE.Vector3(0,0,1), X=new THREE.Vector3(1,0,0);
+  ['Left','Right'].forEach((S,i)=>{ r[S]=new THREE.Quaternion().setFromAxisAngle(Z,i?-A[0]:A[0]).multiply(new THREE.Quaternion().setFromAxisAngle(X,A[1])); });   // Z mirrors from side to side, X does not
+  gl.animations.forEach(c=>{ if(c.name==='Wave') return;   // a raised arm is clear of the body already
+    c.tracks.forEach(t=>{ const b=/(Left|Right)Arm\.quaternion$/.exec(t.name); if(!b) return;
+      for(let k=0;k<t.values.length;k+=4){ q.fromArray(t.values,k).multiply(r[b[1]]); q.toArray(t.values,k); } }); });
+  return gl; }
 function headNod(clip){
   const ax=new THREE.Vector3(1,0,0), nod={Neck:new THREE.Quaternion().setFromAxisAngle(ax,HEAD_NOD[0]),Head:new THREE.Quaternion().setFromAxisAngle(ax,HEAD_NOD[1])}, q=new THREE.Quaternion();
   clip.tracks.forEach(t=>{ const b=/(Neck|Head)\.quaternion$/.exec(t.name); if(!b) return; for(let k=0;k<t.values.length;k+=4){ q.fromArray(t.values,k).multiply(nod[b[1]]); q.toArray(t.values,k); } });
@@ -2601,10 +2618,10 @@ const M_HAIR=[['','מקורי',0],['black','שחור',0x16110d],['brown','חום
 const M_SKIN=[['','מקורי',0],['light','בהיר',0xf7dcc8],['fair','',0xeec3a2],['tan','',0xd69c72],['olive','',0xc08a5e],['brown','',0xa36c49],['deep','',0x7f5036]];
 const M_GLASS=[['none','בלי'],['glasses','משקפיים'],['round','עגולים'],['shades','משקפי שמש']];
 const M_HAT=[['none','בלי'],['cap','כובע BuyToday'],['beanie','כובע גרב'],['phones','אוזניות']];   /* hats on top of a finished figure never look part of it: they come back as figures made with them */
-const MESHY_REF={'1':{hair:.049,skin:[.8884,.3873,.2275]},'F1':{hair:.0176,skin:[.8298,.3467,.1903]}};
+const MESHY_REF={'1':{hair:.049,skin:[.958,.42,.243]},'F1':{hair:.0176,skin:[.936,.392,.211]}};   // skin: the median of the painted face, linear, over every outfit
 const MESHY_MASK={};
 function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
-  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=1'); t.flipY=false; return MESHY_MASK[name]=t; }
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=3'); t.flipY=false; return MESHY_MASK[name]=t; }
 function meshyLook(model,o,body,outfit){
   const ref=MESHY_REF[body]; if(!ref) return;
   const hc=(M_HAIR.find(x=>x[0]===o.mHair)||M_HAIR[0])[2], sc=(M_SKIN.find(x=>x[0]===o.mSkin)||M_SKIN[0])[2];
@@ -2640,13 +2657,13 @@ const accMat=(c,o)=>ACC_MAT[c+(o?JSON.stringify(o):'')]||(ACC_MAT[c+(o?JSON.stri
 function meshyAcc(model,o){
   (model.userData.acc||[]).forEach(a=>{ if(a.parent) a.parent.remove(a); }); model.userData.acc=[]; model.userData.accTok=(model.userData.accTok||0)+1;   // a hat still loading for an older look is dropped
   const glass=o.mGlass&&o.mGlass!=='none'?o.mGlass:null, hat=o.mHat&&o.mHat!=='none'&&M_HAT.some(x=>x[0]===o.mHat)?o.mHat:null;   // only what the list offers today if(!glass&&!hat) return;
-  const H=meshyHead(model); if(!H) return;
+  const H=meshyHead(model); if(!H) return; const A=Object.assign({},ACC_FIT,o.girl?null:ACC_FIT.m);
   const b=H.box, Wd=b.max.x-b.min.x, Ht=b.max.y-b.min.y, Dp=b.max.z-b.min.z, cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
   // built in the mesh's own (bind-pose) space, then hung on the head bone: bone-local = boneInverse × bindMatrix × mesh space
   const add=g=>{ const wrap=new THREE.Group(); wrap.matrixAutoUpdate=false; wrap.matrix.copy(H.inv).multiply(H.sm.bindMatrix); wrap.add(g);
     wrap.traverse(x=>{ x.userData.acc=true; if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } }); H.bone.add(wrap); model.userData.acc.push(wrap); };   // marked: the outfit painter leaves it alone
   const u=Ht;   // the unit: the head's height
-  if(glass){ const g=new THREE.Group(), ey=b.min.y+Ht*ACC_FIT.eye, ez=b.max.z-Dp*ACC_FIT.front, sp=Wd*ACC_FIT.spread;
+  if(glass){ const g=new THREE.Group(), ey=b.min.y+Ht*A.eye, ez=b.max.z-Dp*A.front, sp=Wd*A.spread;
     const frame=accMat(glass==='round'?0xc9a24a:0x1b1d24,{metalness:glass==='round'?.6:.2,roughness:.35});
     const lens=glass==='shades'?accMat(0x14161c,{roughness:.1,metalness:.3}):null;
     [-1,1].forEach(s=>{ const r=glass==='round'?u*.085:u*.09;
@@ -2660,14 +2677,14 @@ function meshyAcc(model,o){
     hatTpl(hat).then(t=>{ if(model.userData.accTok!==tok) return;
       const m=fitModel(t.clone(true),F.wh?{maxW:Ht*F.wh}:{maxW:Wd*F.w,maxD:Dp*F.d}), g=new THREE.Group(); g.add(m); m.rotation.set(F.pitch||0,F.yaw,0);   // wh: sized by the head's height (long hair makes it wide)
       g.position.set(cx,b.max.y-Ht*F.drop,cz+Dp*F.fwd); add(g); }).catch(e=>console.warn('hat '+hat,e)); }
-  if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*ACC_FIT.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
+  if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*A.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
     const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.045,8,40,Math.PI),dark); band.scale.set(Wd*1.08,(b.max.y-my)*2*1.02,Dp*.6); band.position.set(cx,my,cz); g.add(band);
     [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
     add(g); }
 }
 const HAT_FIT={cap:{w:1.5,d:1.85,drop:.54,pitch:.2,yaw:0,fwd:.06,f:{w:1.25,d:1.6,drop:.38,pitch:.08}},beanie:{wh:.8,drop:.34,yaw:0,fwd:0}};   // fitted by eye, front and three-quarter, on both figures
 const HAT_TPL={}; const hatTpl=id=>HAT_TPL[id]||(HAT_TPL[id]=loadGLTF(ASSET+'deco/hat_'+id+'.glb?v=1').then(gl=>gl.scene));
-const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42};
+const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42,m:{eye:.4,ear:.36}};   // m: the boy's head box takes in his tall hair, so his eyes and ears sit lower in it
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   // the player's own figure wears the chosen outfit: the same body painted another way (the face stays the same)
   const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
@@ -3637,7 +3654,7 @@ function buildStores(){
     const [nx,nz]=S.at(-.2,0), prev=SG; SG=P; neon(S.name,nx,base+wy1+1.25,nz,ry,Math.min(6.2,L*.4),false,S.d.sub||S.tag,true);
     const [bx,bz]=S.at(S.D-.06,0); plane(Math.min(10,L*.55),Math.min(10,L*.55)*.3125,new THREE.MeshBasicMaterial({map:storeBanner(S)}),bx,base+3.7,bz,ry,P); SG=prev;
     // a rug and a ring of light over the centrepiece
-    const [hx,hz]=S.at(S.slotsUV[0][0],0), rug=new THREE.Mesh(new THREE.CircleGeometry(2.4,48),mat(col.clone().lerp(new THREE.Color(0xffffff),.55),{roughness:.95})); rug.rotation.x=-Math.PI/2; rug.position.set(hx,base+.014,hz); rug.receiveShadow=true; P.add(rug);
+    const [hx,hz]=S.at(S.slotsUV[0][0],0), rug=new THREE.Mesh(new THREE.CircleGeometry(2.4,48),mat(col.clone().lerp(new THREE.Color(0xffffff),.55),{roughness:.95,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-6})); rug.rotation.x=-Math.PI/2; rug.position.set(hx,base+.016,hz); rug.receiveShadow=true; P.add(rug);   // pulled in front of the carpet, whose own offset cut the rug in half as the camera came close (review note 06)
     const ring=new THREE.Mesh(new THREE.TorusGeometry(1.6,.05,8,48),M.glowWhite); ring.rotation.x=Math.PI/2; ring.position.set(hx,base+top-.35,hz); P.add(ring);
     // the till and the centrepiece prop take room on the floor
     const [tx,tz]=S.at(...S.till); solid(S.f,tx,tz,side?1.2:2.4,side?2.4:1.2,'till');
@@ -4502,7 +4519,7 @@ const TOUR_TOUCH=matchMedia('(pointer:coarse)').matches;
 const TOUR=[
   {t:'היי, אני אלפרד 👋',p:'ברוכים הבאים לקניון של BuyToday. כל מוצר כאן אמיתי, במחיר של היום באתר. בואו אראה לכם בחצי דקה איך מסתובבים.'},
   {t:'הולכים',el:TOUR_TOUCH?'#joy':null,p:TOUR_TOUCH?'הג׳ויסטיק משמאל מזיז את הדמות, והמצלמה באה איתה. אפשר גם פשוט ללחוץ על מוצר, והדמות תלך אליו לבד.':'החצים או W A S D מזיזים את הדמות, והמצלמה באה איתה. לחיצה על הרצפה או על מוצר, והדמות הולכת לשם לבד.'},
-  {t:'מסתכלים מסביב',el:TOUR_TOUCH?'#camstick':null,p:TOUR_TOUCH?'הג׳ויסטיק הקטן מימין מסובב רק את המצלמה, בלי לזוז. גם גרירה על המסך עושה את זה.':'Q ו־E, או גרירה עם העכבר, מסובבים רק את המצלמה בלי לזוז.'},
+  {t:'מסתכלים מסביב',el:null,p:TOUR_TOUCH?'המצלמה באה אחריכם לבד. כדי להסתכל מסביב, פשוט גוררים אצבע על המסך.':'Q ו־E, או גרירה עם העכבר, מסובבים רק את המצלמה בלי לזוז.'},
   {t:'מפה וקפיצה',el:'#map',p:'לוחצים על המפה, בוחרים מחלקה, והקניון מקפיץ אתכם ישר אליה. בלי מעליות ובלי לחפש.'},
   {t:'קונים',el:'#cartBtn',p:'ניגשים למוצר ורואים מחיר אמיתי. "לעגלה" שומר אותו, "קנה עכשיו" לוקח לתשלום. העגלה כאן היא אותה עגלה כמו באתר.'},
   {t:'הדמות שלכם',el:'#meBtn',p:'כאן משנים את הדמות מתי שרוצים: מבנה, שיער, בגדים ואביזרים. היא נשמרת לפעם הבאה.'},
@@ -5181,7 +5198,7 @@ const clawDay=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).f
 function clawPlayedToday(){ try{ return localStorage.getItem('bt-claw-day')===clawDay(); }catch(e){ return false; } }
 function clawPlays(){ try{ return +localStorage.getItem('bt-claw-n')||0; }catch(e){ return 0; } }
 function clawIntro(){ MG.on=false; cancelAnimationFrame(MG.raf); mgDrawBg(0,true); const done=clawPlayedToday(); $('#mgScore').textContent='🎁'; $('#mgTime').textContent='';
-  mgOver.hidden=false; mgOver.innerHTML='<h3>🎁 מכונת המתנות</h3><p>משחק חינם אחד בכל יום, עם מוצרים אמיתיים מהחנות.<br>מזיזים את הזרוע עם החיצים: ימינה ושמאלה, קדימה ואחורה. כשהיא מעל קופסה לוחצים <b>"הורד"</b>.<br>היא תופסת רק כשהיא נסגרת מעל האמצע של הקופסה, אז כדאי לכוון.<br>קופסה שנופלת לפתח הפרסים שווה מטבעות משחק, לפי המוצר.</p>'
+  mgOver.hidden=false; mgOver.innerHTML='<h3>🎁 מכונת המתנות</h3><p>משחק חינם אחד בכל יום, עם מוצרים אמיתיים מהחנות.<br>מזיזים את הזרוע עם החיצים: ימינה ושמאלה, קדימה ואחורה. כשהיא מעל קופסה לוחצים <b>"הורד"</b>.<br>היא תופסת רק כשהיא נסגרת מעל האמצע של הקופסה, אז כדאי לכוון.<br>קופסה שנופלת לפתח הפרסים שווה מטבעות משחק, לפי המוצר.</p>'+MG_WHY
     +(done?'<p style="color:#ffd166"><b>שיחקתם היום. המשחק הבא מחר 🌙</b></p><div class="row"><button class="go2">יציאה</button></div>':'<p style="opacity:.8">שיחקתם עד היום: '+clawPlays()+' פעמים</p><div class="row"><button class="go1">משחקים!</button><button class="go2">יציאה</button></div>');
   const g1=mgOver.querySelector('.go1'); if(g1) g1.onclick=clawStart; mgOver.querySelector('.go2').onclick=closeGame; }
 async function clawStart(){
@@ -5293,10 +5310,12 @@ function claw3Result(){ const c=CLAW3, b=c.result, box=$('#claw3Res');
   if(c.gift) box.insertAdjacentHTML('afterbegin',`<p class="gift">🎁 ${c.gift.label} · ${c.gift.code}</p>`);
   box.hidden=false; box.querySelector('.go2').onclick=claw3End; }
 function claw3End(){ const c=CLAW3; c.on=false; c.shown=false; c.phase=''; $('#claw3').hidden=true; $('#claw3Res').hidden=true; ui.hud.hidden=false; hero.g.visible=true; G.paused=false; last=performance.now(); camYawSm=null; }
+// what a game is for, under every game's rules (review note 09): the goal, what you win, and where it is spent
+const MG_WHY='<div class="mgwhy"><b>על מה משחקים?</b>כל סיבוב שווה מטבעות משחק 🪙 לפי הנקודות. את המטבעות מבזבזים ב<b>חנות BuyToday כאן בגג, ליד האאוטלט</b>: תלבושות, כובעים וחיות מחמד לדמות שלכם. מטבעות המשחק משמשים בתוך הקניון בלבד.</div>';
 function mgIntro(){ const gs=MG.game; MG.on=false; cancelAnimationFrame(MG.raf); mgDrawBg(0); let best=0; try{ best=+localStorage.getItem('bt-best-'+gs.id)||0; }catch(e){}
   mgOver.hidden=false; mgOver.innerHTML=(gs.id==='catch'
     ?'<h3>🛒 תפוס את המבצע</h3><p>גררו את העגלה ותפסו מה שנופל: מוצר = 1, תגית מבצע = 3, מטבע = 5.<br>תגית "מחיר מלא" לוקחת לב, ושלושה לבבות וזה נגמר. רצף תפיסות מכפיל נקודות!</p>'
-    :'<h3>🏷️ צייד ההנחות</h3><p>מוצרים קופצים על המדפים. לחצו על אלה עם מדבקת הנחה אדומה, ולא על "מחיר מלא".<br>מטבע זהב = 3 נקודות. רצף לחיצות נכונות מכפיל נקודות!</p>')
+    :'<h3>🏷️ צייד ההנחות</h3><p>מוצרים קופצים על המדפים. לחצו על אלה עם מדבקת הנחה אדומה, ולא על "מחיר מלא".<br>מטבע זהב = 3 נקודות. רצף לחיצות נכונות מכפיל נקודות!</p>')+MG_WHY
     +(best?`<p>השיא שלכם: <b style="color:#ffd166">${best}</b></p>`:'')+'<div class="row"><button class="go1">התחלה</button><button class="go2">יציאה</button></div>';
   mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
 function mgStart(){ mgOver.hidden=true; MG.on=true; MG.phase='count'; MG.count=3.2; MG.dur=MG.game.id==='catch'?30:25; MG.t=MG.dur; MG.score=0; MG.items=[]; MG.fx=[]; MG.pops=[]; MG.cells=[]; MG.spawn=.4; MG.cartX=.5; MG.cartV=0; MG.cartPx=null; MG.lives=3; MG.combo=0; MG.shake=0; MG.last=performance.now(); buzz(15); MG.raf=requestAnimationFrame(mgLoop); }
@@ -5304,7 +5323,7 @@ function mgStars(){ const s=MG.score, g=MG.game.id==='catch'?[20,45,75]:[15,30,4
 function mgEnd(){ MG.on=false; cancelAnimationFrame(MG.raf); const coins=Math.max(0,MG.game.id==='catch'?Math.floor(MG.score/2):MG.score); addCoins(coins); if(coins) Sound.cash();
   let best=0; try{ best=+localStorage.getItem('bt-best-'+MG.game.id)||0; if(MG.score>best) localStorage.setItem('bt-best-'+MG.game.id,String(MG.score)); }catch(e){}
   const st=mgStars(), stars='<div style="font-size:40px;letter-spacing:6px">'+[0,1,2].map(i=>`<span style="opacity:${i<st?1:.2};filter:${i<st?'none':'grayscale(1)'}">⭐</span>`).join('')+'</div>';
-  mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':MG.lives<=0?'אוי, נגמרו הלבבות':'נגמר הזמן'}</h3>${stars}<p>${MG.score} נקודות · צברתם</p><div class="big">+${coins} ${COIN}</div><p>יש לכם ${Coins.n} מטבעות. חנות BuyToday מחכה בפינת האאוטלט.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
+  mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':MG.lives<=0?'אוי, נגמרו הלבבות':'נגמר הזמן'}</h3>${stars}<p>${MG.score} נקודות · צברתם</p><div class="big">+${coins} ${COIN}</div><p>יש לכם ${Coins.n} מטבעות. מבזבזים אותם בחנות BuyToday כאן בגג, ליד האאוטלט: תלבושות, כובעים וחיות מחמד.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
   mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
 function closeGame(){ MG.on=false; cancelAnimationFrame(MG.raf); mgEl.hidden=true; G.paused=false; last=performance.now(); }
 $('#mgClose').addEventListener('click',()=>{ if(MG.game&&MG.game.id==='claw') return closeGame(); if(MG.on&&MG.phase==='play') mgEnd(); else closeGame(); });
@@ -5560,28 +5579,33 @@ const PET_GAIT={dog:'trot',cat:'trot',panda:'trot',dragon:'trot',bunny:'hop',pen
 /* Legs without a skeleton: the models are one piece each, so the vertex shader finds the legs itself (everything
    below the hips, split left/right and front/back about the body's middle) and swings each about its hip, the
    diagonal pairs together as in a real trot. The swing grows with the distance from the hip, so the body stays put. */
-function petLegs(model,p){ p.u={uPhase:{value:0},uAmp:{value:0}};
+function petLegs(model,p){ p.u={uPhase:{value:0},uAmp:{value:0},uGait:{value:0}};
   model.traverse(o=>{ if(!o.isMesh) return; const b=o.geometry.boundingBox||(o.geometry.computeBoundingBox(),o.geometry.boundingBox), H=b.max.y-b.min.y;
     const leg=new THREE.Vector4(b.min.y+H*.3,b.min.y,(b.min.x+b.max.x)/2,(b.min.z+b.max.z)/2);
     o.material=(Array.isArray(o.material)?o.material[0]:o.material).clone();
-    o.material.onBeforeCompile=sh=>{ sh.uniforms.uPhase=p.u.uPhase; sh.uniforms.uAmp=p.u.uAmp; sh.uniforms.uLeg={value:leg};
-      sh.vertexShader='uniform float uPhase; uniform float uAmp; uniform vec4 uLeg;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+    o.material.onBeforeCompile=sh=>{ sh.uniforms.uPhase=p.u.uPhase; sh.uniforms.uAmp=p.u.uAmp; sh.uniforms.uGait=p.u.uGait; sh.uniforms.uLeg={value:leg};
+      sh.vertexShader='uniform float uPhase; uniform float uAmp; uniform float uGait; uniform vec4 uLeg;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
         if(transformed.y<uLeg.x){ float dy=uLeg.x-transformed.y;
-          float pair=(transformed.x-uLeg.z)*(transformed.z-uLeg.w)>0.?0.:3.14159;
+          float trot=(transformed.x-uLeg.z)*(transformed.z-uLeg.w)>0.?0.:3.14159, bound=transformed.z>uLeg.w?0.:2.4;
+          float pair=mix(trot,bound,uGait);   // a trot (diagonal pairs) walking, a bound (front pair, back pair) running
           float a=sin(uPhase+pair)*uAmp, lift=max(0.,cos(uPhase+pair))*uAmp*.35;
           transformed.z+=dy*sin(a); transformed.y+=dy*(1.-cos(a))+lift*dy; }`); };
     o.material.customProgramCacheKey=()=>'petlegs'; }); }
 function petKill(p){ if(!p) return; p.dead=true; if(p.root.parent) p.root.parent.remove(p.root); }
 function petAnim(p,dt){
   const gait=PET_GAIT[p.id]||'trot';
-  if(p.u) p.u.uAmp.value+=((p.speed>.4?Math.min(.55,.22+p.speed*.07):0)-p.u.uAmp.value)*(1-Math.exp(-dt*8));
-  if(p.speed>.4&&gait==='trot'){ p.phase+=dt*(6+p.speed*1.6); if(p.u) p.u.uPhase.value=p.phase;
-    // a walk, not a jump: the body rides a little over each step, with a slight roll from side to side
-    p.bob.position.y=Math.abs(Math.sin(p.phase))*.018; p.bob.rotation.z=Math.sin(p.phase)*.03; p.bob.rotation.x=Math.cos(p.phase*2)*.02;
+  // the legs reach further the faster it goes, and the step rate follows the ground speed (a stride that grows with
+  // speed), so the paws stay planted instead of sliding; past a jog it changes from a trot to a bound
+  const run=Math.min(1,Math.max(0,(p.speed-2.6)/1.4));
+  if(p.u){ p.u.uAmp.value+=((p.speed>.3?Math.min(.9,.3+p.speed*.11):0)-p.u.uAmp.value)*(1-Math.exp(-dt*8)); p.u.uGait.value+=(run-p.u.uGait.value)*(1-Math.exp(-dt*5)); }
+  if(p.speed>.3&&gait==='trot'){ p.phase+=dt*Math.PI*2*p.speed/(.32+p.speed*.12); if(p.u) p.u.uPhase.value=p.phase;
+    // the body rides a little over each step with a slight roll; running, it rocks nose-down, nose-up with the bound
+    const g=p.u?p.u.uGait.value:0, ride=Math.abs(Math.sin(p.phase))*.016*(1-g)+Math.max(0,Math.sin(p.phase+1))*.045*g;
+    p.bob.position.y+=(ride-p.bob.position.y)*(1-Math.exp(-dt*30)); p.bob.rotation.z=Math.sin(p.phase)*.03*(1-g); p.bob.rotation.x=Math.cos(p.phase*2)*.02*(1-g)+Math.sin(p.phase)*.09*g;
     p.bob.scale.set(1,1,1); p.trick=0; p.spin=0; }
-  else if(p.speed>.4&&gait==='waddle'){ p.phase+=dt*(7+p.speed*1.5);
+  else if(p.speed>.3&&gait==='waddle'){ p.phase+=dt*(7+p.speed*1.5);
     p.bob.rotation.z=Math.sin(p.phase)*.2; p.bob.position.y=Math.abs(Math.cos(p.phase))*.025; p.bob.rotation.x=.06; p.bob.scale.set(1,1,1); p.trick=0; p.spin=0; }
-  else if(p.speed>.4){ p.phase+=dt*(7+p.speed*2); const h=Math.abs(Math.sin(p.phase)); p.bob.position.y=h*.12;
+  else if(p.speed>.3){ p.phase+=dt*(7+p.speed*2); const h=Math.abs(Math.sin(p.phase)); p.bob.position.y=h*.12;
     p.bob.scale.set(1+(1-h)*.07,1-(1-h)*.09+h*.04,1+(1-h)*.07); p.bob.rotation.x=Math.cos(p.phase)*.13; p.trick=0; p.spin=0; }
   else { p.nextTrick-=dt; if(p.nextTrick<=0&&!p.trick){ p.trick=1; p.trickT=0; p.trickKind=gait==='hop'?(Math.random()<.55?'hop':'spin'):(Math.random()<.7?'look':'spin'); p.nextTrick=4+Math.random()*6; }
     if(p.trick){ p.trickT+=dt; const look=p.trickKind==='look', u=Math.min(1,p.trickT/(look?1.6:.75));
@@ -5593,7 +5617,7 @@ function petAnim(p,dt){
 function petFollow(p,dt,o){
   const fx=Math.sin(o.yaw), fz=Math.cos(o.yaw), tx=o.x-fx*.95+fz*.65, tz=o.z-fz*.95-fx*.65, r=p.root.position, dx=tx-r.x, dz=tz-r.z, d=Math.hypot(dx,dz);
   if(d>10||Math.abs(o.y-r.y)>1.5){ r.set(tx,o.y,tz); p.yaw=o.yaw; p.speed=0; }
-  else { const want=d>.35?Math.min(7.5,d*2.8):0; p.speed+=(want-p.speed)*(1-Math.exp(-dt*6));
+  else { const want=Math.min(7.5,Math.max(0,d-.3)*3.2);   /* eases in from standing: no step from 0 to a jog at a threshold */ p.speed+=(want-p.speed)*(1-Math.exp(-dt*6));
     if(d>.01&&p.speed>.05){ const st=Math.min(d,p.speed*dt); r.x+=dx/d*st; r.z+=dz/d*st; } r.y+=(o.y-r.y)*(1-Math.exp(-dt*10)); }
   const face=p.speed>.4?Math.atan2(dx,dz):Math.atan2(o.x-r.x,o.z-r.z);
   p.yaw=lerpAngle(p.yaw,face,1-Math.exp(-dt*(p.speed>.4?10:2.5))); petAnim(p,dt); }
@@ -5884,7 +5908,11 @@ function drawMap(){
 /* ---------- update ---------- */
 const tmp=new THREE.Vector3(), camPos=new THREE.Vector3(0,9,40), look=new THREE.Vector3(), lookSm=new THREE.Vector3(0,1.4,20);
 let frame=0, bubbleT=4, shopperLine=null;
-const SHOPPER_LINES=['יש לכם את זה בשחור?','רק מסתכל…','איפה המעלית?','זה במבצע?','וואו, איזה מסך','חיפשתי כבל HDMI'];
+// Hebrew speaks in gender: a woman says מסתכלת, a man מסתכל (review note 07). The look comes from the character she wears.
+const SHOPPER_LINES={m:['יש לכם את זה בשחור?','רק מסתכל…','איפה המעלית?','זה במבצע?','וואו, איזה מסך','חיפשתי כבל HDMI','אני צריך מקרר חדש'],
+  f:['יש לכם את זה בשחור?','רק מסתכלת…','איפה המעלית?','זה במבצע?','וואו, איזה מסך','חיפשתי כבל HDMI','אני צריכה מקרר חדש']};
+const PEOPLE_FEMALE=new Set(['BT2','S3','MESHY-F1']);
+const npcFemale=G=>G.personT?PEOPLE_FEMALE.has(G.personT.name):!!(G.npcOpts&&G.npcOpts.girl);
 
 function updatePlayer(dt){
   if(OUT.drive){ driveTick(dt); return; }
@@ -6423,7 +6451,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     updatePlayer(dt); updateNear(); updateArrow(t); netTick(dt);
     if(!talkCamera()) updateCamera(dt,false); else { camPos.lerp(tmp,1-Math.exp(-dt*4)); lookSm.lerp(look,1-Math.exp(-dt*5)); camera.position.copy(camPos); camera.lookAt(lookSm); }
     bubbleT-=dt;
-    if(bubbleT<=0){ bubbleT=rand(6,11); const cands=shoppers.filter(s=>s.f===player.floor); if(cands.length){ shopperLine={s:pick(cands),until:t+2.6}; shopperBubble.textContent=pick(SHOPPER_LINES); } }
+    if(bubbleT<=0){ bubbleT=rand(6,11); const cands=shoppers.filter(s=>s.f===player.floor); if(cands.length){ const s=pick(cands); shopperLine={s,until:t+2.6}; shopperBubble.textContent=pick(SHOPPER_LINES[npcFemale(s.G)?'f':'m']); } }
     if(shopperLine&&t<shopperLine.until&&shopperLine.s.pos.distanceTo(player.pos)<14) place2d(shopperBubble,shopperLine.s.pos,shopperLine.s.pos.y+2.75); else shopperBubble.hidden=true;
     if(frame%2===0) drawMap();
   } else {
