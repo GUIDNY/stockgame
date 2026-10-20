@@ -885,6 +885,7 @@
   }
   @media (pointer:coarse) and (max-height:560px) and (min-width:701px){ .quest{display:none!important;}
     #helpBtn{right:104px;bottom:calc(var(--sb) + 36px);} }   /* a phone on its side: no room above the action button, so help sits beside it */
+  .scanlink{display:flex;align-items:center;justify-content:center;height:44px;border-radius:12px;background:var(--brand);color:#fff;font-weight:900;font-size:15px;text-decoration:none;flex:1;}
 </style>
 
 <div id="game"><canvas id="c"></canvas></div>
@@ -4392,6 +4393,7 @@ function renderCreator(){
           if(!id){ b.style.background='repeating-linear-gradient(45deg,#f1f2f6 0 6px,#dfe2ea 6px 12px)'; b.style.color='#161a2b'; b.innerHTML=on?CHECK:'<small style="font:800 9px Rubik,sans-serif">מקורי</small>'; }
           else { b.style.background=hex(col); b.style.color=light(col)?'#161a2b':'#fff'; b.innerHTML=CHECK; }
           b.addEventListener('click',()=>set(key,id)); c.appendChild(b); }); };
+      { const r=row('דמות מהפנים שלך'), a=document.createElement('a'); a.href='scan.html'; a.className='scanlink'; a.textContent='📸 סריקת פנים · ניסיוני'; r.appendChild(a); }   // the selfie → 3D figure prototype (scan.html)
       msw('צבע שיער','mHair',M_HAIR);
       msw('גוון עור','mSkin',M_SKIN);
       seg('משקפיים','mGlass',M_GLASS,avatar.mGlass||'none');
