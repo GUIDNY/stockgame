@@ -17,17 +17,25 @@ const POSE = 'High-quality stylised 3D animated-film look (like a modern Pixar c
   + 'Standing in a T-pose: arms straight out to the sides, palms down, legs straight and slightly apart, feet flat, facing the camera. '
   + 'The whole body from head to feet in frame, centred. Plain white background, soft even light, no shadows, no props, no text. '
   + 'Clothes without loose strings, straps or hanging cords.';
+// what the figure wears, picked on the page; 'mine' keeps the clothes in the photos
+const WEAR = {
+  bt: 'Dress them in a bright orange zip-up hoodie with a clean, smooth hood opening: no drawstrings, no cords, nothing hanging. A small white BuyToday logo on the chest, dark jeans and white sneakers. ',
+  suit: 'Dress them in a well-fitted navy suit, a white shirt with an open collar, no tie, and brown leather shoes. ',
+  sport: 'Dress them in sportswear: a fitted athletic t-shirt, track pants with a side stripe and running shoes. ',
+  summer: 'Dress them for summer: a plain short-sleeved t-shirt, knee-length shorts and sneakers. ',
+  casual: 'Casual modern clothes: a plain t-shirt or sweater, jeans and sneakers. ',
+};
 // the photos in order: the face, then the face from the side and the whole body when there are
-function prompt(side, body) {
+function prompt(side, body, wear) {
+  const dress = WEAR[wear] ? WEAR[wear] + 'Ignore the clothes they wear in the photos. ' : null;
   if (!side && !body) return 'Turn the person in image 1 into a full-body 3D game character for a friendly, colourful shopping-mall game. ' + LIKE
-    + 'Casual modern clothes, sneakers. ' + POSE;
+    + (dress || 'Keep the top they wear in image 1, with matching trousers and sneakers. ') + POSE;
   let s = 'Turn the person in these photos into a full-body 3D game character for a friendly, colourful shopping-mall game. '
     + 'Image 1 is a close-up of their face, from the front: take the face from it. ', n = 2;
   if (side) s += 'Image ' + (n++) + ' is the same face from the side: use it for the profile of the nose, the jaw and chin line, the ears '
     + 'and the volume and shape of the hair at the sides and back. ';
-  s += body ? 'Image ' + n + ' shows their whole body: take their build, height proportions, clothes, colours and shoes from it. '
-    : 'Casual modern clothes, sneakers. ';
-  return s + LIKE + POSE;
+  if (body) s += 'Image ' + n + ' shows their whole body: take their build and height proportions' + (dress ? '' : ', clothes, colours and shoes') + ' from it. ';
+  return s + (dress || (body ? '' : 'Keep the top they wear in image 1, with matching trousers and sneakers. ')) + LIKE + POSE;
 }
 const ID = /^[\w-]{8,80}$/;
 
@@ -76,7 +84,7 @@ module.exports = async (req, res) => {
       }
       if (!b.image || !files.length) return send(res, 400, { error: 'image' });
       // Gemini 3 Pro Image keeps a face best (10 credits)
-      const t = await task(Object.assign({ type: 'generate_image', model_version: 'gemini_3_pro_image_preview', prompt: prompt(!!b.side, !!b.body), t_pose: true },
+      const t = await task(Object.assign({ type: 'generate_image', model_version: 'gemini_3_pro_image_preview', prompt: prompt(!!b.side, !!b.body, b.wear), t_pose: true },
         files.length > 1 ? { files } : { file: files[0] }));
       return send(res, 200, { stage: 'img', t });
     }
