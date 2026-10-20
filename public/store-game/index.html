@@ -1500,27 +1500,29 @@ const OUT_MATS=[];
 const OUT_FLAT={grass:0x86b86a,asph:0x3b3f48,pave:0xd9d6cf};   // until the textures are in
 function outMat(kind,tint,rough){ const m=new THREE.MeshStandardMaterial({color:OUT_FLAT[kind],roughness:rough}); m.userData.out={kind,tint}; OUT_MATS.push(m); return m; }
 function loadOutTex(){ const L=new THREE.TextureLoader(), ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v=1',res,undefined,rej));
-  ['grass','asph','pave'].forEach(k=>Promise.all([ld('out-'+k+'-c.jpg'),ld('out-'+k+'-n.jpg')]).then(([c,n])=>{ c.encoding=THREE.sRGBEncoding;
-    [c,n].forEach(t=>{ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); });
+  // on a phone, colour only: the ground is a lot of screen, and its normal map and full anisotropy cost more than they show
+  const lite=PHONE.matches||matchMedia('(pointer:coarse)').matches;
+  ['grass','asph','pave'].forEach(k=>Promise.all([ld('out-'+k+'-c.jpg'),lite?null:ld('out-'+k+'-n.jpg')]).then(([c,n])=>{ c.encoding=THREE.sRGBEncoding;
+    [c,n].forEach(t=>{ if(!t) return; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=lite?4:renderer.capabilities.getMaxAnisotropy(); });
     const mats=new Set(OUT_MATS); scene.traverse(o=>{ if(o.isMesh&&o.material&&o.material.userData&&o.material.userData.out) mats.add(o.material); });
-    mats.forEach(m=>{ if(m.userData.out.kind!==k) return; m.map=c; m.normalMap=n; m.color.setHex(m.userData.out.tint); m.needsUpdate=true; }); }).catch(e=>console.warn('outside '+k,e))); }
+    mats.forEach(m=>{ if(m.userData.out.kind!==k) return; m.map=c; m.normalMap=n||null; m.color.setHex(m.userData.out.tint); m.needsUpdate=true; }); }).catch(e=>console.warn('outside '+k,e))); }
 const CITY={mesh:null, tex:null, night:null};
-function cityPano(){ const t=new THREE.TextureLoader().load(ASSET+'tex/city'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=1',t=>{
+function cityPano(){ const t=new THREE.TextureLoader().load(ASSET+'tex/city'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=2',t=>{
     // the first floor's windows: a strip of the same city, the towers just above its horizon
-    if(!OUT.winMat) return; const w=t.clone(); w.needsUpdate=true; w.repeat.set(.16,.17); w.offset.set(.62,.47); OUT.winMat.map=w; OUT.winMat.needsUpdate=true; });
+    if(!OUT.winMat) return; const w=t.clone(); w.needsUpdate=true; w.repeat.set(.16,.293); w.offset.set(.62,.086);   /* the panorama is cropped to its top 58%: the same strip as before */ OUT.winMat.map=w; OUT.winMat.needsUpdate=true; });
   t.encoding=THREE.sRGBEncoding; t.anisotropy=4; CITY.tex=t;
-  const m=new THREE.Mesh(new THREE.SphereGeometry(165,48,24),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
-  m.rotation.y=CITY_YAW; m.renderOrder=-10; m.frustumCulled=false; scene.add(m); CITY.mesh=m; return t; }
+  const m=new THREE.Mesh(new THREE.SphereGeometry(165,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
+  m.rotation.y=CITY_YAW; m.renderOrder=10; /* after the opaque scene, so the depth test skips every pixel the mall covers (first, it painted the whole screen) */ m.frustumCulled=false; scene.add(m); CITY.mesh=m; return t; }
 const CITY_YAW=Math.PI*.5;   // the towers ahead as you come out of the doors
 function cityTick(){ if(!CITY.mesh) return; CITY.mesh.visible=player.floor===0; if(CITY.mesh.visible) CITY.mesh.position.copy(camera.position);
   if(CITY.night){ CITY.night.visible=player.floor===TOP; if(CITY.night.visible) CITY.night.position.copy(camera.position); } }
 /* the roof at night: a lit skyline across a river (Poly Haven's Shanghai Bund, CC0) in place of the drawn dome and
    skyline, which stay until it has loaded */
-function cityNight(){ const t=new THREE.TextureLoader().load(ASSET+'tex/city-night'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=1',()=>{
+function cityNight(){ const t=new THREE.TextureLoader().load(ASSET+'tex/city-night'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=2',()=>{
     STATIC[TOP].children.forEach(m=>{ if((OUT.roofSky||[]).includes(m.material)) m.visible=false; }); });
   t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
-  const m=new THREE.Mesh(new THREE.SphereGeometry(160,48,24),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
-  m.rotation.y=Math.PI*1.15; m.renderOrder=-10; m.frustumCulled=false; m.visible=false; scene.add(m); CITY.night=m; }
+  const m=new THREE.Mesh(new THREE.SphereGeometry(160,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
+  m.rotation.y=Math.PI*1.15; m.renderOrder=10; m.frustumCulled=false; m.visible=false; scene.add(m); CITY.night=m; }
 function loadSurfaces(){
   const L=new THREE.TextureLoader(); L.setCrossOrigin('anonymous');
   const ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v='+FLOOR_TEX_V,res,undefined,rej));
@@ -3984,9 +3986,10 @@ function lmMaterial(m,tex){ const k=m.uuid+'|'+tex.uuid; if(LM_MATS.has(k)) retu
   // and the same on anything else that does not face up (cabinets, columns, fronts): only the floor keeps the bake's
   // fine detail, its contact shadows; elsewhere the light is blurred and flattened by how far the surface turns away
   const sharp=`texture2D( aoMap, vUv2 ).r * ${LM_SCALE.toFixed(2)}`, soft=`mix(.95, texture2D( aoMap, vUv2, 3.0 ).r * ${LM_SCALE.toFixed(2)}, .4)`;
-  const lmExpr=wt?soft:`mix(${soft}, ${sharp}, smoothstep(.55, .9, inverseTransformDirection( normal, viewMatrix ).y))`;
+  // a floor (facing up) reads the light once; only what turns away pays for the second, blurred read
+  const lmExpr=wt?soft:`lmUp > .9 ? ${sharp} : mix(${soft}, ${sharp}, smoothstep(.55, .9, lmUp))`;
   c.onBeforeCompile=sh=>{ if(wt) worldTexPatch(sh,wt); sh.fragmentShader=sh.fragmentShader.replace('#include <aomap_fragment>',`#ifdef USE_AOMAP
-      float lmv = ${lmExpr};
+      float lmUp = inverseTransformDirection( normal, viewMatrix ).y; float lmv = ${lmExpr};
       reflectedLight.indirectDiffuse *= lmv; reflectedLight.directDiffuse *= mix(1.0, lmv, .75);
       reflectedLight.indirectSpecular *= lmv; reflectedLight.directSpecular *= mix(1.0, lmv, .75);
     #endif`); if(c.userData.floor!==undefined) reflPatch(sh); };
@@ -4009,7 +4012,7 @@ function loadLightmaps(only){
 // the ground floor's light first (it is what the entrance shows); the floors above once the shopper is inside
 setTimeout(()=>loadLightmaps(0),0); whenInMall(()=>loadLightmaps('rest'));
 bake(STATIC[0]); bake(STATIC[1]); bake(STATIC[2]);
-OUT.backdrop=STATIC[0].children.find(m=>m.material===OUT_BACKDROP)||null; if(OUT.backdrop) OUT.backdrop.visible=false; cityPano(); whenInMall(cityNight);
+OUT.backdrop=STATIC[0].children.find(m=>m.material===OUT_BACKDROP)||null; if(OUT.backdrop) OUT.backdrop.visible=false; whenInMall(()=>{ cityPano(); cityNight(); });   // once inside: not part of the entrance's download
 STATIC[1].children.forEach(m=>floorCasters.push(m));
 STATIC[2].children.forEach(m=>{ m.userData.f=2; floorCasters.push(m); });
 floorCasters.forEach(m=>{ if(m.userData.c===undefined) m.userData.c=m.castShadow; });
