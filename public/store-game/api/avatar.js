@@ -2,9 +2,9 @@
    Behind the mall's own gate (middleware.js): only the accounts on its list reach it. The key is TRIPO_API_KEY in the
    project's environment and never reaches the page.
 
-   Stateless. POST {image: data URL} uploads the photo and starts the first task; each GET ?stage=&t= checks the
+   Stateless. POST {image, side?, body?: data URLs} uploads the photos and starts the first task; each GET ?stage=&t= checks the
    current task and, once it is done, starts the next, so the browser's polling drives the whole chain:
-     img   the selfie (and a full-body photo, if there is one) drawn as a full-body figure in a T-pose (generate_image, 10 credits)
+     img   the selfie (and the face from the side and a full-body photo, if there are) drawn as a full-body figure in a T-pose (generate_image, 10 credits)
      model that drawing made 3D, with detailed textures (image_to_model, about 40)
      rig   a skeleton put in it (animate_rig, about 25)
      done  url: the rigged GLB
@@ -17,11 +17,18 @@ const POSE = 'High-quality stylised 3D animated-film look (like a modern Pixar c
   + 'Standing in a T-pose: arms straight out to the sides, palms down, legs straight and slightly apart, feet flat, facing the camera. '
   + 'The whole body from head to feet in frame, centred. Plain white background, soft even light, no shadows, no props, no text. '
   + 'Clothes without loose strings, straps or hanging cords.';
-const PROMPT1 = 'Turn the person in image 1 into a full-body 3D game character for a friendly, colourful shopping-mall game. ' + LIKE
-  + 'Casual modern clothes, sneakers. ' + POSE;
-const PROMPT2 = 'Turn the person in these photos into a full-body 3D game character for a friendly, colourful shopping-mall game. '
-  + 'Image 1 is a close-up of their face: take the face from it. Image 2 shows their whole body: take their build, height proportions, '
-  + 'clothes, colours and shoes from it. ' + LIKE + POSE;
+// the photos in order: the face, then the face from the side and the whole body when there are
+function prompt(side, body) {
+  if (!side && !body) return 'Turn the person in image 1 into a full-body 3D game character for a friendly, colourful shopping-mall game. ' + LIKE
+    + 'Casual modern clothes, sneakers. ' + POSE;
+  let s = 'Turn the person in these photos into a full-body 3D game character for a friendly, colourful shopping-mall game. '
+    + 'Image 1 is a close-up of their face, from the front: take the face from it. ', n = 2;
+  if (side) s += 'Image ' + (n++) + ' is the same face from the side: use it for the profile of the nose, the jaw and chin line, the ears '
+    + 'and the volume and shape of the hair at the sides and back. ';
+  s += body ? 'Image ' + n + ' shows their whole body: take their build, height proportions, clothes, colours and shoes from it. '
+    : 'Casual modern clothes, sneakers. ';
+  return s + LIKE + POSE;
+}
 const ID = /^[\w-]{8,80}$/;
 
 const key = () => process.env.TRIPO_API_KEY || '';
@@ -61,15 +68,15 @@ module.exports = async (req, res) => {
 
     // a new selfie: upload it and start drawing the figure
     if (req.method === 'POST') {
-      const b = await readJson(req), pics = [b.image, b.body].filter(Boolean).slice(0, 2), files = [];
+      const b = await readJson(req), pics = [b.image, b.side, b.body].filter(Boolean).slice(0, 3), files = [];
       for (const p of pics) {
         const m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(p || ''); if (!m) return send(res, 400, { error: 'image' });
         const ext = m[1] === 'jpeg' ? 'jpg' : m[1], fd = new FormData(); fd.append('file', new Blob([Buffer.from(m[2], 'base64')], { type: 'image/' + m[1] }), 'photo.' + ext);
         const up = await tripo('/upload', { method: 'POST', body: fd }); files.push({ type: ext, file_token: up.image_token });
       }
-      if (!files.length) return send(res, 400, { error: 'image' });
+      if (!b.image || !files.length) return send(res, 400, { error: 'image' });
       // Gemini 3 Pro Image keeps a face best (10 credits)
-      const t = await task(Object.assign({ type: 'generate_image', model_version: 'gemini_3_pro_image_preview', prompt: files.length > 1 ? PROMPT2 : PROMPT1, t_pose: true },
+      const t = await task(Object.assign({ type: 'generate_image', model_version: 'gemini_3_pro_image_preview', prompt: prompt(!!b.side, !!b.body), t_pose: true },
         files.length > 1 ? { files } : { file: files[0] }));
       return send(res, 200, { stage: 'img', t });
     }
