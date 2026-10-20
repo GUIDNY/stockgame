@@ -2700,8 +2700,12 @@ function meshyLook(model,o,body,outfit){
   const hair=new THREE.Color(hc||0).convertSRGBToLinear(), skin=new THREE.Color(sc||0).convertSRGBToLinear();
   model.traverse(x=>{ if(!x.isMesh||x.userData.acc) return; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ if(!mt.map) return;
     let U=mt.userData.look;
-    if(!U){ U=mt.userData.look={uMask:{value:null},uHair:{value:new THREE.Color()},uHairOn:{value:0},uHairRef:{value:ref.hair},uSkin:{value:new THREE.Vector3(1,1,1)},uSkinOn:{value:0}};
+    if(!U){ U=mt.userData.look={uMask:{value:null},uHair:{value:new THREE.Color()},uHairOn:{value:0},uHairRef:{value:ref.hair},uSkin:{value:new THREE.Vector3(1,1,1)},uSkinOn:{value:0},
+        uSqOn:{value:0},uSqC:{value:new THREE.Vector3()},uSqR:{value:new THREE.Vector3(1,1,1)},uSqY:{value:0},uSqB:{value:1}};
       mt.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,U);
+        // under a hat the hair is pressed onto the head: above the hat's rim, whatever stands out of the skull's ellipsoid is pulled onto it
+        sh.vertexShader='uniform float uSqOn; uniform vec3 uSqC; uniform vec3 uSqR; uniform float uSqY; uniform float uSqB;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+          if(uSqOn>.5){ vec3 d=(transformed-uSqC)/uSqR; float L=length(d); if(L>1.) transformed=mix(transformed,uSqC+d/L*uSqR,smoothstep(uSqY-uSqB,uSqY+uSqB,transformed.y)); }`);
         sh.fragmentShader='uniform sampler2D uMask; uniform vec3 uHair; uniform float uHairOn; uniform float uHairRef; uniform vec3 uSkin; uniform float uSkinOn;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
           vec4 texelColor=texture2D(map,vUv); texelColor=mapTexelToLinear(texelColor);
           vec3 mk=texture2D(uMask,vUv).rgb; float lum=dot(texelColor.rgb,vec3(.3,.59,.11));
@@ -2731,6 +2735,12 @@ function meshyAcc(model,o){
   const glass=o.mGlass&&o.mGlass!=='none'?o.mGlass:null, hat=o.mHat&&o.mHat!=='none'&&M_HAT.some(x=>x[0]===o.mHat)?o.mHat:null;   // only what the list offers today if(!glass&&!hat) return;
   const H=meshyHead(model); if(!H) return; const A=Object.assign({},ACC_FIT,o.girl?null:ACC_FIT.m);
   const b=H.box, Wd=b.max.x-b.min.x, Ht=b.max.y-b.min.y, Dp=b.max.z-b.min.z, cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
+  // the skull, as an ellipsoid in the head's box (its hair taken out), and the line the hat's rim sits on
+  const Q=HAT_FIT.sq[o.girl?'f':'m'], sk={c:new THREE.Vector3(b.min.x+Wd*Q.x,b.min.y+Ht*Q.y,b.min.z+Dp*Q.z),r:new THREE.Vector3(Wd*Q.rx,Ht*Q.ry,Dp*Q.rz),cut:b.min.y+Ht*Q.cut};
+  if(hat==='beanie') sk.cut-=Ht*Q.bd;
+  const sq=hat==='cap'||hat==='beanie';
+  model.traverse(x=>{ if(!x.isMesh||x.userData.acc) return; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ const U=mt.userData.look; if(!U) return;
+    U.uSqOn.value=sq?1:0; U.uSqC.value.copy(sk.c); U.uSqR.value.copy(sk.r); U.uSqY.value=sk.cut; U.uSqB.value=Ht*.03; }); });
   // built in the mesh's own (bind-pose) space, then hung on the head bone: bone-local = boneInverse × bindMatrix × mesh space
   const add=g=>{ const wrap=new THREE.Group(); wrap.matrixAutoUpdate=false; wrap.matrix.copy(H.inv).multiply(H.sm.bindMatrix); wrap.add(g);
     wrap.traverse(x=>{ x.userData.acc=true; if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } }); H.bone.add(wrap); model.userData.acc.push(wrap); };   // marked: the outfit painter leaves it alone
@@ -2744,17 +2754,47 @@ function meshyAcc(model,o){
       const arm=new THREE.Mesh(new THREE.BoxGeometry(u*.016,u*.016,Dp*.55),frame); arm.position.set(cx+s*(sp+r*1.15),ey+u*.01,ez-Dp*.27); g.add(arm); });
     const br=new THREE.Mesh(new THREE.BoxGeometry(sp*2-u*.2,u*.014,u*.014),frame); br.position.set(cx,ey+u*.03,ez); g.add(br);
     add(g); }
-  if(hat==='cap'||hat==='beanie'){   // a real hat (Meshy, deco/hat_<id>.glb), as wide as the head and sat down over the hair
-    const F=Object.assign({},HAT_FIT[hat],o.girl?HAT_FIT[hat].f:null), tok=model.userData.accTok;   // the girl's head (with her hair) is taller: a fit of her own
+  if(hat==='cap'){   // a real cap (Meshy, deco/hat_cap.glb), its crown as wide as the skull, the rim on the skull's hat line
+    const F=Object.assign({},HAT_FIT.cap,o.girl?HAT_FIT.cap.f:null), tok=model.userData.accTok;
     hatTpl(hat).then(t=>{ if(model.userData.accTok!==tok) return;
-      const m=fitModel(t.clone(true),F.wh?{maxW:Ht*F.wh}:{maxW:Wd*F.w,maxD:Dp*F.d}), g=new THREE.Group(); g.add(m); m.rotation.set(F.pitch||0,F.yaw,0);   // wh: sized by the head's height (long hair makes it wide)
-      g.position.set(cx,b.max.y-Ht*F.drop,cz+Dp*F.fwd); add(g); }).catch(e=>console.warn('hat '+hat,e)); }
+      const m=fitModel(t.clone(true),{maxW:sk.r.x*2*F.w}), g=new THREE.Group(); g.add(m); m.rotation.set(F.pitch,0,0);
+      g.position.set(sk.c.x,sk.cut-Ht*F.drop,sk.c.z+Dp*F.fwd); add(g); }).catch(e=>console.warn('hat '+hat,e)); }
+  if(hat==='beanie') add(knitBeanie(sk,Ht));
   if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*A.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
     const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.045,8,40,Math.PI),dark); band.scale.set(Wd*1.08,(b.max.y-my)*2*1.02,Dp*.6); band.position.set(cx,my,cz); g.add(band);
     [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
     add(g); }
 }
-const HAT_FIT={cap:{w:1.5,d:1.85,drop:.54,pitch:.2,yaw:0,fwd:.06,f:{w:1.25,d:1.6,drop:.38,pitch:.08}},beanie:{wh:.8,drop:.34,yaw:0,fwd:0}};   // fitted by eye, front and three-quarter, on both figures
+/* fitted by eye, front and three-quarter, on both figures. sq: the skull in the head's box (fractions of it): centre, radii,
+   and the rim line; the boy's box takes in his tall hair, the girl's her long hair at the back */
+const HAT_FIT={cap:{w:1.12,drop:.02,pitch:.12,fwd:-.02,f:{w:1.05}},beanie:{top:1.18,k:1.1},
+  sq:{m:{x:.5,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03}}};   // bd: how much lower the beanie's rim sits
+/* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
+   taller than the head, a small pompom; BuyToday orange, the logo on the cuff */
+const KNIT={};
+function knitTex(kind){ if(KNIT[kind]) return KNIT[kind];
+  const c=document.createElement('canvas'); c.width=256; c.height=128; const g=c.getContext('2d');
+  const base=kind==='cuff'?'#d9530f':'#f26a1b'; g.fillStyle=base; g.fillRect(0,0,256,128);
+  if(kind==='cuff'){ for(let x=0;x<256;x+=8){ const gr=g.createLinearGradient(x,0,x+8,0); gr.addColorStop(0,'rgba(0,0,0,.28)'); gr.addColorStop(.5,'rgba(255,255,255,.14)'); gr.addColorStop(1,'rgba(0,0,0,.28)'); g.fillStyle=gr; g.fillRect(x,0,8,128); } }
+  else for(let y=0;y<128;y+=8) for(let x=0;x<256;x+=8){   // rows of little knit V's
+    g.strokeStyle='rgba(120,30,0,.35)'; g.lineWidth=1.6; g.beginPath(); g.moveTo(x+.5,y+1); g.lineTo(x+4,y+7); g.lineTo(x+7.5,y+1); g.stroke();
+    g.strokeStyle='rgba(255,220,180,.22)'; g.beginPath(); g.moveTo(x+1.5,y+1); g.lineTo(x+4,y+5.5); g.lineTo(x+6.5,y+1); g.stroke(); }
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=4;
+  if(kind==='cuff') t.repeat.set(6,1); else t.repeat.set(5,3);
+  return KNIT[kind]=new THREE.MeshStandardMaterial({map:t,roughness:.95,metalness:0}); }
+function knitBeanie(sk,Ht){ const F=HAT_FIT.beanie, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, cuff=.32, top=F.top;
+  const ell=(y,k)=>k*F.k/1.07*Math.sqrt(Math.max(0,1-(y/top)**2));
+  const crown=[]; for(let i=0;i<=16;i++){ const y=y0+cuff*.6+(top-y0-cuff*.6)*i/16; crown.push(new THREE.Vector2(Math.max(ell(y,1.07),.001),y)); }
+  const rim=[]; for(let i=0;i<=6;i++){ const y=y0+cuff*i/6; rim.push(new THREE.Vector2(ell(y,1.07)+.07+.025*Math.sin(Math.PI*i/6),y)); }
+  rim.unshift(new THREE.Vector2(ell(y0,1.07)-.02,y0)); rim.push(new THREE.Vector2(ell(y0+cuff,1.07),y0+cuff));
+  const S=m=>{ m.scale.copy(sk.r); m.position.copy(sk.c); return m; };
+  g.add(S(new THREE.Mesh(new THREE.LatheGeometry(crown,40),knitTex('crown'))), S(new THREE.Mesh(new THREE.LatheGeometry(rim,40),knitTex('cuff'))));
+  const pom=new THREE.Mesh(new THREE.IcosahedronGeometry(1,2),accMat(0xf58a3c,{roughness:1,metalness:0})), pa=pom.geometry.attributes.position;
+  for(let i=0;i<pa.count;i++){ const k=1+.12*Math.sin(pa.getX(i)*17+pa.getY(i)*11)*Math.cos(pa.getZ(i)*13); pa.setXYZ(i,pa.getX(i)*k,pa.getY(i)*k,pa.getZ(i)*k); }
+  pom.geometry.computeVertexNormals(); pom.scale.set(sk.r.x*.17,sk.r.y*.17,sk.r.z*.17); pom.position.set(sk.c.x,sk.c.y+sk.r.y*(top+.08),sk.c.z); g.add(pom);
+  const logo=new THREE.Mesh(new THREE.PlaneGeometry(sk.r.x*.42,sk.r.y*.2),merchTex('logo-tile')), ly=y0+cuff/2;
+  logo.position.set(sk.c.x,sk.c.y+sk.r.y*ly,sk.c.z+sk.r.z*(ell(ly,1.07)+.1)+Ht*.004); g.add(logo);
+  return g; }
 const HAT_TPL={}; const hatTpl=id=>HAT_TPL[id]||(HAT_TPL[id]=loadGLTF(ASSET+'deco/hat_'+id+'.glb?v=1').then(gl=>gl.scene));
 const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42,m:{eye:.4,ear:.36}};   // m: the boy's head box takes in his tall hair, so his eyes and ears sit lower in it
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
