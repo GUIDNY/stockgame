@@ -2560,17 +2560,34 @@ function creaseNormals(geo,ang){
    rebuilds it. A skinned scene can't be shared between figures by reference: when NPCs get GLBs too,
    each one gets its own copy here via THREE.SkeletonUtils.clone(gltf.scene). */
 function cloneCharacter(gltf){ return gltf.scene; }
+/* The figure made from a selfie (scan.html): once one is chosen on this device, it is the player's own figure (not
+   what other players see yet). Its file comes through /api/avatar, behind the mall's gate, with a fresh link each
+   time (Tripo's expire); its bones are found by their shape and named as the clips expect (scan-view.js), it is
+   turned to face +z and sized like the Meshy figures (1.87), and the crowd's clips go on as for those. No outfits,
+   colours or accessories: it is dressed as it was drawn. */
+const scanHero=()=>{ try{ const s=JSON.parse(localStorage.getItem('bt-scan-hero')||'null'); return s&&/^[\w-]{8,80}$/.test(s.t||'')?s:null; }catch(e){ return null; } };
+function loadScanHero(t){
+  return new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=2'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); })
+    .then(()=>fetch(ASSET+'api/avatar?stage=rig&t='+encodeURIComponent(t),{credentials:'include',cache:'no-store'})).then(r=>r.json())
+    .then(j=>{ if(!j.url) throw new Error('scan: '+(j.error||j.stage)); return loadGLTF(ASSET+'api/avatar?file='+encodeURIComponent(j.url)); })
+    .then(gl=>{ const m=gl.scene, map=scanMap(m), core=map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n));
+      if(core.length) throw new Error('scan bones: '+core.join(','));
+      if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);
+      scanFit(m,1.87); m.traverse(x=>{ if(x.isMesh){ x.frustumCulled=false; const mt=x.material; if(mt){ mt.metalness=0; mt.roughness=Math.max(mt.roughness||0,.55); } } });
+      const wrap=new THREE.Group(); wrap.add(m); wrap.userData.scan=true; return meshyAnims({scene:wrap,animations:[]}); });
+}
 function mkGuy3D(o){
   const G = mkGuy(o);
   if(!USE_3D_HERO) return G;
   const id = ++HERO3D.gen;
-  const url = heroMainUrl(o);
+  const scan = MESHY_HERO&&!o.scanOff ? scanHero() : null;
+  const url = scan ? 'scan:'+scan.t : heroMainUrl(o);
   G.h3d = {id, disposed:false, model:null, mixer:null, actions:{}, state:null, action:null, speed:0, slots:heroSlots(), av:o, url, gltf:null};
   G.dispose = ()=>{ heroLoading(false); disposeHero3D(G); };
   if(HERO3D.failed[url]) return G;
   if(!HERO3D.gltfs[url]){ G.body.visible=false; heroLoading(true); setTimeout(()=>{ if(!G.h3d.model&&!G.h3d.disposed){ G.body.visible=true; heroLoading(false); } },15000); }
   HERO3D.url = url; HERO3D.status = HERO3D.gltfs[url] ? 'loaded' : 'loading';
-  loadGLTF(url).then(gltf=>{
+  (scan?loadScanHero(scan.t).catch(e=>{ console.warn('scan figure: the Meshy one instead',e); return loadGLTF(heroMainUrl(o)); }):loadGLTF(url)).then(gltf=>{
     HERO3D.gltfs[url] = gltf;
     // the figure may have been replaced (setAvatar) while this was loading: only the live one gets the model
     if(G.h3d.disposed || G.h3d.id!==HERO3D.gen) return;
@@ -2637,6 +2654,7 @@ function heroBody(root,body){
 /* show the chosen parts and paint them: skin, hair, shirt (or the merch shirt), trousers; the BuyToday wordmark on
    an orange shirt or any BuyToday merch; and the accessory on the head */
 function heroDress(model,o){
+  if(model.userData.scan) return;   // the figure from a selfie wears what it was drawn in
   if(model.userData.mh&&model.getObjectByName('char1')) return meshyDress(model,o);   // Meshy figures (the player's, the preview)
   const L=heroLook(o), m=MERCH[o.merch];
   const shirt=m?m.shirt:o.shirt, logo=!!m||o.shirt===BRAND||!!o.logo3d;
@@ -4393,7 +4411,8 @@ function renderCreator(){
           if(!id){ b.style.background='repeating-linear-gradient(45deg,#f1f2f6 0 6px,#dfe2ea 6px 12px)'; b.style.color='#161a2b'; b.innerHTML=on?CHECK:'<small style="font:800 9px Rubik,sans-serif">מקורי</small>'; }
           else { b.style.background=hex(col); b.style.color=light(col)?'#161a2b':'#fff'; b.innerHTML=CHECK; }
           b.addEventListener('click',()=>set(key,id)); c.appendChild(b); }); };
-      { const r=row('דמות מהפנים שלך'), a=document.createElement('a'); a.href='scan.html'; a.className='scanlink'; a.textContent='📸 סריקת פנים · ניסיוני'; r.appendChild(a); }   // the selfie → 3D figure prototype (scan.html)
+      { const r=row('דמות מהפנים שלך'), a=document.createElement('a'); a.href='scan.html'; a.className='scanlink'; a.textContent=scanHero()?'📸 סריקה חדשה':'📸 סריקת פנים · ניסיוני'; r.appendChild(a); }
+      if(scanHero()) seg('הדמות במשחק','scanOff',[[false,'מהסריקה'],[true,'הרגילה']],!!avatar.scanOff);   // the selfie → 3D figure prototype (scan.html)
       msw('צבע שיער','mHair',M_HAIR);
       msw('גוון עור','mSkin',M_SKIN);
       seg('משקפיים','mGlass',M_GLASS,avatar.mGlass||'none');

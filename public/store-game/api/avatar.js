@@ -4,17 +4,24 @@
 
    Stateless. POST {image: data URL} uploads the photo and starts the first task; each GET ?stage=&t= checks the
    current task and, once it is done, starts the next, so the browser's polling drives the whole chain:
-     img   the selfie drawn as a full-body cartoon figure in a T-pose (generate_image, about 5 credits)
-     model that drawing made 3D, textured (image_to_model, about 30)
+     img   the selfie (and a full-body photo, if there is one) drawn as a full-body figure in a T-pose (generate_image, 10 credits)
+     model that drawing made 3D, with detailed textures (image_to_model, about 40)
      rig   a skeleton put in it (animate_rig, about 25)
      done  url: the rigged GLB
    GET ?file=<url> passes a finished file through, for when Tripo's storage will not answer the page directly. */
 const API = 'https://api.tripo3d.ai/v2/openapi';
-const PROMPT = 'Turn the person in this photo into a full-body 3D game character for a friendly, colourful shopping-mall game. '
-  + 'Stylised, Pixar-like proportions, but keep what makes them recognisable: face shape, hairstyle and hair colour, skin tone, '
-  + 'beard or moustache, glasses if they wear them. Casual modern clothes, sneakers. Standing in a T-pose: arms straight out to '
-  + 'the sides, palms down, legs slightly apart, facing the camera. The whole body from head to feet in frame, centred. '
-  + 'Plain white background, soft even light, no shadows, no props, no text.';
+// the drawing: as like the person as a stylised figure can be. With a full-body photo too, their build and clothes come from it
+const LIKE = 'Keep the likeness exact: the same face shape, jaw, nose, eyes and eyebrows, the same hairstyle, hair length and hair colour, '
+  + 'the same skin tone, the same beard or stubble or moustache, glasses only if they wear them. The person must be clearly recognisable. ';
+const POSE = 'High-quality stylised 3D animated-film look (like a modern Pixar character), clean shapes, natural proportions, not a caricature. '
+  + 'Standing in a T-pose: arms straight out to the sides, palms down, legs straight and slightly apart, feet flat, facing the camera. '
+  + 'The whole body from head to feet in frame, centred. Plain white background, soft even light, no shadows, no props, no text. '
+  + 'Clothes without loose strings, straps or hanging cords.';
+const PROMPT1 = 'Turn the person in image 1 into a full-body 3D game character for a friendly, colourful shopping-mall game. ' + LIKE
+  + 'Casual modern clothes, sneakers. ' + POSE;
+const PROMPT2 = 'Turn the person in these photos into a full-body 3D game character for a friendly, colourful shopping-mall game. '
+  + 'Image 1 is a close-up of their face: take the face from it. Image 2 shows their whole body: take their build, height proportions, '
+  + 'clothes, colours and shoes from it. ' + LIKE + POSE;
 const ID = /^[\w-]{8,80}$/;
 
 const key = () => process.env.TRIPO_API_KEY || '';
@@ -44,19 +51,26 @@ module.exports = async (req, res) => {
     if (req.method === 'GET' && file) {
       const f = new URL(file);
       if (f.protocol !== 'https:' || !/tripo/i.test(f.hostname)) return send(res, 400, { error: 'host' });
-      const r = await fetch(f.href); if (!r.ok) return send(res, 502, { error: 'fetch ' + r.status });
-      res.statusCode = 200; res.setHeader('Content-Type', r.headers.get('content-type') || 'application/octet-stream'); res.setHeader('Cache-Control', 'private, max-age=3600');
-      return res.end(Buffer.from(await r.arrayBuffer()));
+      const r = await fetch(f.href); if (!r.ok || !r.body) return send(res, 502, { error: 'fetch ' + r.status });
+      res.statusCode = 200; res.setHeader('Content-Type', r.headers.get('content-type') || 'model/gltf-binary'); res.setHeader('Cache-Control', 'private, max-age=3600');
+      // streamed, chunk by chunk: a buffered answer may not pass 4.5 MB, a figure with detailed textures can
+      const rd = r.body.getReader();
+      for (;;) { const { done, value } = await rd.read(); if (done) break; if (!res.write(Buffer.from(value))) await new Promise(z => res.once('drain', z)); }
+      return res.end();
     }
 
     // a new selfie: upload it and start drawing the figure
     if (req.method === 'POST') {
-      const b = await readJson(req), m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(b.image || '');
-      if (!m) return send(res, 400, { error: 'image' });
-      const fd = new FormData(); fd.append('file', new Blob([Buffer.from(m[2], 'base64')], { type: 'image/' + m[1] }), 'selfie.' + (m[1] === 'jpeg' ? 'jpg' : m[1]));
-      const up = await tripo('/upload', { method: 'POST', body: fd });
-      const t = await task({ type: 'generate_image', model_version: 'gemini_2.5_flash_image_preview', prompt: PROMPT, t_pose: true,
-        file: { type: m[1] === 'jpeg' ? 'jpg' : m[1], file_token: up.image_token } });
+      const b = await readJson(req), pics = [b.image, b.body].filter(Boolean).slice(0, 2), files = [];
+      for (const p of pics) {
+        const m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(p || ''); if (!m) return send(res, 400, { error: 'image' });
+        const ext = m[1] === 'jpeg' ? 'jpg' : m[1], fd = new FormData(); fd.append('file', new Blob([Buffer.from(m[2], 'base64')], { type: 'image/' + m[1] }), 'photo.' + ext);
+        const up = await tripo('/upload', { method: 'POST', body: fd }); files.push({ type: ext, file_token: up.image_token });
+      }
+      if (!files.length) return send(res, 400, { error: 'image' });
+      // Gemini 3 Pro Image keeps a face best (10 credits)
+      const t = await task(Object.assign({ type: 'generate_image', model_version: 'gemini_3_pro_image_preview', prompt: files.length > 1 ? PROMPT2 : PROMPT1, t_pose: true },
+        files.length > 1 ? { files } : { file: files[0] }));
       return send(res, 200, { stage: 'img', t });
     }
 
@@ -68,7 +82,7 @@ module.exports = async (req, res) => {
     if (d.status !== 'success') return send(res, 200, { stage, t, progress: d.progress || 0 });
     if (stage === 'img') {
       const img = o.generated_image || o.image || o.rendered_image; if (!img) return send(res, 200, { stage: 'failed', error: 'no image', at: stage });
-      const n = await task({ type: 'image_to_model', model_version: 'v3.1-20260211', file: { type: 'jpg', url: img }, texture: true, pbr: true, face_limit: 40000 });
+      const n = await task({ type: 'image_to_model', model_version: 'v3.1-20260211', file: { type: 'jpg', url: img }, texture: true, pbr: true, texture_quality: 'detailed', face_limit: 40000 });
       return send(res, 200, { stage: 'model', t: n, preview: img });
     }
     if (stage === 'model') {

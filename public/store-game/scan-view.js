@@ -21,9 +21,17 @@ function mapByShape(model){
   const ups=chains.filter(c=>kids(c[c.length-1]).length>=2&&P(c[c.length-1]).y>hp.y);
   if(legs.length<2||!ups.length) return {missing:MIX};
   const spine=ups.sort((a,b)=>P(b[b.length-1]).y-P(a[a.length-1]).y)[0], chest=spine[spine.length-1];
-  // which way the figure faces: from the ankle to the toes
-  const fwd=V(); legs.slice(0,2).forEach(c=>{ const f=c[Math.min(c.length-1,3)], a=c[Math.min(c.length-2,2)]; fwd.add(P(f).sub(P(a))); }); fwd.y=0;
-  if(fwd.lengthSq()<1e-8) fwd.set(0,0,1); fwd.normalize();
+  // which way the figure faces. Across: from one leg to the other. Of the two ways square to that, the one the feet
+  // reach out to, measured on the skinned vertices the feet carry (a rig need not have toe bones; this one may not)
+  const across=P(legs[0][0]).sub(P(legs[1][0])); across.y=0; across.normalize();
+  const fwd=V().crossVectors(across,new THREE.Vector3(0,1,0)).normalize();
+  const feet=new Set(); legs.slice(0,2).forEach(c=>{ const f=c[Math.min(c.length-1,2)]; f.traverse(o=>{ if(o.isBone) feet.add(o); }); });
+  let lean=0; const v=V(); model.traverse(o=>{ if(!o.isSkinnedMesh) return; const bs=o.skeleton.bones, si=o.geometry.attributes.skinIndex, sw=o.geometry.attributes.skinWeight, pa=o.geometry.attributes.position;
+    for(let k=0;k<pa.count;k+=3){ let w=0; for(let j=0;j<4;j++){ const b=bs[si.getX?[si.getX(k),si.getY(k),si.getZ(k),si.getW(k)][j]:0]; if(b&&feet.has(b)) w+=[sw.getX(k),sw.getY(k),sw.getZ(k),sw.getW(k)][j]; }
+      if(w<.6) continue; v.fromBufferAttribute(pa,k); o.boneTransform(k,v); v.applyMatrix4(o.matrixWorld);
+      // relative to its own ankle: the nearer of the two
+      const a0=P(legs[0][Math.min(legs[0].length-1,2)]), a1=P(legs[1][Math.min(legs[1].length-1,2)]), a=v.distanceTo(a0)<v.distanceTo(a1)?a0:a1; lean+=v.clone().sub(a).dot(fwd); } });
+  if(lean<0) fwd.negate();
   const right=V().crossVectors(fwd,new THREE.Vector3(0,1,0)).normalize(), side=b=>P(b).sub(hp).dot(right)>0?'Right':'Left';
   const got={Hips:hips};
   legs.slice(0,2).forEach(c=>{ const s=side(c[0]); ['UpLeg','Leg','Foot','ToeBase'].forEach((n,i)=>{ if(c[i]) got[s+n]=c[i]; }); });
@@ -36,6 +44,17 @@ function mapByShape(model){
   Object.entries(got).forEach(([n,b])=>{ b.name='mixamorig'+n; });
   return {missing:MIX.filter(n=>!got[n]),fwd};
 }
+
+// a height, standing on y = 0, centred: measured on the skinned vertices themselves (the geometry's own box ignores
+// the skeleton's offsets)
+function fitFigure(m,height){
+  const skinBox=()=>{ m.updateMatrixWorld(true); const bb=new THREE.Box3(), v=V(); m.traverse(o=>{ if(!o.isSkinnedMesh) return; const pa=o.geometry.attributes.position;
+      for(let k=0;k<pa.count;k+=7){ v.fromBufferAttribute(pa,k); o.boneTransform(k,v); v.applyMatrix4(o.matrixWorld); bb.expandByPoint(v); } }); return bb.isEmpty()?new THREE.Box3().setFromObject(m):bb; };
+  const b=skinBox(); m.scale.multiplyScalar(height/Math.max(.01,b.max.y-b.min.y));
+  const b2=skinBox(); m.position.y-=b2.min.y; m.position.x-=(b2.min.x+b2.max.x)/2; m.position.z-=(b2.min.z+b2.max.z)/2; m.updateMatrixWorld(true);
+}
+// for the mall (game.html): the same reading of the bones and the same fitting, for the player's own figure
+window.scanMap=mapByShape; window.scanFit=fitFigure;
 
 function retarget(clip,src,tgt){
   const W=root=>{ root.updateMatrixWorld(true); const m={}; root.traverse(o=>{ if(/^mixamorig/.test(o.name)) m[o.name]={b:o,w:o.getWorldQuaternion(new THREE.Quaternion())}; }); return m; };
@@ -61,7 +80,7 @@ const load=u=>new Promise((res,rej)=>loader().load(u,res,undefined,rej));
 const LABEL={Idle:'עמידה',Walk:'הליכה',Wave:'שלום',Dance:'ריקוד',Dance2:'גנגנם',Jump:'קפיצה',Cheer:'הידד'};
 
 /* box: the element to draw in; urls: where to try the model, in order; movesBox: where the move buttons go */
-window.avatarViewer=async function(box,urls,movesBox,note,base){
+window.avatarViewer=async function(box,urls,movesBox,note,base,prep){   // prep: called with the model before its bones are read (tests)
   base=base||'';
   const W=box.clientWidth, Hh=box.clientHeight, r=new THREE.WebGLRenderer({antialias:true,alpha:true});
   r.setPixelRatio(Math.min(2,devicePixelRatio)); r.setSize(W,Hh); r.outputEncoding=THREE.sRGBEncoding; box.appendChild(r.domElement);
@@ -72,18 +91,14 @@ window.avatarViewer=async function(box,urls,movesBox,note,base){
   if(!gl){ note('הקובץ לא נטען ('+((err&&err.message)||err)+')'); return null; }
   const m=gl.scene, turn=new THREE.Group(); turn.add(m); sc.add(turn);
   m.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; const mt=o.material; if(mt&&mt.map) mt.map.anisotropy=4; } });
-  const map=mapByShape(m);
+  if(prep) prep(m); const map=mapByShape(m);
   if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);   // face the camera
-  // measured on the skinned vertices themselves: the geometry's own box ignores the skeleton's offsets
-  const skinBox=()=>{ m.updateMatrixWorld(true); const bb=new THREE.Box3(), v=V(); m.traverse(o=>{ if(!o.isSkinnedMesh) return; const pa=o.geometry.attributes.position;
-      for(let k=0;k<pa.count;k+=7){ v.fromBufferAttribute(pa,k); o.boneTransform(k,v); v.applyMatrix4(o.matrixWorld); bb.expandByPoint(v); } }); return bb.isEmpty()?new THREE.Box3().setFromObject(m):bb; };
-  const b=skinBox(); m.scale.multiplyScalar(1.8/Math.max(.01,b.max.y-b.min.y));
-  const b2=skinBox(); m.position.y-=b2.min.y; m.position.x-=(b2.min.x+b2.max.x)/2; m.position.z-=(b2.min.z+b2.max.z)/2;
+  fitFigure(m,1.8);
   const mixer=new THREE.AnimationMixer(m), acts={};
   let yaw=0, drag=null; box.addEventListener('pointerdown',e=>{ drag=e.clientX; try{ box.setPointerCapture(e.pointerId); }catch(_){} });
   box.addEventListener('pointermove',e=>{ if(drag!==null){ yaw+=(e.clientX-drag)*.012; drag=e.clientX; } }); box.addEventListener('pointerup',()=>drag=null);
   let last=performance.now(); (function tick(now){ const dt=Math.min(.05,(now-last)/1000); last=now; mixer.update(dt); if(drag===null) yaw+=dt*.25; turn.rotation.y=yaw; cam.lookAt(0,.95,0); r.render(sc,cam); requestAnimationFrame(tick); })(last);
-  if(map.missing.length>4){ note('השלד של הדמות לא זוהה עד הסוף, אז היא עומדת בלי תנועה. (חסרים: '+map.missing.slice(0,6).join(', ')+')'); return {model:m,map}; }
+  if(map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n)).length){ note('השלד של הדמות לא זוהה עד הסוף, אז היא עומדת בלי תנועה. (חסרים: '+map.missing.slice(0,6).join(', ')+')'); return {model:m,map}; }
   const [an,mv]=await Promise.all([load(base+'people/anims.glb'),load(base+'people/moves.glb').catch(()=>null)]);
   [['Idle',an],['Walk',an],['Wave',an]].concat(mv?[['Dance',mv],['Dance2',mv],['Jump',mv],['Cheer',mv]]:[]).forEach(([n,g])=>{ const c=g.animations.find(a=>a.name===n); if(c) acts[n]=mixer.clipAction(retarget(c,g.scene,m)); });
   const play=n=>{ const a=acts[n]; if(!a) return; Object.values(acts).forEach(x=>x!==a&&x.fadeOut(.25)); a.reset().fadeIn(.25).play(); if(movesBox) movesBox.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.n===n)); };

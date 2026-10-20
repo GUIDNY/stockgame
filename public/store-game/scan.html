@@ -58,11 +58,12 @@
   <section id="s1">
     <div class="card"><h2>מכינים דמות שלך מסלפי אחת</h2>
       <ul><li>מצלמים את הפנים, ישר למצלמה, באור טוב.</li>
-        <li>מהתמונה נוצרת דמות מצוירת שלך, כל הגוף, בסגנון הקניון.</li>
+        <li>מומלץ: גם צילום של כל הגוף, בשביל המבנה והבגדים. מישהו אחר מצלם, או טיימר של 10 שניות.</li>
+        <li>מהתמונות נוצרת דמות שלך, כל הגוף, בסגנון הקניון.</li>
         <li>הדמות הופכת לתלת־ממד עם שלד, והיא רוקדת, קופצת ומנפנפת.</li>
         <li>זה לוקח בערך 3–5 דקות. אפשר לסגור ולחזור: ההכנה ממשיכה.</li></ul></div>
     <div class="card">
-      <label class="ok"><input type="checkbox" id="agree"><span>אני מסכים/ה שהתמונה שלי תישלח לשירות Tripo (tripo3d.ai) כדי ליצור ממנה דמות. אנחנו לא שומרים את התמונה. אני מצלם/ת רק את עצמי, ואני מעל גיל 18.</span></label>
+      <label class="ok"><input type="checkbox" id="agree"><span>אני מסכים/ה שהתמונות שלי יישלחו לשירות Tripo (tripo3d.ai) כדי ליצור ממנה דמות. אנחנו לא שומרים את התמונה. אני מצלם/ת רק את עצמי, ואני מעל גיל 18.</span></label>
     </div>
     <button class="go" id="toCam" disabled>מתחילים לצלם</button>
     <button class="go2" id="toFile" disabled>או לבחור תמונה מהגלריה</button>
@@ -73,17 +74,19 @@
   <section id="s2" hidden>
     <div class="cam"><video id="vid" playsinline muted autoplay></video>
       <svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice"><defs><mask id="m"><rect width="300" height="400" fill="#fff"/><ellipse cx="150" cy="175" rx="88" ry="116" fill="#000"/></mask></defs>
-        <rect width="300" height="400" fill="rgba(8,10,30,.55)" mask="url(#m)"/><ellipse id="oval" cx="150" cy="175" rx="88" ry="116" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 6"/></svg>
+        <rect id="dim" width="300" height="400" fill="rgba(8,10,30,.55)" mask="url(#m)"/><ellipse id="oval" cx="150" cy="175" rx="88" ry="116" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 6"/>
+        <path id="body" hidden d="M150 40a26 26 0 1 1 0 52a26 26 0 1 1 0-52M108 104h84l18 120h-22l-10-70v96l8 118h-26l-10-104h-4l-10 104h-26l8-118v-96l-10 70h-22z" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 6" stroke-linejoin="round"/></svg>
       <div class="tip" id="tip">הכניסו את הפנים לתוך האליפסה</div><div class="count" id="count" hidden></div></div>
-    <button class="go" id="shoot">צילום</button>
-    <p class="muted">טיפ: לעמוד מול חלון או מנורה, בלי כובע ובלי משקפי שמש. מבט ישר, פנים רגועות.</p>
+    <div class="row"><button class="go2" id="flip">החלפת מצלמה</button><button class="go" id="shoot">צילום</button></div>
+    <p class="muted" id="camHelp">טיפ: לעמוד מול חלון או מנורה, בלי כובע ובלי משקפי שמש. מבט ישר, פנים רגועות.</p>
   </section>
 
   <!-- 3. that one? -->
   <section id="s3" hidden>
     <div class="cam"><img id="shot" alt="התמונה שצולמה"></div>
     <p class="err" id="warn" hidden></p>
-    <div class="row"><button class="go2" id="again">שוב</button><button class="go" id="send">זאת! הכינו לי דמות</button></div>
+    <div class="row"><button class="go2" id="again">שוב</button><button class="go" id="addBody">ועכשיו כל הגוף</button></div>
+    <button class="go2" id="send">רק הפנים, הכינו לי דמות</button>
   </section>
 
   <!-- 4. making it -->
@@ -102,7 +105,8 @@
   <section id="s5" hidden>
     <div id="view"></div>
     <div class="moves" id="moves"></div>
-    <p class="muted" id="note">גוררים כדי לסובב. הדמות נשמרת במכשיר הזה.</p>
+    <p class="muted" id="note">גוררים כדי לסובב.</p>
+    <button class="go" id="useMe">זאת הדמות שלי בקניון</button>
     <button class="go2" id="newScan">סריקה חדשה</button>
   </section>
 </main>
@@ -121,14 +125,17 @@ const store={ get(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); 
 $('#agree').addEventListener('change',e=>{ $('#toCam').disabled=$('#toFile').disabled=!e.target.checked; });
 $('#toCam').addEventListener('click',startCam);
 $('#toFile').addEventListener('click',()=>$('#file').click());
-$('#file').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const im=new Image(); im.onload=()=>{ shotFrom(im,im.naturalWidth,im.naturalHeight,false); URL.revokeObjectURL(im.src); }; im.src=URL.createObjectURL(f); });
+$('#file').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; e.target.value=''; const im=new Image(); im.onload=()=>{ shotFrom(im,im.naturalWidth,im.naturalHeight,false); URL.revokeObjectURL(im.src); }; im.src=URL.createObjectURL(f); });
 
 /* ---------- 2. camera, with a running check of light and framing ---------- */
-let stream=null, tipT=null;
-const TIPS=['הכניסו את הפנים לתוך האליפסה','מבט ישר למצלמה','פנים רגועות, חיוך קטן','האור צריך להיות מלפנים'];
+let stream=null, tipT=null, phase='face', facing='user', faceData=null, bodyData=null;
+const TIPS={face:['הכניסו את הפנים לתוך האליפסה','מבט ישר למצלמה','פנים רגועות, חיוך קטן','האור צריך להיות מלפנים'],
+  body:['כל הגוף בתוך הקו, מהראש עד הנעליים','ידיים מעט בצד, לא בכיסים','עומדים ישר, מבט למצלמה','רקע פשוט ואור טוב']};
 async function startCam(){
-  show('s2'); const v=$('#vid');
-  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:1706}},audio:false}); v.srcObject=stream; await v.play(); }
+  show('s2'); const v=$('#vid'); stopCam(); const body=phase==='body';
+  $('#oval').style.display=body?'none':''; $('#dim').style.display=body?'none':''; $('#body').hidden=!body; v.style.transform=facing==='user'?'scaleX(-1)':'none';
+  $('#camHelp').textContent=body?(facing==='user'?'מניחים את הטלפון, לוחצים צילום, ויש 10 שניות להתרחק ולעמוד בתוך הקו.':'מצלמים ממרחק של 2–3 מטר, הטלפון בגובה החזה, כל הגוף בפריים.'):'טיפ: לעמוד מול חלון או מנורה, בלי כובע ובלי משקפי שמש. מבט ישר, פנים רגועות.';
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:1706}},audio:false}); v.srcObject=stream; await v.play(); }
   catch(e){ $('#tip').textContent='אין גישה למצלמה. אפשר לבחור תמונה מהגלריה.'; $('#tip').classList.add('warn'); return; }
   let i=0; clearInterval(tipT); tipT=setInterval(()=>{ checkLight(i++); },1400);
 }
@@ -137,24 +144,29 @@ function checkLight(i){ const v=$('#vid'); if(!v.videoWidth) return; const g=pro
   const d=g.getImageData(12,10,24,36).data; let s=0; for(let k=0;k<d.length;k+=4) s+=.3*d[k]+.59*d[k+1]+.11*d[k+2]; const lum=s/(d.length/4);
   const tip=$('#tip'); if(lum<70){ tip.textContent='חשוך מדי: עברו למקום מואר יותר'; tip.classList.add('warn'); }
   else if(lum>235){ tip.textContent='יותר מדי אור מאחור או מלמעלה'; tip.classList.add('warn'); }
-  else { tip.textContent=TIPS[i%TIPS.length]; tip.classList.remove('warn'); } }
-$('#shoot').addEventListener('click',()=>{ const c=$('#count'); let n=3; c.hidden=false; c.textContent=n;
-  const t=setInterval(()=>{ n--; if(n>0){ c.textContent=n; return; } clearInterval(t); c.hidden=true; const v=$('#vid'); shotFrom(v,v.videoWidth,v.videoHeight,true); },700); });
+  else { const T=TIPS[phase]; tip.textContent=T[i%T.length]; tip.classList.remove('warn'); } }
+// 3-2-1; for the whole body on the front camera, 10 seconds to step back
+$('#shoot').addEventListener('click',()=>{ const c=$('#count'); let n=phase==='body'&&facing==='user'?10:3; c.hidden=false; c.textContent=n;
+  const t=setInterval(()=>{ n--; if(n>0){ c.textContent=n; return; } clearInterval(t); c.hidden=true; const v=$('#vid'); shotFrom(v,v.videoWidth,v.videoHeight,facing==='user'); },phase==='body'?1000:700); });
+$('#flip').addEventListener('click',()=>{ facing=facing==='user'?'environment':'user'; startCam(); });
 function stopCam(){ clearInterval(tipT); if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
 
 /* the photo: 3:4, at most 1024 high, mirrored back for the camera (people expect the selfie they saw) */
 let shotData=null;
 function shotFrom(src,w,h,mirror){ stopCam(); const H=1024, W=768, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
   const r=Math.max(W/w,H/h), dw=w*r, dh=h*r; if(mirror){ g.translate(W,0); g.scale(-1,1); } g.drawImage(src,(W-dw)/2,(H-dh)/2,dw,dh);
-  shotData=c.toDataURL('image/jpeg',.9); $('#shot').src=shotData;
+  shotData=c.toDataURL('image/jpeg',.9); $('#shot').src=shotData; if(phase==='face') faceData=shotData; else bodyData=shotData;
+  $('#addBody').hidden=phase!=='face'; $('#send').textContent=phase==='face'?'רק הפנים, הכינו לי דמות':'זהו! הכינו לי דמות'; $('#send').className=phase==='face'?'go2':'go';
   const d=g.getImageData(W*.3,H*.2,W*.4,H*.4).data; let s=0; for(let k=0;k<d.length;k+=16) s+=.3*d[k]+.59*d[k+1]+.11*d[k+2]; const lum=s/(d.length/16);
   const w2=$('#warn'); w2.hidden=lum>=70&&lum<=235; w2.textContent=lum<70?'התמונה חשוכה: הדמות תצא פחות דומה. כדאי לצלם שוב באור.':'התמונה בהירה מדי: כדאי לצלם שוב.';
   show('s3'); }
 $('#again').addEventListener('click',startCam);
+$('#addBody').addEventListener('click',()=>{ phase='body'; facing='environment'; startCam(); });
+
 
 /* ---------- 3-4. send, and follow the chain ---------- */
 $('#send').addEventListener('click',async()=>{ show('s4'); setSteps('img',0); $('#err').hidden=true; $('#pv').hidden=true;
-  try{ const r=await fetch('api/avatar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({image:shotData})}); const j=await r.json();
+  try{ const r=await fetch('api/avatar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(bodyData?{image:faceData,body:bodyData}:{image:faceData})}); const j=await r.json();
     if(!r.ok) throw new Error(j.error==='credit'?'credit':j.error||r.status);
     const job={stage:j.stage,t:j.t,at:Date.now()}; store.set(job); follow(job); }
   catch(e){ fail(e.message); } });
@@ -174,18 +186,27 @@ async function follow(job){
     if(j.preview){ job.preview=j.preview; $('#pv').src=j.preview; $('#pv').hidden=false; }
     Object.assign(job,{stage:j.stage,t:j.t||job.t,progress:j.progress||0,url:j.url||null}); store.set(job);
   }
-  setSteps('done',100); viewer(job.url);
+  setSteps('done',100); viewer(job);
 }
 $('#restart').addEventListener('click',()=>{ store.set(null); show('s1'); });
 $('#newScan').addEventListener('click',()=>{ store.set(null); location.reload(); });
 
 /* ---------- 5. the figure, dancing with the mall's own moves (scan-view.js) ---------- */
-async function viewer(url){ show('s5'); $('#moves').innerHTML='';
+// Tripo's links expire within a day: the rig task is kept, and asked again for a fresh link
+async function freshUrl(t){ const r=await fetch('api/avatar?stage=rig&t='+encodeURIComponent(t),{credentials:'same-origin',cache:'no-store'}); const j=await r.json(); return j.url||null; }
+async function viewer(job){ show('s5'); $('#moves').innerHTML=''; $('#view').innerHTML='';
+  let url=job.url; try{ url=(await freshUrl(job.t))||url; }catch(e){}
   // Tripo's storage does not let the page fetch from it directly: through our function first, then straight, just in case
-  await avatarViewer($('#view'),['api/avatar?file='+encodeURIComponent(url),url],$('#moves'),t=>{ $('#note').textContent=t; }); }
+  const v=await avatarViewer($('#view'),['api/avatar?file='+encodeURIComponent(url),url],$('#moves'),t=>{ $('#note').textContent=t; });
+  const ok=v&&v.play; $('#useMe').hidden=!ok;
+  const mine=()=>{ try{ return (JSON.parse(localStorage.getItem('bt-scan-hero')||'null')||{}).t===job.t; }catch(e){ return false; } };
+  const label=()=>{ $('#useMe').textContent=mine()?'✓ זאת הדמות שלך בקניון · לחזרה לקניון':'זאת הדמות שלי בקניון'; };
+  $('#useMe').onclick=()=>{ if(!mine()){ try{ localStorage.setItem('bt-scan-hero',JSON.stringify({t:job.t,at:Date.now(),fwd:v.map.fwd})); }catch(e){} label(); }
+    else location.href='./'; };
+  label(); }
 
 /* back to a scan in progress, or the figure already made */
-const job=store.get(); if(job&&job.stage){ if(job.stage==='done'&&job.url) viewer(job.url); else follow(job); }
+const job=store.get(); if(job&&job.stage){ if(job.stage==='done'&&job.t) viewer(job); else follow(job); }
 </script>
 </body>
 </html>
