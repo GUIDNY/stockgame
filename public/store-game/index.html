@@ -160,6 +160,12 @@
   #emoBtn{position:fixed;} #emoBtn i.dot{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#e0342a;box-shadow:0 0 0 2px #fff;}
   #emoBtn i.dot[hidden]{display:none;}
   .bubble.emo.chat{white-space:normal;max-width:220px;font-size:13.5px;font-weight:700;line-height:1.35;text-align:center;}
+  #emoTray .mvrow{display:flex;flex-wrap:wrap;gap:4px;align-items:center;padding-top:6px;border-top:1px solid rgba(255,255,255,.12);}
+  #emoTray .mvrow b{width:100%;font-size:11.5px;color:#ffd166;text-align:right;}
+  #emoTray button.mv{width:auto;flex:1 1 18%;height:52px;display:grid;place-items:center;gap:0;font-size:11px;font-weight:800;color:#fff;background:rgba(255,255,255,.1);border-radius:12px;padding:3px 2px;}
+  #emoTray button.mv span{font-size:21px;line-height:1;}
+  #emoTray.off #pcLog,#emoTray.off #pcForm,#emoTray.off .pcnote,#emoTray.off .erow{display:none;}
+  #emoTray.off .mvrow{border-top:0;padding-top:0;}
   #emoTray button.phrase{width:auto;flex:1 1 40%;height:38px;padding:0 10px;font-size:13px;font-weight:800;border-radius:11px;background:rgba(255,255,255,.1);color:#fff;white-space:nowrap;}
 
   #toast{position:fixed;left:50%;top:36%;transform:translate(-50%,6px);max-width:calc(100vw - 2*var(--g));padding:10px 16px;border-radius:14px;font-weight:700;font-size:14.5px;text-align:center;
@@ -910,8 +916,8 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/><path id="xmark" d="M3 3l18 18" stroke-width="2.4"/></svg>
   </button>
   <button id="online" class="glass" hidden aria-label="שחקנים מחוברים עכשיו"><i></i><span class="num" id="onlineN">1</span><span>מחוברים</span></button>
-  <button id="emoBtn" class="glass capr" data-cap="צ'אט" hidden aria-label="צ'אט ואימוג'י" aria-expanded="false">😀</button>
-  <div id="emoTray" class="glass" hidden></div>
+  <button id="emoBtn" class="glass capr" data-cap="תנועות" aria-label="צ'אט ותנועות" aria-expanded="false">😀</button>
+  <div id="emoTray" class="glass off" hidden></div>
   <button id="coins" class="glass capr" data-cap="רמה ומטבעות" aria-label="הרמה והמטבעות שלי"><span aria-hidden="true" id="coinsIc"></span><b class="num" id="coinsN">0</b><span class="lv" id="coinsLv">1</span></button>
   <button id="helpBtn" class="glass capr" data-cap="אלפרד" aria-label="עזרה: אלפרד, הנציג של BuyToday"><img id="helpAv" alt=""><span>עזרה</span></button>
   <div id="toast" class="glass" role="status" aria-live="polite"></div>
@@ -2898,6 +2904,27 @@ function gestTick(rec,speed,dt){
   if(g.t>=g.end||speed>HERO_SPEED.walkOn){ rec.gest=null; rec.state=null; return false; }   // the state machine fades back from the gesture
   return true;
 }
+/* Moves for the player (review note 15): two dances, a jump and a cheer, from Meshy's animation library, made once
+   on one of our rigs and carried over bone by bone onto whoever plays them, the player's figure or another shopper's
+   (people/moves.glb: rotations, and the hips' travel so a jump leaves the ground). Fetched the first time one is
+   asked for. */
+const MOVES=[['Dance','💃','ריקוד'],['Dance2','🕺','גנגנם'],['Jump','⬆️','קפיצה'],['Cheer','🙌','הידד'],['Wave','👋','שלום']];
+let movesSrc=null;
+function movesLoad(){ return movesSrc||(movesSrc=loadGLTF(ASSET+'people/moves.glb?v=1').catch(e=>{ movesSrc=null; throw e; })); }
+function movesOn(rec){ if(!rec||!rec.mixer) return Promise.resolve(false); if(rec.movesIn) return Promise.resolve(true);
+  return movesLoad().then(gl=>{ if(rec.movesIn) return true; const root=rec.mixer.getRoot(), src=gl.scene;
+    const bone=(r,n)=>{ let b=null; r.traverse(o=>{ if(!b&&o.isBone!==false&&/^mixamorig:?Hips$/.test(o.name)) b=o; }); return b; };
+    const sh=bone(src), th=bone(root);
+    gl.animations.forEach(c=>{ if(rec.actions[c.name]) return; const r=mixRetarget(c,src,root);
+      // the hips' travel, scaled from their rig to this one by the height of the hips
+      const pt=c.tracks.find(t=>/Hips\.position$/.test(t.name));
+      if(pt&&sh&&th&&sh.position.y>1e-4){ const k=th.position.y/sh.position.y, v=pt.values.slice(); for(let i=0;i<v.length;i+=3){ v[i]=th.position.x+(v[i]-sh.position.x)*k; v[i+1]=th.position.y+(v[i+1]-sh.position.y)*k; v[i+2]=th.position.z+(v[i+2]-sh.position.z)*k; }
+        r.tracks.push(new THREE.VectorKeyframeTrack(th.name+'.position',pt.times.slice(),v)); }
+      const a=rec.mixer.clipAction(r); a.setLoop(THREE.LoopRepeat,Infinity); rec.actions[c.name]=a; });
+    rec.movesIn=true; return true; }); }
+function heroMove(name){ const G=HERO3D.owner, h=G&&G.h3d; if(!h||!h.model||h.cele) return;
+  if(name==='Wave') return heroGesture('Wave',2);
+  movesOn(h).then(ok=>{ if(ok) gestStart(h,name,1); }).catch(e=>{ console.warn('moves',e); toast('התנועה לא נטענה, נסו שוב'); }); }
 const heroGesture=(name,reps)=>{ const G=HERO3D.owner, h=G&&G.h3d; if(h&&h.model&&!h.cele) gestStart(h,name,reps); };
 /* after a purchase: arms up, a little hop and a happy turn on the spot, about two seconds */
 const HERO_CELE={dur:2.4,hop:.14,hops:2.5};
@@ -3850,7 +3877,8 @@ function buildOutside(){
   SG=keep;
   const car=mkCar(); car.g.position.set(OUT.home.x,0,OUT.home.z); scene.add(car.g); OUT.car=car.g; OUT.wheels=car.wheels;
   // the Meshy car takes the place of the boxes once it has loaded (its wheels are part of it and do not turn)
-  whenInMall(()=>loadGLTF(ASSET+'deco/car.glb?v=1').then(gl=>{ const m=fitModel(gl.scene,{len:4.3,maxW:2.1,h:1.8}); car.g.children.forEach(o=>o.visible=false); car.g.add(m); })
+  whenInMall(()=>loadGLTF(ASSET+'deco/car.glb?v=1').then(gl=>{ const m=fitModel(gl.scene,{len:4.3,maxW:2.1,h:1.8}); car.g.children.forEach(o=>o.visible=false);
+    car.g.add(m); })
     .catch(e=>console.warn('car 3D: keeping the boxes',e)));
   OUT.solid=solid(0,OUT.home.x,OUT.home.z,2.1,4.4,'car');
 }
@@ -6249,7 +6277,7 @@ function unpackAv(v){ if(!Array.isArray(v)) return null;
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
-function updateOnline(){ const on=Net.ready; onlineEl.hidden=!on; emoBtn.hidden=!on; if(!on) emoTray.hidden=true; $('#onlineN').textContent=String(Math.max(1,Net.count)); const mo=$('#mhOn'); mo.classList.toggle('off',!on); mo.setAttribute('aria-label',on?'מחוברים: אחרים רואים אתכם':'לא מחוברים'); }
+function updateOnline(){ const on=Net.ready; onlineEl.hidden=!on; emoBtn.hidden=false; emoTray.classList.toggle('off',!on); emoBtn.dataset.cap=on?"צ'אט":'תנועות'; $('#onlineN').textContent=String(Math.max(1,Net.count)); const mo=$('#mhOn'); mo.classList.toggle('off',!on); mo.setAttribute('aria-label',on?'מחוברים: אחרים רואים אתכם':'לא מחוברים'); }
 function netLoad(){ return new Promise((res,rej)=>{ if(window.supabase) return res(); const s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 async function netStart(){
@@ -6273,7 +6301,7 @@ function netJoin(room){
     netReconcile(); });
   ch.on('presence',{event:'join'},({key})=>{ if(key!==Net.id) Net.force=true; });   // let the newcomer see where we stand
   ch.on('broadcast',{event:'m'},({payload})=>netMove(payload));
-  ch.on('broadcast',{event:'e'},({payload})=>netEmoIn(payload));
+  ch.on('broadcast',{event:'e'},({payload})=>netEmoIn(payload)); ch.on('broadcast',{event:'mv'},({payload})=>netMoveIn(payload));
   ch.on('broadcast',{event:'c'},({payload})=>netChatIn(payload));
   ch.subscribe(status=>{ if(ch!==Net.ch) return;
     if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){ Net.ready=false; Net.joining=false; updateOnline(); } });
@@ -6338,6 +6366,12 @@ function sendEmoji(i){ const now=performance.now(); if(!Net.ready||now-Net.emoAt
   emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); botsReact(); heroGesture('Wave',2); }
 EMOJI.slice(0,6).forEach((e,i)=>{ const b=document.createElement('button'); b.textContent=e; b.setAttribute('aria-label','שליחת '+e); b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
 PHRASES.forEach(i=>{ const b=document.createElement('button'); b.className='phrase'; b.textContent=EMOJI[i]; b.addEventListener('click',()=>sendEmoji(i)); emoTray.appendChild(b); });
+// the moves: for everyone, online or not; online, the others in the mall see them too
+function sendMove(name){ const now=performance.now(); if(now-(Net.moveAt||0)<900) return; Net.moveAt=now;
+  emoTray.hidden=true; emoBtn.setAttribute('aria-expanded','false'); buzz(12); heroMove(name);
+  if(Net.ready&&Net.ch) Net.ch.send({type:'broadcast',event:'mv',payload:{i:Net.id,m:name}}); }
+function netMoveIn(m){ const q=m&&Net.peers.get(m.i); if(!q||PC.muted.has(m.i)||!MOVES.some(x=>x[0]===m.m)) return; const r=q.G&&q.G.npc3d; if(!r) return;
+  if(m.m==='Wave') return npcGesture(q.G,'Wave'); movesOn(r).then(ok=>{ if(ok) gestStart(r,m.m,1); }).catch(()=>{}); }
 emoBtn.addEventListener('click',()=>{ emoTray.hidden=!emoTray.hidden; emoBtn.setAttribute('aria-expanded',String(!emoTray.hidden)); if(!emoTray.hidden){ PC.unread=0; pcDot(); const l=$('#pcLog'); l.scrollTop=l.scrollHeight; } });
 
 /* ---------- the players' chat ----------
@@ -6395,7 +6429,9 @@ function netChatIn(m){ const q=m&&Net.peers.get(m.i), now=performance.now(); if(
   f.addEventListener('submit',e=>{ e.preventDefault(); pcSend($('#pcInput').value); });
   const note=document.createElement('div'); note.className='pcnote'; note.innerHTML='<span>אל תשתפו פרטים אישיים · אפשר להשתיק ולדווח</span><button type="button" id="pcOff"></button>';
   const row=document.createElement('div'); row.className='erow'; while(emoTray.firstChild) row.appendChild(emoTray.firstChild);
-  emoTray.append(log,f,note,row);
+  const mv=document.createElement('div'); mv.className='mvrow'; mv.innerHTML='<b>תנועות</b>';
+  MOVES.forEach(([n,e,t])=>{ const b=document.createElement('button'); b.className='mv'; b.innerHTML='<span>'+e+'</span>'+t; b.setAttribute('aria-label',t); b.addEventListener('click',()=>sendMove(n)); mv.appendChild(b); });
+  emoTray.append(log,f,note,row,mv);
   const inp=f.querySelector('input'); inp.addEventListener('keydown',e=>e.stopPropagation()); inp.addEventListener('keyup',e=>e.stopPropagation());
   const offB=note.querySelector('#pcOff'); const setOff=()=>{ offB.textContent=PC.off?'הודעות כבויות · הפעלה':'כיבוי הודעות'; log.style.display=PC.off?'none':''; };
   offB.addEventListener('click',()=>{ PC.off=!PC.off; try{ localStorage.setItem('bt-pc-off',PC.off?'1':'0'); }catch(e){} setOff(); if(PC.off){ PC.unread=0; pcDot(); } });
