@@ -117,5 +117,11 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/avatar.js": {
+      "maxDuration": 60,
+      "memory": 1769
+    }
+  }
 }

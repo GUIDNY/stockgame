@@ -2560,34 +2560,51 @@ function creaseNormals(geo,ang){
    rebuilds it. A skinned scene can't be shared between figures by reference: when NPCs get GLBs too,
    each one gets its own copy here via THREE.SkeletonUtils.clone(gltf.scene). */
 function cloneCharacter(gltf){ return gltf.scene; }
-/* The figure made from a selfie (scan.html): once one is chosen on this device, it is the player's own figure (not
-   what other players see yet). Its file comes through /api/avatar, behind the mall's gate, with a fresh link each
-   time (Tripo's expire); its bones are found by their shape and named as the clips expect (scan-view.js), it is
-   turned to face +z and sized like the Meshy figures (1.87), and the crowd's clips go on as for those. No outfits,
-   colours or accessories: it is dressed as it was drawn. */
-const scanHero=()=>{ try{ const s=JSON.parse(localStorage.getItem('bt-scan-hero')||'null'); return s&&/^[\w-]{8,80}$/.test(s.t||'')?s:null; }catch(e){ return null; } };
-function loadScanHero(t){
-  return new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=2'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); })
-    .then(()=>fetch(ASSET+'api/avatar?stage=rig&t='+encodeURIComponent(t),{credentials:'include',cache:'no-store'})).then(r=>r.json())
-    .then(j=>{ if(!j.url) throw new Error('scan: '+(j.error||j.stage)); return loadGLTF(ASSET+'api/avatar?file='+encodeURIComponent(j.url)); })
+/* The figure made from a selfie (scan.html): the account's own figure, kept on the server made light (api/avatar,
+   about 0.7 MB). Every player in the mall can fetch it by its id (?fig=), so the others see it too (packAv slot 20).
+   Its bones are found by their shape and named as the clips expect (scan-view.js), it is turned to face +z and sized
+   like the Meshy figures (1.87), and the crowd's clips go on as for those. No outfits, colours or accessories: it
+   is dressed as it was drawn. The file is fetched once a session and parsed afresh for each figure that wears it. */
+const SCAN_FIG=/^[a-z0-9]{20}$/;
+const scanHero=()=>{ try{ const s=JSON.parse(localStorage.getItem('bt-scan-hero')||'null'); return s&&(SCAN_FIG.test(s.fig||'')||/^[\w-]{8,80}$/.test(s.t||''))?s:null; }catch(e){ return null; } };
+const scanSet=fig=>{ try{ if(fig) localStorage.setItem('bt-scan-hero',JSON.stringify({fig,at:Date.now()})); else localStorage.removeItem('bt-scan-hero'); }catch(e){} };
+const SCAN_BUF={};
+let SCAN_VIEW=null;
+const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=2'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
+function scanFigure(fig){
+  if(!SCAN_BUF[fig]) SCAN_BUF[fig]=fetch(ASSET+'api/avatar?fig='+fig,{credentials:'include'}).then(r=>{ if(!r.ok) throw new Error('fig '+r.status); return r.arrayBuffer(); })
+    .catch(e=>{ delete SCAN_BUF[fig]; throw e; });
+  return Promise.all([SCAN_BUF[fig],scanViewReady(),gltfReady()]).then(([b])=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); L.parse(b.slice(0),'',res,rej); }))
     .then(gl=>{ const m=gl.scene, map=scanMap(m), core=map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n));
       if(core.length) throw new Error('scan bones: '+core.join(','));
       if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);
       scanFit(m,1.87); m.traverse(x=>{ if(x.isMesh){ x.frustumCulled=false; const mt=x.material; if(mt){ mt.metalness=0; mt.roughness=Math.max(mt.roughness||0,.55); } } });
       const wrap=new THREE.Group(); wrap.add(m); wrap.userData.scan=true; return meshyAnims({scene:wrap,animations:[]}); });
 }
+// the player's own: by its id; one made before figures were kept (a Tripo task) is kept now, and remembered by its id
+function loadScanHero(s){
+  if(s.fig) return scanFigure(s.fig);
+  return fetch(ASSET+'api/avatar?stage=rig&t='+encodeURIComponent(s.t),{credentials:'include',cache:'no-store'}).then(r=>r.json())
+    .then(j=>{ if(!j.fig) throw new Error('scan: '+(j.error||j.stage)); scanSet(j.fig); return scanFigure(j.fig); });
+}
+// the account's figure, as the server has it: made or forgotten on another device, it is the same here
+function scanSync(){ if(!MESHY_HERO) return;
+  fetch(ASSET+'api/avatar?me=1',{credentials:'include',cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j||!('fig' in j)) return;
+    const cur=scanHero(), have=cur&&cur.fig||null; if(j.fig===have||(!j.fig&&cur&&!cur.fig)) return;
+    scanSet(j.fig); if(HERO3D.owner&&typeof setAvatar==='function') setAvatar(avatar); }).catch(()=>{}); }
+setTimeout(scanSync,1500);
 function mkGuy3D(o){
   const G = mkGuy(o);
   if(!USE_3D_HERO) return G;
   const id = ++HERO3D.gen;
   const scan = MESHY_HERO&&!o.scanOff ? scanHero() : null;
-  const url = scan ? 'scan:'+scan.t : heroMainUrl(o);
+  const url = scan ? 'scan:'+(scan.fig||scan.t) : heroMainUrl(o);
   G.h3d = {id, disposed:false, model:null, mixer:null, actions:{}, state:null, action:null, speed:0, slots:heroSlots(), av:o, url, gltf:null};
   G.dispose = ()=>{ heroLoading(false); disposeHero3D(G); };
   if(HERO3D.failed[url]) return G;
   if(!HERO3D.gltfs[url]){ G.body.visible=false; heroLoading(true); setTimeout(()=>{ if(!G.h3d.model&&!G.h3d.disposed){ G.body.visible=true; heroLoading(false); } },15000); }
   HERO3D.url = url; HERO3D.status = HERO3D.gltfs[url] ? 'loaded' : 'loading';
-  (scan?loadScanHero(scan.t).catch(e=>{ console.warn('scan figure: the Meshy one instead',e); return loadGLTF(heroMainUrl(o)); }):loadGLTF(url)).then(gltf=>{
+  (scan?loadScanHero(scan).catch(e=>{ console.warn('scan figure: the Meshy one instead',e); return loadGLTF(heroMainUrl(o)); }):loadGLTF(url)).then(gltf=>{
     HERO3D.gltfs[url] = gltf;
     // the figure may have been replaced (setAvatar) while this was loading: only the live one gets the model
     if(G.h3d.disposed || G.h3d.id!==HERO3D.gen) return;
@@ -3385,24 +3402,30 @@ function personAttach(G,T){
 /* another player as they see themselves: the Meshy figure in the outfit they wear (packAv slot 13), its own copy of
    the skeleton and a material of its own; if the file cannot be had, the wardrobe figure as before */
 function meshyPeer(G,av){
+  // their scanned figure, if they have one; the Meshy figure if it cannot be had
+  if(av.fig) return scanFigure(av.fig).then(gl=>{ if(G.g.parent&&!G.npc3d) peerAttach(G,gl); })
+    .catch(e=>{ console.warn('peer scan: the Meshy figure instead',e); meshyPeer(G,Object.assign({},av,{fig:''})); });
   // a model of its own, parsed again from the cached file (as Alfred and the seller are), with the crowd's clips
   const url=heroMainUrl(av);
   gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
   .then(meshyAnims).then(gl=>{ const g=av.girl?'f':'m', list=MESHY_OUTFITS[g], o=list.some(x=>x[0]===av.outfit)?av.outfit:list[0][0];
     return meshyTexReady((g==='f'?'F1':'1')+'-'+o).then(()=>[gl,g,o]); }).then(([gl,g,o])=>{
     if(!G.g.parent||G.npc3d) return;
-    const m=gl.scene;
-    m.traverse(x=>{ if(x.isMesh){ x.castShadow=false; x.frustumCulled=false; } });
-    meshyDress(m,{girl:!!av.girl,outfit:o,mHair:av.mHair,mSkin:av.mSkin,mGlass:av.mGlass,mHat:av.mHat,mHatC:av.mHatC});   // exactly as the player's own figure is dressed
-    m.scale.setScalar(HERO_MODEL_SCALE); m.rotation.y=HERO_MODEL_ROTATION_OFFSET;
-    const r=new THREE.Group(); r.add(m);
-    const mixer=new THREE.AnimationMixer(m), actions={};
-    ['Idle','Walk','Run','Wave'].forEach(n=>{ const c=gl.animations.find(a=>a.name===n); if(c){ const a=mixer.clipAction(c); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
-    if(!actions.Idle||!actions.Walk) throw new Error('no clips');
-    G.g.add(r); G.body.visible=false;
-    G.npc3d={model:r,mixer,actions,state:null,action:null,ik:heroFindArms(m),push:0,phase:0};
-    mixer.update(0);
+    meshyDress(gl.scene,{girl:!!av.girl,outfit:o,mHair:av.mHair,mSkin:av.mSkin,mGlass:av.mGlass,mHat:av.mHat,mHatC:av.mHatC});   // exactly as the player's own figure is dressed
+    peerAttach(G,gl);
   }).catch(e=>{ console.warn('peer 3D: the wardrobe figure instead',e); npcAdopt(G,avOpts(av)); });
+}
+function peerAttach(G,gl){
+  const m=gl.scene;
+  m.traverse(x=>{ if(x.isMesh){ x.castShadow=false; x.frustumCulled=false; } });
+  m.scale.setScalar(HERO_MODEL_SCALE); m.rotation.y=HERO_MODEL_ROTATION_OFFSET;
+  const r=new THREE.Group(); r.add(m);
+  const mixer=new THREE.AnimationMixer(m), actions={};
+  ['Idle','Walk','Run','Wave'].forEach(n=>{ const c=gl.animations.find(a=>a.name===n); if(c){ const a=mixer.clipAction(c); a.setLoop(THREE.LoopRepeat,Infinity); actions[n]=a; } });
+  if(!actions.Idle||!actions.Walk) throw new Error('no clips');
+  G.g.add(r); G.body.visible=false;
+  G.npc3d={model:r,mixer,actions,state:null,action:null,ik:heroFindArms(m),push:0,phase:0};
+  mixer.update(0);
 }
 const npcGesture=(G,name)=>{ if(G&&G.npc3d&&G.g.visible) gestStart(G.npc3d,name,name==='Wave'?2:1); };
 // the cashiers are built before this code runs: they join now
@@ -6366,7 +6389,8 @@ const packAv=a=>{ const S=HERO_STYLES[a.girl?'f':'m'], L=heroLook(a);
     Math.max(0,AV_BODY.findIndex(b=>b[0]===a.body)),Math.max(0,AV_CHOICES.eyes.indexOf(a.eyes)),Math.max(0,AV_EYEWEAR.indexOf(a.eyewear||'none')),   // 10-12: build, eyes, glasses
     MESHY_HERO?Math.max(0,MESHY_OUTFITS[a.girl?'f':'m'].findIndex(x=>x[0]===a.outfit)):-1,   // 13: the Meshy outfit (-1: the wardrobe figure)
     PET_IDS.indexOf(a===avatar?petWant():a.pet),   // 14: the pet at their heel (-1: none)
-    M_HAIR.findIndex(x=>x[0]===(a.mHair||'')),M_SKIN.findIndex(x=>x[0]===(a.mSkin||'')),M_GLASS.findIndex(x=>x[0]===(a.mGlass||'none')),M_HAT.findIndex(x=>x[0]===(a.mHat||'none')),Math.max(0,M_HAT_C.findIndex(x=>x[0]===a.mHatC))]; };   // 15-19: the Meshy figure's hair colour, skin tone, glasses, hat and its colour
+    M_HAIR.findIndex(x=>x[0]===(a.mHair||'')),M_SKIN.findIndex(x=>x[0]===(a.mSkin||'')),M_GLASS.findIndex(x=>x[0]===(a.mGlass||'none')),M_HAT.findIndex(x=>x[0]===(a.mHat||'none')),Math.max(0,M_HAT_C.findIndex(x=>x[0]===a.mHatC)),   // 15-19: the Meshy figure's hair colour, skin tone, glasses, hat and its colour
+    a===avatar?(MESHY_HERO&&!a.scanOff&&(scanHero()||{}).fig||''):(a.fig||'')]; };   // 20: their scanned figure ('' for none)
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
@@ -6375,7 +6399,7 @@ function unpackAv(v){ if(!Array.isArray(v)) return null;
     hairStyle:st(S.head,v[8]),top:st(S.top,v[9]),body:(AV_BODY[v[10]]||AV_BODY[0])[0],eyes:AV_CHOICES.eyes[v[11]]||AV_CHOICES.eyes[0],eyewear:AV_EYEWEAR[v[12]]||'none',
     outfit:Number.isInteger(v[13])&&MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]]?MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]][0]:'',
     pet:Number.isInteger(v[14])&&PET_IDS[v[14]]?PET_IDS[v[14]]:'none',
-    mHair:(M_HAIR[v[15]]||M_HAIR[0])[0],mSkin:(M_SKIN[v[16]]||M_SKIN[0])[0],mGlass:(M_GLASS[v[17]]||M_GLASS[0])[0],mHat:(M_HAT[v[18]]||M_HAT[0])[0],mHatC:(M_HAT_C[v[19]]||M_HAT_C[0])[0]}; }
+    mHair:(M_HAIR[v[15]]||M_HAIR[0])[0],mSkin:(M_SKIN[v[16]]||M_SKIN[0])[0],mGlass:(M_GLASS[v[17]]||M_GLASS[0])[0],mHat:(M_HAT[v[18]]||M_HAT[0])[0],mHatC:(M_HAT_C[v[19]]||M_HAT_C[0])[0],fig:typeof v[20]==='string'&&SCAN_FIG.test(v[20])?v[20]:''}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');

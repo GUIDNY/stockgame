@@ -114,8 +114,10 @@
     <div id="view"></div>
     <div class="moves" id="moves"></div>
     <p class="muted" id="note">גוררים כדי לסובב.</p>
-    <button class="go" id="useMe">זאת הדמות שלי בקניון</button>
+    <button class="go" id="useMe">לקניון עם הדמות שלי</button>
+    <p class="muted" id="saved" hidden>✓ זאת הדמות שלך עכשיו. היא שמורה בחשבון שלך, מופיעה בכל מכשיר, וכל מי שבקניון רואה אותך איתה.</p>
     <button class="go2" id="newScan">סריקה חדשה</button>
+    <button class="go2" id="forget" style="background:none;color:#ffb4aa;height:40px;font-size:13.5px">מחיקת הדמות שלי</button>
   </section>
 </main>
 
@@ -188,17 +190,18 @@ const ORDER=['img','model','rig'];
 function setSteps(stage,p){ ORDER.forEach((s,i)=>{ const el=$('#st-'+s), k=ORDER.indexOf(stage); el.classList.toggle('done',i<k||stage==='done'); el.classList.toggle('on',i===k);
   el.querySelector('.bar span').style.width=(i<k||stage==='done'?100:i===k?Math.max(4,p):0)+'%'; }); }
 function fail(m){ $('#err').hidden=false; $('#restart').hidden=false;
-  $('#err').textContent=m==='credit'?'אין מספיק קרדיטים בחשבון Tripo. צריך להטעין ואז לנסות שוב.':m==='not configured'?'השירות עוד לא מוגדר בשרת.':'משהו לא הצליח ('+m+'). אפשר לנסות שוב, עדיף עם תמונה אחרת.'; }
+  $('#err').textContent=m==='credit'?'אין מספיק קרדיטים בחשבון Tripo. צריך להטעין ואז לנסות שוב.':m==='not configured'?'השירות עוד לא מוגדר בשרת.':
+    m==='limit'?'הגעת למספר הסריקות היומי. אפשר לסרוק שוב מחר.':m==='who'?'צריך להיכנס לקניון מהחשבון שלך ואז לנסות שוב.':'משהו לא הצליח ('+m+'). אפשר לנסות שוב, עדיף עם תמונה אחרת.'; }
 async function follow(job){
   show('s4'); if(job.preview){ $('#pv').src=job.preview; $('#pv').hidden=false; }
   while(job.stage!=='done'){
     setSteps(job.stage,job.progress||0);
     await new Promise(z=>setTimeout(z,job.stage==='img'?2500:4000));
     let j; try{ const r=await fetch('api/avatar?stage='+job.stage+'&t='+encodeURIComponent(job.t),{credentials:'same-origin',cache:'no-store'}); j=await r.json(); if(!r.ok) throw new Error(j.error||r.status); }
-    catch(e){ if(/credit/.test(e.message)) return fail('credit'); continue; }   // a hiccup: try again
+    catch(e){ const m=/credit|who|limit/.exec(e.message); if(m) return fail(m[0]); continue; }   // a hiccup: try again
     if(j.stage==='failed'){ store.set(null); return fail(j.error+' · '+j.at); }
     if(j.preview){ job.preview=j.preview; $('#pv').src=j.preview; $('#pv').hidden=false; }
-    Object.assign(job,{stage:j.stage,t:j.t||job.t,progress:j.progress||0,url:j.url||null}); store.set(job);
+    Object.assign(job,{stage:j.stage,t:j.t||job.t,progress:j.progress||0,fig:j.fig||null}); store.set(job);
   }
   setSteps('done',100); viewer(job);
 }
@@ -206,21 +209,24 @@ $('#restart').addEventListener('click',()=>{ store.set(null); show('s1'); });
 $('#newScan').addEventListener('click',()=>{ store.set(null); location.reload(); });
 
 /* ---------- 5. the figure, dancing with the mall's own moves (scan-view.js) ---------- */
-// Tripo's links expire within a day: the rig task is kept, and asked again for a fresh link
-async function freshUrl(t){ const r=await fetch('api/avatar?stage=rig&t='+encodeURIComponent(t),{credentials:'same-origin',cache:'no-store'}); const j=await r.json(); return j.url||null; }
-async function viewer(job){ show('s5'); $('#moves').innerHTML=''; $('#view').innerHTML='';
-  let url=job.url; try{ url=(await freshUrl(job.t))||url; }catch(e){}
-  // Tripo's storage does not let the page fetch from it directly: through our function first, then straight, just in case
-  const v=await avatarViewer($('#view'),['api/avatar?file='+encodeURIComponent(url),url],$('#moves'),t=>{ $('#note').textContent=t; });
-  const ok=v&&v.play; $('#useMe').hidden=!ok;
-  const mine=()=>{ try{ return (JSON.parse(localStorage.getItem('bt-scan-hero')||'null')||{}).t===job.t; }catch(e){ return false; } };
-  const label=()=>{ $('#useMe').textContent=mine()?'✓ זאת הדמות שלך בקניון · לחזרה לקניון':'זאת הדמות שלי בקניון'; };
-  $('#useMe').onclick=()=>{ if(!mine()){ try{ localStorage.setItem('bt-scan-hero',JSON.stringify({t:job.t,at:Date.now(),fwd:v.map.fwd})); }catch(e){} label(); }
-    else location.href='./'; };
-  label(); }
+// done: the server has made it light and kept it as this account's figure; here it becomes the one in the mall too
+const setHero=fig=>{ try{ if(fig) localStorage.setItem('bt-scan-hero',JSON.stringify({fig,at:Date.now()})); else localStorage.removeItem('bt-scan-hero'); }catch(e){} };
+async function viewer(job){ show('s5'); $('#moves').innerHTML=''; $('#view').innerHTML=''; $('#saved').hidden=true;
+  let fig=job.fig;
+  if(!fig&&job.t){ try{ const r=await fetch('api/avatar?stage=rig&t='+encodeURIComponent(job.t),{credentials:'same-origin',cache:'no-store'}); fig=(await r.json()).fig; }catch(e){} }   // one made before figures were kept
+  if(!fig){ $('#note').textContent='לא הצלחנו לטעון את הדמות. אפשר לנסות שוב מאוחר יותר.'; $('#useMe').hidden=true; return; }
+  job.fig=fig; store.set(job); setHero(fig);
+  const v=await avatarViewer($('#view'),['api/avatar?fig='+fig],$('#moves'),t=>{ $('#note').textContent=t; });
+  const ok=v&&v.play; $('#useMe').hidden=!ok; $('#saved').hidden=!ok;
+  $('#useMe').onclick=()=>{ location.href='./'; }; }
+$('#forget').addEventListener('click',async()=>{ if(!confirm('למחוק את הדמות שלך? היא תימחק מהשרת, ובקניון תחזור הדמות הרגילה.')) return;
+  try{ await fetch('api/avatar?me=1',{method:'DELETE',credentials:'same-origin'}); }catch(e){}
+  setHero(null); store.set(null); show('s1'); });
 
-/* back to a scan in progress, or the figure already made */
-const job=store.get(); if(job&&job.stage){ if(job.stage==='done'&&job.t) viewer(job); else follow(job); }
+/* back to a scan in progress, or the figure already made (on this device or, through the account, another one) */
+const job=store.get();
+if(job&&job.stage){ if(job.stage==='done') viewer(job); else follow(job); }
+else fetch('api/avatar?me=1',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(j=>{ if(j.fig&&!(store.get()||{}).stage) viewer({stage:'done',fig:j.fig}); }).catch(()=>{});
 </script>
 </body>
 </html>

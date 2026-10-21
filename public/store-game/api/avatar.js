@@ -7,9 +7,17 @@
      img   the selfie (and the face from the side and a full-body photo, if there are) drawn as a full-body figure in a T-pose (generate_image, 10 credits)
      model that drawing made 3D, with detailed textures (image_to_model, about 40)
      rig   a skeleton put in it (animate_rig, about 25)
-     done  url: the rigged GLB
-   GET ?file=<url> passes a finished file through, for when Tripo's storage will not answer the page directly. */
+     done  fig: the rigged GLB, made light (_fig.js, about 4 MB to under 1) and kept as this account's figure
+   The figures are faces of real people: they live in a private Supabase bucket (mall-figures) and a table that knows
+   them only by a hash of the account's email (mall_figures), both reached with the service role from here alone.
+     GET ?me         this account's figure: {fig} or {fig:null}
+     GET ?fig=<id>   a figure's file, for any player in the mall (the gate lets only them this far)
+     DELETE ?me      forget this account's figure, file and all
+   A scan is counted per account (mall_scans): at most LIMIT a day. */
+const crypto = require('crypto');
 const API = 'https://api.tripo3d.ai/v2/openapi';
+const SB = process.env.SUPABASE_URL || 'https://fiyglezjgmltzruombno.supabase.co', BUCKET = 'mall-figures', LIMIT = 5;
+const FIG = /^[a-z0-9]{20}$/;
 // the drawing: as like the person as a stylised figure can be. With a full-body photo too, their build and clothes come from it
 const LIKE = 'Keep the likeness exact: the same face shape, jaw, nose, eyes and eyebrows, the same hairstyle, hair length and hair colour, '
   + 'the same skin tone, the same beard or stubble or moustache, glasses only if they wear them. The person must be clearly recognisable. ';
@@ -40,6 +48,42 @@ function prompt(side, body, wear) {
 const ID = /^[\w-]{8,80}$/;
 
 const key = () => process.env.TRIPO_API_KEY || '';
+const sbKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const sb = (path, init = {}) => fetch(SB + path, Object.assign({}, init, { headers: Object.assign({ apikey: sbKey(), Authorization: 'Bearer ' + sbKey() }, init.headers || {}) }));
+const sbJson = async (path, init) => { const r = await sb(path, init); if (!r.ok) throw new Error('store ' + r.status + ' ' + (await r.text()).slice(0, 120)); return r.status === 204 ? null : r.json().catch(() => null); };
+
+/* who is asking: the mall's pass (checked again here, as middleware.js checks it), the account as a hash */
+const b64u = s => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+function passEmail(tok) {
+  const secret = process.env.MALL_GATE_SECRET || ''; if (secret.length < 32 || !tok) return null;
+  const [h, p, sig] = String(tok).split('.'); if (!h || !p || !sig) return null;
+  try {
+    if (JSON.parse(b64u(h).toString()).alg !== 'HS256') return null;
+    const want = crypto.createHmac('sha256', secret).update(h + '.' + p).digest(), got = b64u(sig);
+    if (got.length !== want.length || !crypto.timingSafeEqual(got, want)) return null;
+    const c = JSON.parse(b64u(p).toString()), aud = Array.isArray(c.aud) ? c.aud : [c.aud];
+    return aud.includes('bt-mall') && c.exp * 1000 > Date.now() && c.email ? String(c.email).toLowerCase() : null;
+  } catch (e) { return null; }
+}
+function ownerOf(req) {
+  const ck = /(?:^|;\s*)bt_play=([^;]+)/.exec(req.headers.cookie || ''), toks = [ck && decodeURIComponent(ck[1]), req.headers['x-bt-mall-pass']];
+  for (const t of toks) { const e = passEmail(t); if (e) return crypto.createHash('sha256').update('bt-mall-figure:' + e).digest('hex'); }
+  return null;
+}
+const myFig = async owner => { const r = await sbJson('/rest/v1/mall_figures?select=fig,task&owner=eq.' + owner); return r && r[0] || null; };
+const dropFile = fig => sb('/storage/v1/object/' + BUCKET, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: ['figs/' + fig + '.glb'] }) });
+/* the finished rig: fetched from Tripo, made light, kept, and made this account's figure (the old one goes) */
+async function keep(owner, task, url) {
+  const cur = await myFig(owner); if (cur && cur.task === task) return cur.fig;   // asked again: already kept
+  const r = await fetch(url); if (!r.ok) throw new Error('rig file ' + r.status);
+  const out = await require('./_fig.js')(Buffer.from(await r.arrayBuffer())), fig = crypto.randomBytes(10).toString('hex');
+  const up = await sb('/storage/v1/object/' + BUCKET + '/figs/' + fig + '.glb', { method: 'POST', headers: { 'Content-Type': 'model/gltf-binary', 'Cache-Control': '31536000' }, body: out });
+  if (!up.ok) throw new Error('upload ' + up.status);
+  await sbJson('/rest/v1/mall_figures?on_conflict=owner', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ owner, fig, task, bytes: out.length, updated_at: new Date().toISOString() }) });
+  if (cur) await dropFile(cur.fig).catch(() => {});
+  return fig;
+}
 async function tripo(path, init) {
   const r = await fetch(API + path, Object.assign({}, init, { headers: Object.assign({ Authorization: 'Bearer ' + key() }, (init && init.headers) || {}) }));
   const j = await r.json().catch(() => ({}));
@@ -57,25 +101,29 @@ async function readJson(req) {
 }
 
 module.exports = async (req, res) => {
-  if (!key()) return send(res, 503, { error: 'not configured' });
+  if (!key() || !sbKey()) return send(res, 503, { error: 'not configured' });
   try {
-    const u = new URL(req.url, 'https://x');
+    const u = new URL(req.url, 'https://x'), owner = ownerOf(req);
 
-    // a finished file, passed through (Tripo's own hosts only)
-    const file = u.searchParams.get('file');
-    if (req.method === 'GET' && file) {
-      const f = new URL(file);
-      if (f.protocol !== 'https:' || !/tripo/i.test(f.hostname)) return send(res, 400, { error: 'host' });
-      const r = await fetch(f.href); if (!r.ok || !r.body) return send(res, 502, { error: 'fetch ' + r.status });
-      res.statusCode = 200; res.setHeader('Content-Type', r.headers.get('content-type') || 'model/gltf-binary'); res.setHeader('Cache-Control', 'private, max-age=3600');
-      // streamed, chunk by chunk: a buffered answer may not pass 4.5 MB, a figure with detailed textures can
-      const rd = r.body.getReader();
-      for (;;) { const { done, value } = await rd.read(); if (done) break; if (!res.write(Buffer.from(value))) await new Promise(z => res.once('drain', z)); }
-      return res.end();
+    // a figure's file: any player in the mall sees the others; kept for good under its id, so cached for good
+    const fig = u.searchParams.get('fig');
+    if (req.method === 'GET' && fig) {
+      if (!FIG.test(fig)) return send(res, 400, { error: 'fig' });
+      const known = await sbJson('/rest/v1/mall_figures?select=fig&fig=eq.' + fig); if (!known || !known.length) return send(res, 404, { error: 'gone' });   // a forgotten figure is gone at once, cached copies or not
+      const r = await sb('/storage/v1/object/authenticated/' + BUCKET + '/figs/' + fig + '.glb'); if (!r.ok) return send(res, r.status === 400 || r.status === 404 ? 404 : 502, { error: 'fig ' + r.status });
+      res.statusCode = 200; res.setHeader('Content-Type', 'model/gltf-binary'); res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+      return res.end(Buffer.from(await r.arrayBuffer()));
+    }
+    if (!owner) return send(res, 401, { error: 'who' });
+    if (u.searchParams.has('me')) {
+      if (req.method === 'DELETE') { const cur = await myFig(owner); if (cur) { await dropFile(cur.fig); await sbJson('/rest/v1/mall_figures?owner=eq.' + owner, { method: 'DELETE' }); } return send(res, 200, { fig: null }); }
+      const cur = await myFig(owner); return send(res, 200, { fig: cur ? cur.fig : null });
     }
 
     // a new selfie: upload it and start drawing the figure
     if (req.method === 'POST') {
+      const since = new Date(Date.now() - 864e5).toISOString(), done = await sbJson('/rest/v1/mall_scans?select=id&owner=eq.' + owner + '&at=gte.' + since);
+      if (done && done.length >= LIMIT) return send(res, 429, { error: 'limit' });
       const b = await readJson(req), pics = [b.image, b.side, b.body].filter(Boolean).slice(0, 3), files = [];
       for (const p of pics) {
         const m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(p || ''); if (!m) return send(res, 400, { error: 'image' });
@@ -83,6 +131,7 @@ module.exports = async (req, res) => {
         const up = await tripo('/upload', { method: 'POST', body: fd }); files.push({ type: ext, file_token: up.image_token });
       }
       if (!b.image || !files.length) return send(res, 400, { error: 'image' });
+      await sbJson('/rest/v1/mall_scans', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ owner }) });
       // Gemini 3 Pro Image keeps a face best (10 credits)
       const t = await task(Object.assign({ type: 'generate_image', model_version: 'gemini_3_pro_image_preview', prompt: prompt(!!b.side, !!b.body, b.wear), t_pose: true },
         files.length > 1 ? { files } : { file: files[0] }));
@@ -105,7 +154,7 @@ module.exports = async (req, res) => {
       return send(res, 200, { stage: 'rig', t: n, render: o.rendered_image || null });
     }
     const url = o.model || o.pbr_model || o.base_model; if (!url) return send(res, 200, { stage: 'failed', error: 'no model', at: stage });
-    return send(res, 200, { stage: 'done', url });
+    return send(res, 200, { stage: 'done', fig: await keep(owner, t, url) });
   } catch (e) {
     return send(res, e.code === 2010 ? 402 : 500, { error: e.code === 2010 ? 'credit' : String(e.message || e).slice(0, 200) });
   }
