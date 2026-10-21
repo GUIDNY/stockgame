@@ -1,8 +1,11 @@
-/* The 3D mall is private until the patent application is filed: only two accounts get in.
+/* The 3D mall is private until the patent application is filed: only the company's own people get in.
    Every page request needs a pass. The shop (buytoday.co.il/api/game/pass) mints one only for a
-   signed-in account on its list (src/lib/mall-access.ts in GUIDNY/pr): a JWT signed with
+   signed-in account it allows (mallAllowed in src/lib/mall-access.ts in GUIDNY/pr: a management role,
+   ADMIN, STAFF or SELLER, or one of the two addresses below). The pass is a JWT signed with
    MALL_GATE_SECRET, which this project and the shop share and nothing else knows. It arrives once
-   at /__pass and is kept as this host's own cookie; the shop's /mall (the iOS app's address for the
+   at /__pass and is kept as this host's own cookie. It carries ok: true, which is the authorisation itself
+   (only the shop can sign it, and only after mallAllowed); an older pass without it still opens for the two
+   addresses here; the shop's /mall (the iOS app's address for the
    game) forwards it in a header instead. Anyone without one is sent to the shop, which sends them
    on to its home page unless they are on the list. No secret here means nobody gets in.
 
@@ -26,7 +29,7 @@ async function passOk(token) {
     if (!(await crypto.subtle.verify('HMAC', key, b64u(sig), new TextEncoder().encode(h + '.' + p)))) return false;
     const c = JSON.parse(new TextDecoder().decode(b64u(p)));
     const aud = Array.isArray(c.aud) ? c.aud : [c.aud];
-    return aud.includes('bt-mall') && typeof c.exp === 'number' && c.exp * 1000 > Date.now() && ALLOWED.includes(String(c.email || '').toLowerCase());
+    return aud.includes('bt-mall') && typeof c.exp === 'number' && c.exp * 1000 > Date.now() && (c.ok === true || ALLOWED.includes(String(c.email || '').toLowerCase()));
   } catch (e) { return false; }
 }
 
