@@ -120,8 +120,7 @@
   ],
   "functions": {
     "api/avatar.js": {
-      "maxDuration": 60,
-      "memory": 1769
+      "maxDuration": 60
     }
   }
 }
