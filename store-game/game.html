@@ -2586,8 +2586,11 @@ function scanFigure(fig){
    rocked four times as far as on the Meshy figures. In standing and walking (not the dances) each torso joint keeps
    its own mean pose and only part of its swing about it. */
 const SCAN_CALM={Hips:.45,Spine:.35,Spine1:.35,Spine2:.35,Neck:.6,Head:.7};
+// its fingers are not built quite as the clips' are, so their small idle movements read as twitching: each finger
+// joint is held still in its clip's mean pose (a relaxed, half-curled hand); the cart grip still wraps them round the bar
+const SCAN_FINGER=/^Hand(Thumb|Index|Middle|Ring|Pinky)\d$/;
 function scanCalm(gl){ const q=new THREE.Quaternion(), mean=new THREE.Quaternion(), m4=[0,0,0,0];
-  gl.animations.forEach(c=>c.tracks.forEach(t=>{ const i=t.name.lastIndexOf('.'), k=SCAN_CALM[t.name.slice(0,i).replace(/^mixamorig/,'')];
+  gl.animations.forEach(c=>c.tracks.forEach(t=>{ const i=t.name.lastIndexOf('.'), bn=t.name.slice(0,i).replace(/^mixamorig/,'').replace(/^(Left|Right)/,''), k=SCAN_FINGER.test(bn)?0:SCAN_CALM[bn];
     if(k===undefined||t.name.slice(i+1)!=='quaternion') return; const v=t.values; m4.fill(0);
     const ref=q.fromArray(v,0).clone();
     for(let j=0;j<v.length;j+=4){ const s=ref.x*v[j]+ref.y*v[j+1]+ref.z*v[j+2]+ref.w*v[j+3]<0?-1:1; for(let e=0;e<4;e++) m4[e]+=s*v[j+e]; }   // one hemisphere
@@ -3148,7 +3151,7 @@ function ikCurl(ch,side,angles,k){
     const a=angles[j]*k, up=c.clone().applyAxisAngle(side,a).y, dn=c.clone().applyAxisAngle(side,-a).y;
     q.setFromAxisAngle(side,up<dn?a:-a); ikTurn(b,q); });
 }
-let SCAN_ELBOW=.8;   // how far out a scanned figure's elbows bend pushing the cart (the Meshy figures: .8)
+let SCAN_ELBOW=.1, SCAN_GRIP=.75;   // and how wide its hands hold the bar, as a share of the Meshy figures' grip   // how far out a scanned figure's elbows bend pushing the cart (the Meshy figures: .8)
 function heroCartIK(H,dt,rec,pushing){
   const h=rec||H.h3d, ik=h&&h.ik; if(!ik) return;
   const on=!h.gest&&!h.cele&&(rec?!!pushing:typeof cart!=='undefined'&&cart.c.visible&&cart.c.parent===H.g&&h.model.visible);   // hands off the bar for a gesture
@@ -3167,7 +3170,7 @@ function heroCartIK(H,dt,rec,pushing){
     const g=HERO_CART_GRIPS[i];
     // the wrist sits a palm's length behind the bar and a little above it, so the palm lies on the bar
     const palm=A.mid?new THREE.Vector3().setFromMatrixPosition(A.mid.matrixWorld).distanceTo(new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld))/H.g.scale.x:.1;
-    const T=_ik.t.set(g[0],HERO_CART_BAR.y+.095,HERO_CART_BAR.z-palm*1.05); H.g.localToWorld(T); const target=T.clone();
+    const T=_ik.t.set(g[0]*(h.model.userData.scan?SCAN_GRIP:1),HERO_CART_BAR.y+.095,HERO_CART_BAR.z-palm*1.05); H.g.localToWorld(T); const target=T.clone();
     const S=new THREE.Vector3().setFromMatrixPosition(A.u.matrixWorld), E=new THREE.Vector3().setFromMatrixPosition(A.l.matrixWorld), W=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld);
     const a=S.distanceTo(E), b=E.distanceTo(W); let d=S.distanceTo(target); d=Math.min(Math.max(d,Math.abs(a-b)+1e-3),a+b-1e-3);
     const dir=target.clone().sub(S).normalize();
@@ -3184,7 +3187,7 @@ function heroCartIK(H,dt,rec,pushing){
       const Wp=new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld), Mp=new THREE.Vector3().setFromMatrixPosition(A.mid.matrixWorld);
       ikAim(A.w,Mp,Wp.clone().addScaledVector(fwd,Wp.distanceTo(Mp)).add(new THREE.Vector3(0,-.012,0)),k);
       A.fingers.forEach(ch=>ikCurl(ch,side,HERO_GRIP_CURL,k)); if(A.thumb.length) ikCurl(A.thumb,side,HERO_THUMB_CURL,k);
-      const bar=new THREE.Vector3(g[0],HERO_CART_BAR.y,HERO_CART_BAR.z); H.g.localToWorld(bar);
+      const bar=new THREE.Vector3(g[0]*(h.model.userData.scan?SCAN_GRIP:1),HERO_CART_BAR.y,HERO_CART_BAR.z); H.g.localToWorld(bar);
       const tip=new THREE.Vector3().setFromMatrixPosition((A.fingers[1]||A.fingers[0]).slice(-1)[0].matrixWorld);
       h.ikErr=(h.ikErr||[]); h.ikErr[i]=+Math.hypot(tip.y-bar.y, (tip.clone().sub(bar)).dot(fwd)).toFixed(3); }
     else { h.ikErr=(h.ikErr||[]); h.ikErr[i]=+new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld).distanceTo(target).toFixed(3); }
