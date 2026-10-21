@@ -2754,8 +2754,8 @@ function meshyAcc(model,o){
       const arm=new THREE.Mesh(new THREE.BoxGeometry(u*.016,u*.016,Dp*.55),frame); arm.position.set(cx+s*(sp+r*1.15),ey+u*.01,ez-Dp*.27); g.add(arm); });
     const br=new THREE.Mesh(new THREE.BoxGeometry(sp*2-u*.2,u*.014,u*.014),frame); br.position.set(cx,ey+u*.03,ez); g.add(br);
     add(g); }
-  if(hat==='cap') add(capHat(sk));
-  if(hat==='beanie') add(knitBeanie(sk,Ht));
+  if(hat==='cap') add(capHat(sk,hatCol(o)));
+  if(hat==='beanie') add(knitBeanie(sk,Ht,hatCol(o)));
   if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*A.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
     const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.045,8,40,Math.PI),dark); band.scale.set(Wd*1.08,(b.max.y-my)*2*1.02,Dp*.6); band.position.set(cx,my,cz); g.add(band);
     [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
@@ -2767,54 +2767,71 @@ const HAT_FIT={cap:{k:1.05,brim:.62,droop:.24},beanie:{top:1.16,k:1.04},
   sq:{m:{x:.5,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03}}};   // bd: how much lower the beanie's rim sits
 /* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
    taller than the head, a small pompom; BuyToday orange, the logo on the cuff */
-const KNIT={};
-function knitTex(kind){ if(KNIT[kind]) return KNIT[kind];
-  const c=document.createElement('canvas'); c.width=256; c.height=128; const g=c.getContext('2d');
-  const base=kind==='cuff'?'#d9530f':'#f26a1b'; g.fillStyle=base; g.fillRect(0,0,256,128);
-  if(kind==='cuff'){ for(let x=0;x<256;x+=8){ const gr=g.createLinearGradient(x,0,x+8,0); gr.addColorStop(0,'rgba(0,0,0,.28)'); gr.addColorStop(.5,'rgba(255,255,255,.14)'); gr.addColorStop(1,'rgba(0,0,0,.28)'); g.fillStyle=gr; g.fillRect(x,0,8,128); } }
-  else for(let y=0;y<128;y+=8) for(let x=0;x<256;x+=8){   // rows of little knit V's
-    g.strokeStyle='rgba(120,30,0,.35)'; g.lineWidth=1.6; g.beginPath(); g.moveTo(x+.5,y+1); g.lineTo(x+4,y+7); g.lineTo(x+7.5,y+1); g.stroke();
-    g.strokeStyle='rgba(255,220,180,.22)'; g.beginPath(); g.moveTo(x+1.5,y+1); g.lineTo(x+4,y+5.5); g.lineTo(x+6.5,y+1); g.stroke(); }
+/* hat colours: the hat itself; its seams, cuff and brim are shades of it */
+const M_HAT_C=[['orange','כתום',0xf26a1b],['navy','כחול',0x22305f],['black','שחור',0x1f2128],['grey','אפור',0x8b9099],['white','לבן',0xece8df]];
+const hatCol=o=>(M_HAT_C.find(x=>x[0]===o.mHatC)||M_HAT_C[0])[2];
+const hatCss=(c,f)=>'rgb('+[16,8,0].map(s=>Math.round(Math.min(255,((c>>s)&255)*f))).join(',')+')';
+const HAT_MAT={};
+// knit ribs, as light and shade: a normal map, the same for every colour
+let RIB_N=null;
+function ribNormal(){ if(RIB_N) return RIB_N; const c=document.createElement('canvas'); c.width=64; c.height=8; const g=c.getContext('2d'), im=g.createImageData(64,8);
+  for(let x=0;x<64;x++){ const s=Math.sin(x/8*Math.PI*2), nx=s*.7, nz=Math.sqrt(1-nx*nx); for(let y=0;y<8;y++){ const i=(y*64+x)*4; im.data[i]=(nx*.5+.5)*255; im.data[i+1]=128; im.data[i+2]=(nz*.5+.5)*255; im.data[i+3]=255; } }
+  g.putImageData(im,0,0); RIB_N=new THREE.CanvasTexture(c); RIB_N.wrapS=RIB_N.wrapT=THREE.RepeatWrapping; return RIB_N; }
+function knitMat(col,kind){ const key='k'+kind+col; if(HAT_MAT[key]) return HAT_MAT[key];
+  const c=document.createElement('canvas'); c.width=256; c.height=64; const g=c.getContext('2d');
+  g.fillStyle=hatCss(col,kind==='cuff'?.86:1); g.fillRect(0,0,256,64);
+  for(let x=0;x<256;x+=8){ const gr=g.createLinearGradient(x,0,x+8,0); gr.addColorStop(0,'rgba(0,0,0,.22)'); gr.addColorStop(.5,'rgba(255,255,255,.1)'); gr.addColorStop(1,'rgba(0,0,0,.22)'); g.fillStyle=gr; g.fillRect(x,0,8,64); }
+  for(let y=0;y<64;y+=4){ g.fillStyle='rgba(0,0,0,.06)'; g.fillRect(0,y,256,1); }   // the rows of stitches
   const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=4;
-  if(kind==='cuff') t.repeat.set(8,1); else t.repeat.set(9,4);
-  return KNIT[kind]=new THREE.MeshStandardMaterial({map:t,roughness:.95,metalness:0}); }
-/* the cap: made to the skull like the beanie: a six-panel crown that hugs the head down to the rim line, a button on
-   top, a curved brim in front, BuyToday on the front panels */
-let CAP_MAT=null;
-function capMat(){ if(CAP_MAT) return CAP_MAT;
-  const c=document.createElement('canvas'); c.width=1024; c.height=256; const g=c.getContext('2d');
-  g.fillStyle='#f26a1b'; g.fillRect(0,0,1024,256);
-  const n=g.createLinearGradient(0,0,0,256); n.addColorStop(0,'rgba(255,255,255,.08)'); n.addColorStop(1,'rgba(0,0,0,.12)'); g.fillStyle=n; g.fillRect(0,0,1024,256);
-  g.strokeStyle='rgba(110,35,0,.55)'; g.lineWidth=3; for(let i=0;i<6;i++){ const x=(i+.5)*1024/6; g.beginPath(); g.moveTo(x,0); g.lineTo(x,256); g.stroke(); }   // the panel seams, either side of the front
-  g.strokeStyle='rgba(110,35,0,.4)'; g.lineWidth=2; g.beginPath(); g.moveTo(0,246); g.lineTo(1024,246); g.stroke();
-  g.save(); g.translate(256,150); g.scale(.62,1); g.fillStyle='#fff'; g.font='900 64px Rubik,Arial,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',0,0); g.restore();   // u .25 is the front
+  const rep=kind==='cuff'?[14,1]:[14,5]; t.repeat.set(...rep); const n=ribNormal().clone(); n.needsUpdate=true; n.repeat.set(rep[0]*4,rep[1]);
+  return HAT_MAT[key]=new THREE.MeshStandardMaterial({map:t,normalMap:n,normalScale:new THREE.Vector2(.9,.9),roughness:.97,metalness:0}); }
+// the woven label on the cuff: BuyToday on orange (on an orange hat, white on navy)
+function hatLabel(col){ const key='l'+(col===M_HAT_C[0][2]?1:0); if(HAT_MAT[key]) return HAT_MAT[key];
+  const c=document.createElement('canvas'); c.width=256; c.height=96; const g=c.getContext('2d'), bg=col===M_HAT_C[0][2]?'#22305f':'#f26a1b';
+  g.fillStyle=bg; g.beginPath(); g.roundRect?g.roundRect(4,4,248,88,14):g.rect(4,4,248,88); g.fill();
+  g.fillStyle='#fff'; g.font='900 46px Rubik,Arial,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',128,50);
   const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
-  return CAP_MAT=new THREE.MeshStandardMaterial({map:t,roughness:.85,metalness:0}); }
-function capHat(sk){ const F=HAT_FIT.cap, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, k=F.k, th=Math.acos(Math.max(-1,Math.min(1,y0/k)));
+  return HAT_MAT[key]=new THREE.MeshStandardMaterial({map:t,roughness:.8,metalness:0,transparent:true,polygonOffset:true,polygonOffsetFactor:-2}); }
+/* the cap: made to the skull like the beanie: a six-panel crown that hugs the head down to the rim line, a button on
+   top, a curved brim in front (darker underneath), BuyToday on the front panels */
+function capMat(col){ const key='c'+col; if(HAT_MAT[key]) return HAT_MAT[key];
+  const c=document.createElement('canvas'); c.width=1024; c.height=256; const g=c.getContext('2d'), white=col===M_HAT_C[4][2];
+  g.fillStyle=hatCss(col,1); g.fillRect(0,0,1024,256);
+  const n=g.createLinearGradient(0,0,0,256); n.addColorStop(0,'rgba(255,255,255,.08)'); n.addColorStop(1,'rgba(0,0,0,.12)'); g.fillStyle=n; g.fillRect(0,0,1024,256);
+  for(let i=0;i<6;i++){ const x=(i+.5)*1024/6;   // the panel seams, either side of the front: a groove and the stitching beside it
+    g.strokeStyle='rgba(0,0,0,.45)'; g.lineWidth=4; g.beginPath(); g.moveTo(x,0); g.lineTo(x,256); g.stroke();
+    g.strokeStyle='rgba(255,255,255,.28)'; g.lineWidth=1.5; g.setLineDash([6,5]); [-7,7].forEach(d=>{ g.beginPath(); g.moveTo(x+d,8); g.lineTo(x+d,256); g.stroke(); }); g.setLineDash([]); }
+  g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=3; g.beginPath(); g.moveTo(0,244); g.lineTo(1024,244); g.stroke();
+  g.save(); g.translate(256,156); g.scale(.62,1); g.fillStyle=white||col===M_HAT_C[3][2]?'#f26a1b':'#fff'; g.font='900 70px Rubik,Arial,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',0,0); g.restore();   // u .25 is the front
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
+  return HAT_MAT[key]=new THREE.MeshStandardMaterial({map:t,roughness:.85,metalness:0}); }
+const brimMat=(col,f,side)=>{ const key='b'+col+f; return HAT_MAT[key]||(HAT_MAT[key]=new THREE.MeshStandardMaterial({color:new THREE.Color(hatCss(col,f)).convertSRGBToLinear(),roughness:.9,metalness:0,side})); };   // the colour as seen, not as light
+function capHat(sk,col){ const F=HAT_FIT.cap, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, k=F.k, th=Math.acos(Math.max(-1,Math.min(1,y0/k)));
   const S=m=>{ m.scale.copy(sk.r); m.position.copy(sk.c); return m; };
-  g.add(S(new THREE.Mesh(new THREE.SphereGeometry(k,40,14,0,Math.PI*2,0,th),capMat())));
-  const btn=new THREE.Mesh(new THREE.SphereGeometry(.07,12,6),capMat()); btn.scale.y=.45; btn.position.y=k-.01; g.add(S(new THREE.Group().add(btn)));
+  g.add(S(new THREE.Mesh(new THREE.SphereGeometry(k,40,14,0,Math.PI*2,0,th),capMat(col))));
+  const btn=new THREE.Mesh(new THREE.SphereGeometry(.07,12,6),brimMat(col,.9,THREE.FrontSide)); btn.scale.y=.45; btn.position.y=k-.01; g.add(S(new THREE.Group().add(btn)));
   // the brim: from the rim round the front, longest at the middle, its sides curved down
   const rin=k*Math.sin(th)-.01, N=24, pos=[], idx=[], A=1.15;
   for(let i=0;i<=N;i++){ const a=-A+2*A*i/N, cs=Math.cos(a/A*Math.PI/2), L=F.brim*Math.pow(Math.max(cs,0),.8);
     for(const t of [0,1]){ const r=rin+L*t, y=y0-.02-t*(.14+F.droop*(a/A)**2)-.06*t*t; pos.push(Math.sin(a)*r,y,Math.cos(a)*r); } }
   for(let i=0;i<N;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
   const bg=new THREE.BufferGeometry(); bg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); bg.setIndex(idx); bg.computeVertexNormals();
-  if(!capHat.brim) capHat.brim=new THREE.MeshStandardMaterial({color:new THREE.Color(0xc24a0c).convertSRGBToLinear(),roughness:.9,metalness:0,side:THREE.DoubleSide});   // the colour as seen, not as light
-  g.add(S(new THREE.Mesh(bg,capHat.brim)));
+  g.add(S(new THREE.Mesh(bg,brimMat(col,.82,THREE.FrontSide))), S(new THREE.Mesh(bg,brimMat(col,.5,THREE.BackSide))));   // top, and the darker underside
   return g; }
-function knitBeanie(sk,Ht){ const F=HAT_FIT.beanie, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, cuff=.32, top=F.top;
+/* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
+   taller than the head, a small pompom, the label on the cuff */
+function knitBeanie(sk,Ht,col){ const F=HAT_FIT.beanie, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, cuff=.32, top=F.top;
   const ell=(y,k)=>k*F.k/1.07*Math.sqrt(Math.max(0,1-(y/top)**2));
   const crown=[]; for(let i=0;i<=16;i++){ const y=y0+cuff*.6+(top-y0-cuff*.6)*i/16; crown.push(new THREE.Vector2(Math.max(ell(y,1.07),.001),y)); }
   const rim=[]; for(let i=0;i<=6;i++){ const y=y0+cuff*i/6; rim.push(new THREE.Vector2(ell(y,1.07)+.035+.012*Math.sin(Math.PI*i/6),y)); }
   rim.unshift(new THREE.Vector2(ell(y0,1.07)-.01,y0-.005)); rim.push(new THREE.Vector2(ell(y0+cuff,1.07)-.005,y0+cuff+.01));
   const S=m=>{ m.scale.copy(sk.r); m.position.copy(sk.c); return m; };
-  g.add(S(new THREE.Mesh(new THREE.LatheGeometry(crown,40),knitTex('crown'))), S(new THREE.Mesh(new THREE.LatheGeometry(rim,40),knitTex('cuff'))));
-  const pom=new THREE.Mesh(new THREE.IcosahedronGeometry(1,2),accMat(0xf58a3c,{roughness:1,metalness:0})), pa=pom.geometry.attributes.position;
+  g.add(S(new THREE.Mesh(new THREE.LatheGeometry(crown,48),knitMat(col,'crown'))), S(new THREE.Mesh(new THREE.LatheGeometry(rim,48),knitMat(col,'cuff'))));
+  const pom=new THREE.Mesh(new THREE.IcosahedronGeometry(1,2),brimMat(col,1.12,THREE.FrontSide)), pa=pom.geometry.attributes.position;
   for(let i=0;i<pa.count;i++){ const k=1+.12*Math.sin(pa.getX(i)*17+pa.getY(i)*11)*Math.cos(pa.getZ(i)*13); pa.setXYZ(i,pa.getX(i)*k,pa.getY(i)*k,pa.getZ(i)*k); }
   pom.geometry.computeVertexNormals(); pom.scale.set(sk.r.x*.17,sk.r.y*.17,sk.r.z*.17); pom.position.set(sk.c.x,sk.c.y+sk.r.y*(top+.08),sk.c.z); g.add(pom);
-  const logo=new THREE.Mesh(new THREE.PlaneGeometry(sk.r.x*.42,sk.r.y*.2),merchTex('logo-tile')), ly=y0+cuff/2;
-  logo.position.set(sk.c.x,sk.c.y+sk.r.y*ly,sk.c.z+sk.r.z*(ell(ly,1.07)+.06)+Ht*.004); g.add(logo);
+  const logo=new THREE.Mesh(new THREE.PlaneGeometry(sk.r.x*.5,sk.r.y*.19),hatLabel(col)), ly=y0+cuff/2;
+  logo.position.set(sk.c.x,sk.c.y+sk.r.y*ly,sk.c.z+sk.r.z*(ell(ly,1.07)+.05)+Ht*.004); g.add(logo);
   return g; }
 const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42,m:{eye:.4,ear:.36}};   // m: the boy's head box takes in his tall hair, so his eyes and ears sit lower in it
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
@@ -3376,7 +3393,7 @@ function meshyPeer(G,av){
     if(!G.g.parent||G.npc3d) return;
     const m=gl.scene;
     m.traverse(x=>{ if(x.isMesh){ x.castShadow=false; x.frustumCulled=false; } });
-    meshyDress(m,{girl:!!av.girl,outfit:o,mHair:av.mHair,mSkin:av.mSkin,mGlass:av.mGlass,mHat:av.mHat});   // exactly as the player's own figure is dressed
+    meshyDress(m,{girl:!!av.girl,outfit:o,mHair:av.mHair,mSkin:av.mSkin,mGlass:av.mGlass,mHat:av.mHat,mHatC:av.mHatC});   // exactly as the player's own figure is dressed
     m.scale.setScalar(HERO_MODEL_SCALE); m.rotation.y=HERO_MODEL_ROTATION_OFFSET;
     const r=new THREE.Group(); r.add(m);
     const mixer=new THREE.AnimationMixer(m), actions={};
@@ -4104,7 +4121,7 @@ arrowMesh.rotation.x=Math.PI/2; arrow.add(arrowMesh); scene.add(arrow);
 
 // player
 const player={pos:new THREE.Vector3(0,0,28.5),vel:new THREE.Vector3(),yaw:Math.PI,floor:0};
-const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:'',hairStyle:'',top:'',body:'regular',eyes:0x4a3222,eyewear:'none',mHair:'',mSkin:'',mGlass:'none',mHat:'none'};
+const AV_DEFAULT={girl:false,skin:0xf1c7a0,hair:0x3a2618,shirt:0x2f7de1,pants:0x2b2f3a,bottom:'pants',extra:'none',merch:'none',name:'',hairStyle:'',top:'',body:'regular',eyes:0x4a3222,eyewear:'none',mHair:'',mSkin:'',mGlass:'none',mHat:'none',mHatC:'orange'};
 const AV_BODY=[['regular','רגיל'],['slim','רזה'],['full','מלא'],['strong','שרירי']], AV_EYEWEAR=['none','glasses','shades'];
 // was there a character on this device before this visit? (it wins over an older copy on the account)
 const HAD_LOCAL=(()=>{ try{ return !!localStorage.getItem('bt-avatar'); }catch(e){ return false; } })();
@@ -4476,7 +4493,8 @@ function renderCreator(){
       msw('צבע שיער','mHair',M_HAIR);
       msw('גוון עור','mSkin',M_SKIN);
       seg('משקפיים','mGlass',M_GLASS,avatar.mGlass||'none');
-      seg('על הראש','mHat',M_HAT,avatar.mHat||'none'); }
+      seg('על הראש','mHat',M_HAT,avatar.mHat||'none');
+      if(avatar.mHat==='cap'||avatar.mHat==='beanie') msw('צבע הכובע','mHatC',M_HAT_C); }
     else { const g=avatar.girl?'f':'m', L2=MESHY_OUTFITS[g], mineO=L2.filter(x=>outfitOwned(g,x[0])), more=L2.length-mineO.length;
       seg('תלבושת','outfit',mineO,mineO.some(x=>x[0]===avatar.outfit)?avatar.outfit:L2[0][0]);
       if(more){ const p=document.createElement('p'); p.style.cssText='margin:0;font-size:12.5px;color:#5b6280'; p.textContent='עוד '+more+' תלבושות מחכות בחנות BuyToday על הגג. קונים במטבעות ולובשים מיד'; pane.appendChild(p); } }
@@ -6348,7 +6366,7 @@ const packAv=a=>{ const S=HERO_STYLES[a.girl?'f':'m'], L=heroLook(a);
     Math.max(0,AV_BODY.findIndex(b=>b[0]===a.body)),Math.max(0,AV_CHOICES.eyes.indexOf(a.eyes)),Math.max(0,AV_EYEWEAR.indexOf(a.eyewear||'none')),   // 10-12: build, eyes, glasses
     MESHY_HERO?Math.max(0,MESHY_OUTFITS[a.girl?'f':'m'].findIndex(x=>x[0]===a.outfit)):-1,   // 13: the Meshy outfit (-1: the wardrobe figure)
     PET_IDS.indexOf(a===avatar?petWant():a.pet),   // 14: the pet at their heel (-1: none)
-    M_HAIR.findIndex(x=>x[0]===(a.mHair||'')),M_SKIN.findIndex(x=>x[0]===(a.mSkin||'')),M_GLASS.findIndex(x=>x[0]===(a.mGlass||'none')),M_HAT.findIndex(x=>x[0]===(a.mHat||'none'))]; };   // 15-18: the Meshy figure's hair colour, skin tone, glasses, hat
+    M_HAIR.findIndex(x=>x[0]===(a.mHair||'')),M_SKIN.findIndex(x=>x[0]===(a.mSkin||'')),M_GLASS.findIndex(x=>x[0]===(a.mGlass||'none')),M_HAT.findIndex(x=>x[0]===(a.mHat||'none')),Math.max(0,M_HAT_C.findIndex(x=>x[0]===a.mHatC))]; };   // 15-19: the Meshy figure's hair colour, skin tone, glasses, hat and its colour
 function unpackAv(v){ if(!Array.isArray(v)) return null;
   // only the creator's own swatches: an arbitrary colour per visitor would grow the material cache without end
   const c=(x,key,d)=>AV_CHOICES[key].includes(x)?x:d;
@@ -6357,7 +6375,7 @@ function unpackAv(v){ if(!Array.isArray(v)) return null;
     hairStyle:st(S.head,v[8]),top:st(S.top,v[9]),body:(AV_BODY[v[10]]||AV_BODY[0])[0],eyes:AV_CHOICES.eyes[v[11]]||AV_CHOICES.eyes[0],eyewear:AV_EYEWEAR[v[12]]||'none',
     outfit:Number.isInteger(v[13])&&MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]]?MESHY_OUTFITS[v[0]===1?'f':'m'][v[13]][0]:'',
     pet:Number.isInteger(v[14])&&PET_IDS[v[14]]?PET_IDS[v[14]]:'none',
-    mHair:(M_HAIR[v[15]]||M_HAIR[0])[0],mSkin:(M_SKIN[v[16]]||M_SKIN[0])[0],mGlass:(M_GLASS[v[17]]||M_GLASS[0])[0],mHat:(M_HAT[v[18]]||M_HAT[0])[0]}; }
+    mHair:(M_HAIR[v[15]]||M_HAIR[0])[0],mSkin:(M_SKIN[v[16]]||M_SKIN[0])[0],mGlass:(M_GLASS[v[17]]||M_GLASS[0])[0],mHat:(M_HAT[v[18]]||M_HAT[0])[0],mHatC:(M_HAT_C[v[19]]||M_HAT_C[0])[0]}; }
 const Net={sb:null,ch:null,room:1,ready:false,joining:false,id:Math.random().toString(36).slice(2,10),peers:new Map(),count:0,
   sendT:0,idleT:0,force:false,sent:null,emoAt:0,selfEmo:null};
 const onlineEl=$('#online'), emoBtn=$('#emoBtn'), emoTray=$('#emoTray');
