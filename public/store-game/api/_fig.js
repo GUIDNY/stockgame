@@ -2,13 +2,13 @@
    textures) to about 1 MB: the mesh simplified to a third, the colour texture to 1024 JPEG, the normal map to 512,
    what the game never uses (metal-roughness, occlusion, animations) dropped. Positions stay plain floats: the
    skeleton mapping reads them directly. */
-const { NodeIO } = require('@gltf-transform/core');
-const { ALL_EXTENSIONS } = require('@gltf-transform/extensions');
-const { dedup, prune, weld, simplify, textureCompress } = require('@gltf-transform/functions');
-const { MeshoptSimplifier } = require('meshoptimizer');
-const sharp = require('sharp');
+// loaded as ES modules: the server's Node cannot require() them (glTF Transform's core pulls in an .mjs)
+let LIBS=null;
+const libs = () => LIBS || (LIBS = Promise.all([import('@gltf-transform/core'), import('@gltf-transform/extensions'), import('@gltf-transform/functions'), import('meshoptimizer'), import('sharp')])
+  .then(([core, ext, fn, mo, sh]) => ({ NodeIO: core.NodeIO, ALL_EXTENSIONS: ext.ALL_EXTENSIONS, fn, MeshoptSimplifier: mo.MeshoptSimplifier, sharp: sh.default || sh })));
 
 module.exports = async function packFigure(buf, ratio = 0.35) {
+  const { NodeIO, ALL_EXTENSIONS, fn: { dedup, prune, weld, simplify, textureCompress }, MeshoptSimplifier, sharp } = await libs();
   await MeshoptSimplifier.ready;
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS), doc = await io.readBinary(new Uint8Array(buf)), root = doc.getRoot();
   root.listAnimations().forEach(a => a.dispose());
