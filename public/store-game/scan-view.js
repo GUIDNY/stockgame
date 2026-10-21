@@ -33,9 +33,25 @@ function mapByShape(model){
       const a0=P(legs[0][Math.min(legs[0].length-1,2)]), a1=P(legs[1][Math.min(legs[1].length-1,2)]), a=v.distanceTo(a0)<v.distanceTo(a1)?a0:a1; lean+=v.clone().sub(a).dot(fwd); } });
   if(lean<0) fwd.negate();
   const right=V().crossVectors(fwd,new THREE.Vector3(0,1,0)).normalize(), side=b=>P(b).sub(hp).dot(right)>0?'Right':'Left';
-  const got={Hips:hips};
+  // a rig whose root sits on the floor between the feet, legs and spine hung straight off it: the clips' hip sway would
+  // swing the whole figure about its feet (knees flung up, arms out). A hip bone of its own goes in at the pelvis,
+  // between the tops of the legs, and the legs and the spine hang off that instead (moved with attach(), so nothing
+  // moves in the world and the skin stays as it was)
+  let pelvis=hips;
+  if(hp.y<floor+H*.25){ const top=P(legs[0][0]).add(P(legs[1][0])).multiplyScalar(.5);
+    pelvis=new THREE.Bone(); hips.add(pelvis); pelvis.position.copy(hips.worldToLocal(top.clone())); pelvis.updateMatrixWorld(true);
+    kids(hips).filter(b=>b!==pelvis).forEach(b=>pelvis.attach(b));   // the legs, the spine, and whatever else hangs there (a hem, a pocket)
+    // skin the root itself held (the hoodie's hem) goes to the hip bone too, which joins the skeleton with the same rest
+    model.updateMatrixWorld(true); const done=new Set();
+    model.traverse(o=>{ if(!o.isSkinnedMesh) return; const sk=o.skeleton, ri=sk.bones.indexOf(hips); if(ri<0) return;
+      if(!done.has(sk)){ done.add(sk); const rest=new THREE.Matrix4().multiplyMatrices(hips.matrixWorld,sk.boneInverses[ri]);
+        sk.bones.push(pelvis); sk.boneInverses.push(new THREE.Matrix4().copy(pelvis.matrixWorld).invert().multiply(rest)); sk.boneMatrices=new Float32Array(sk.bones.length*16); }
+      const pi=sk.bones.indexOf(pelvis), si=o.geometry.attributes.skinIndex, get=['getX','getY','getZ','getW'], set=['setX','setY','setZ','setW'];
+      for(let k=0;k<si.count;k++) for(let j=0;j<4;j++) if(si[get[j]](k)===ri) si[set[j]](k,pi);
+      si.needsUpdate=true; }); }
+  const got={Hips:pelvis};
   legs.slice(0,2).forEach(c=>{ const s=side(c[0]); ['UpLeg','Leg','Foot','ToeBase'].forEach((n,i)=>{ if(c[i]) got[s+n]=c[i]; }); });
-  const sp=spine.slice(0,spine.length).filter(b=>b!==hips), names=['Spine','Spine1','Spine2'];
+  const sp=spine.slice(0,spine.length).filter(b=>b!==hips&&b!==pelvis), names=['Spine','Spine1','Spine2'];
   if(sp.length<=3) sp.forEach((b,i)=>got[names[i]]=b); else [sp[0],sp[Math.floor(sp.length/2)],sp[sp.length-1]].forEach((b,i)=>got[names[i]]=b);
   const cp=P(chest);
   kids(chest).map(walk).forEach(c=>{ const end=P(c[c.length-1]), lat=end.clone().sub(cp).dot(right), up=end.y-cp.y;
@@ -54,7 +70,39 @@ function fitFigure(m,height){
   const b2=skinBox(); m.position.y-=b2.min.y; m.position.x-=(b2.min.x+b2.max.x)/2; m.position.z-=(b2.min.z+b2.max.z)/2; m.updateMatrixWorld(true);
 }
 // for the mall (game.html): the same reading of the bones and the same fitting, for the player's own figure
-window.scanMap=mapByShape; window.scanFit=fitFigure;
+/* The crowd's clips are made for a T-pose: arms straight out to the sides. A figure drawn with its arms angled down (an
+   A-pose, as the image model often draws them) would take each turn from the wrong start: arms flung out, hands across
+   the face. So its arms are lifted to straight out, and that pose made its rest: every vertex moved to where the bones
+   now put it (normals too), and the bones' inverses taken anew. Run after mapByShape (it finds the arms by name). */
+function tposeArms(model){
+  model.updateMatrixWorld(true);
+  const by=n=>{ let b=null; model.traverse(o=>{ if(!b&&o.isBone&&o.name==='mixamorig'+n) b=o; }); return b; };
+  let moved=false; const q=new THREE.Quaternion(), pq=new THREE.Quaternion(), wq=new THREE.Quaternion();
+  const aim=(bone,from,to,want)=>{ const d=P(to).sub(P(from)).normalize(); if(d.dot(want)>.995) return;
+    q.setFromUnitVectors(d,want); bone.getWorldQuaternion(wq); bone.parent.getWorldQuaternion(pq);
+    bone.quaternion.copy(pq.invert().multiply(q.multiply(wq))); bone.updateMatrixWorld(true); moved=true; };
+  ['Left','Right'].forEach(s=>{ const arm=by(s+'Arm'), fore=by(s+'ForeArm'), hand=by(s+'Hand'); if(!arm||!fore||!hand) return;
+    const d=P(fore).sub(P(arm)); d.y=0; if(d.lengthSq()<1e-8) return; d.normalize();   // out to the side, as it already leans
+    aim(arm,arm,fore,d); aim(fore,fore,hand,d); });
+  if(!moved) return false;
+  model.updateMatrixWorld(true);
+  const meshes=[], M=new THREE.Matrix4(), B=new THREE.Matrix4(), T=new THREE.Matrix4(), N=new THREE.Matrix3(), v=V(), n=V();
+  model.traverse(o=>{ if(!o.isSkinnedMesh) return; o.skeleton.update(); meshes.push(o);
+    const g=o.geometry, pa=g.attributes.position, na=g.attributes.normal, si=g.attributes.skinIndex, sw=g.attributes.skinWeight, bm=o.skeleton.boneMatrices;
+    for(let k=0;k<pa.count;k++){ M.set(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+      // weights as stored may be whole numbers (a normalized byte or short reads 0..255 here): taken as shares of their sum
+      const ws=[sw.getX(k),sw.getY(k),sw.getZ(k),sw.getW(k)], is=[si.getX(k),si.getY(k),si.getZ(k),si.getW(k)], sum=ws[0]+ws[1]+ws[2]+ws[3]; if(!sum) continue;
+      for(let j=0;j<4;j++){ if(!ws[j]) continue; B.fromArray(bm,is[j]*16); for(let e=0;e<16;e++) M.elements[e]+=B.elements[e]*ws[j]/sum; }
+      T.copy(o.bindMatrixInverse).multiply(M).multiply(o.bindMatrix);
+      v.fromBufferAttribute(pa,k).applyMatrix4(T); pa.setXYZ(k,v.x,v.y,v.z);
+      if(na){ N.setFromMatrix4(T); n.fromBufferAttribute(na,k).applyMatrix3(N).normalize(); na.setXYZ(k,n.x,n.y,n.z); } }
+    pa.needsUpdate=true; if(na) na.needsUpdate=true; g.computeBoundingBox(); g.computeBoundingSphere(); });
+  // bound again as it stands now: the bones' inverses and the mesh's bind matrix taken at the same moment (bind() with no
+  // matrix does both), so the new rest is exactly this pose
+  meshes.forEach(o=>o.bind(o.skeleton));
+  return true;
+}
+window.scanMap=mapByShape; window.scanFit=fitFigure; window.scanTpose=tposeArms;
 
 function retarget(clip,src,tgt){
   const W=root=>{ root.updateMatrixWorld(true); const m={}; root.traverse(o=>{ if(/^mixamorig/.test(o.name)) m[o.name]={b:o,w:o.getWorldQuaternion(new THREE.Quaternion())}; }); return m; };
@@ -91,7 +139,7 @@ window.avatarViewer=async function(box,urls,movesBox,note,base,prep){   // prep:
   if(!gl){ note('הקובץ לא נטען ('+((err&&err.message)||err)+')'); return null; }
   const m=gl.scene, turn=new THREE.Group(); turn.add(m); sc.add(turn);
   m.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; const mt=o.material; if(mt&&mt.map) mt.map.anisotropy=4; } });
-  if(prep) prep(m); const map=mapByShape(m);
+  if(prep) prep(m); const map=mapByShape(m); tposeArms(m);
   if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);   // face the camera
   fitFigure(m,1.8);
   const mixer=new THREE.AnimationMixer(m), acts={};

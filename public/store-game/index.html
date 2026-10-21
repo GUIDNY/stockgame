@@ -2570,13 +2570,14 @@ const scanHero=()=>{ try{ const s=JSON.parse(localStorage.getItem('bt-scan-hero'
 const scanSet=fig=>{ try{ if(fig) localStorage.setItem('bt-scan-hero',JSON.stringify({fig,at:Date.now()})); else localStorage.removeItem('bt-scan-hero'); }catch(e){} };
 const SCAN_BUF={};
 let SCAN_VIEW=null;
-const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=2'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
+const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=3'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
 function scanFigure(fig){
   if(!SCAN_BUF[fig]) SCAN_BUF[fig]=fetch(ASSET+'api/avatar?fig='+fig,{credentials:'include'}).then(r=>{ if(!r.ok) throw new Error('fig '+r.status); return r.arrayBuffer(); })
     .catch(e=>{ delete SCAN_BUF[fig]; throw e; });
   return Promise.all([SCAN_BUF[fig],scanViewReady(),gltfReady()]).then(([b])=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); L.parse(b.slice(0),'',res,rej); }))
     .then(gl=>{ const m=gl.scene, map=scanMap(m), core=map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n));
       if(core.length) throw new Error('scan bones: '+core.join(','));
+      if(window.scanTpose) scanTpose(m);   // arms drawn angled down are lifted straight out, as the clips expect
       if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);
       scanFit(m,1.87); m.traverse(x=>{ if(x.isMesh){ x.frustumCulled=false; const mt=x.material; if(mt){ mt.metalness=0; mt.roughness=Math.max(mt.roughness||0,.55); } } });
       const wrap=new THREE.Group(); wrap.add(m); wrap.userData.scan=true; return meshyAnims({scene:wrap,animations:[]}); });
