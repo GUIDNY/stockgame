@@ -15,7 +15,7 @@
   header b{font-size:19px;font-weight:900;} header small{display:block;font-size:12px;color:var(--dim);font-weight:600;}
   header a{color:#fff;text-decoration:none;font-weight:800;font-size:14px;background:rgba(255,255,255,.1);padding:8px 12px;border-radius:12px;}
   main{flex:1;display:flex;flex-direction:column;align-items:center;padding:6px 16px calc(env(safe-area-inset-bottom) + 16px);gap:14px;max-width:520px;width:100%;margin:0 auto;}
-  section[hidden]{display:none!important;}
+  section[hidden],[hidden]{display:none!important;}
   section{width:100%;display:flex;flex-direction:column;gap:14px;align-items:center;}
   .card{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:16px;line-height:1.55;font-size:14.5px;}
   .card h2{font-size:18px;font-weight:900;margin-bottom:6px;}
@@ -59,9 +59,9 @@
 
   <!-- 1. what happens, and consent -->
   <section id="s1">
-    <div class="card"><h2>מכינים דמות שלך מסלפי אחת</h2>
-      <ul><li>מצלמים את הפנים, ישר למצלמה, באור טוב.</li>
-        <li>לשיפור הדמיון: גם צילום של הפנים מהצד (חצי פרופיל), בשביל האף, הלסת והשיער.</li>
+    <div class="card"><h2>מכינים דמות שלך מהפנים שלך</h2>
+      <ul><li>מצלמים את הפנים, ישר למצלמה, באור טוב. הטלפון בודק שיש בתמונה פנים אמיתיות, רק שלכם.</li>
+        <li>אחר כך מסובבים לאט את הראש לצד, והצילום נלקח לבד. ככה יודעים שזה אדם חי מול המצלמה, והדמות יוצאת דומה יותר.</li>
         <li>מומלץ: גם צילום של כל הגוף, בשביל המבנה והבגדים. מישהו אחר מצלם, או טיימר של 10 שניות.</li>
         <li>מהתמונות נוצרת דמות שלך, כל הגוף, בסגנון הקניון.</li>
         <li>הדמות הופכת לתלת־ממד עם שלד, והיא רוקדת, קופצת ומנפנפת.</li>
@@ -70,8 +70,6 @@
       <label class="ok"><input type="checkbox" id="agree"><span>אני מסכים/ה שהתמונות שלי יישלחו לשירות Tripo (tripo3d.ai) כדי ליצור ממנה דמות. אנחנו לא שומרים את התמונה. אני מצלם/ת רק את עצמי, ואני מעל גיל 18.</span></label>
     </div>
     <button class="go" id="toCam" disabled>מתחילים לצלם</button>
-    <button class="go2" id="toFile" disabled>או לבחור תמונה מהגלריה</button>
-    <input type="file" id="file" accept="image/*" hidden>
   </section>
 
   <!-- 2. the camera, guided -->
@@ -90,7 +88,7 @@
     <div class="cam"><img id="shot" alt="התמונה שצולמה"></div>
     <p class="err" id="warn" hidden></p>
     <div class="row"><button class="go2" id="again">שוב</button><button class="go" id="addBody">ועכשיו כל הגוף</button></div>
-    <button class="go2" id="addSide">+ פנים מהצד: הדמות תצא דומה יותר</button>
+    <button class="go" id="addSide">הבא: מסובבים את הראש לצד</button>
     <div class="wear" role="radiogroup" aria-label="מה הדמות לובשת"><b>מה הדמות לובשת?</b><div id="wear">
       <button data-w="mine" class="on">הבגדים שלי מהתמונה</button><button data-w="bt">קפוצ'ון BuyToday</button><button data-w="suit">חליפה</button>
       <button data-w="sport">ספורט</button><button data-w="summer">קיץ</button><button data-w="casual">יומיומי</button></div></div>
@@ -132,10 +130,33 @@ const show=id=>document.querySelectorAll('main>section').forEach(s=>s.hidden=s.i
 const store={ get(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ return null; } }, set(v){ try{ localStorage.setItem(KEY,JSON.stringify(v)); }catch(e){} } };
 
 /* ---------- 1. consent ---------- */
-$('#agree').addEventListener('change',e=>{ $('#toCam').disabled=$('#toFile').disabled=!e.target.checked; });
-$('#toCam').addEventListener('click',startCam);
-$('#toFile').addEventListener('click',()=>$('#file').click());
-$('#file').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; e.target.value=''; const im=new Image(); im.onload=()=>{ shotFrom(im,im.naturalWidth,im.naturalHeight,false); URL.revokeObjectURL(im.src); }; im.src=URL.createObjectURL(f); });
+$('#agree').addEventListener('change',e=>{ $('#toCam').disabled=!e.target.checked; });
+$('#toCam').addEventListener('click',startCam);   // the live camera only: no photo from the gallery
+
+/* ---------- faces, found on the phone itself (MediaPipe's BlazeFace, ml/face.tflite): nothing leaves it for this ----------
+   The selfie needs one face, near, in the oval, looking straight. Then the head is turned, live: the shot from the side
+   is taken by itself only once the same face has been seen straight and then turned half way. A photo held up to the
+   camera can be tilted but not turned: its nose stays between its eyes. */
+const MP='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+let FD=null, FDI=null, fdP=null, fdT=0;   // one for the live camera, one for the photo taken
+const faceDet=()=>fdP||(fdP=import(MP+'/vision_bundle.mjs').then(async V=>{ const fs=await V.FilesetResolver.forVisionTasks(MP+'/wasm');
+  const mk=(runningMode,delegate)=>V.FaceDetector.createFromOptions(fs,{baseOptions:{modelAssetPath:'ml/face.tflite',delegate},runningMode,minDetectionConfidence:.55});
+  const two=d=>Promise.all([mk('VIDEO',d),mk('IMAGE',d)]);
+  [FD,FDI]=await two('GPU').catch(()=>two('CPU')); return FD; }).catch(e=>{ fdP=null; throw e; }));
+const fdNow=()=>(fdT=Math.max(fdT+1,performance.now()));
+// yaw: how far the nose sits from between the eyes, in eye spans (0 straight on, about .5 at half profile)
+function judge(src,W,H,want){ let ds=[]; try{ ds=(src.tagName==='VIDEO'?FD.detectForVideo(src,fdNow()):FDI.detect(src)).detections||[]; }catch(e){ return {ok:false,msg:'בודקים…'}; }
+  if(!ds.length) return {ok:false,msg:'לא רואים פנים: הכניסו את הפנים לאליפסה'};
+  if(ds.length>1) return {ok:false,msg:'רואים יותר מאדם אחד: רק אתם בתמונה'};
+  const b=ds[0].boundingBox, k=ds[0].keypoints||[], fw=b.width/W, cx=(b.originX+b.width/2)/W, cy=(b.originY+b.height/2)/H;
+  if(fw<.2) return {ok:false,msg:'התקרבו קצת למצלמה'};
+  if(fw>.85) return {ok:false,msg:'קרוב מדי: התרחקו קצת'};
+  if(Math.abs(cx-.5)>.2||cy<.18||cy>.72) return {ok:false,msg:'הכניסו את הפנים לתוך האליפסה'};
+  if(k.length<3) return {ok:false,msg:'לא רואים את הפנים טוב'};
+  const yaw=Math.abs(k[2].x-(k[0].x+k[1].x)/2)/Math.max(Math.abs(k[0].x-k[1].x),1e-3);
+  if(want==='front'&&yaw>.2) return {ok:false,msg:'מבט ישר למצלמה',yaw};
+  if(want==='side'&&yaw<.3) return {ok:false,msg:'סובבו לאט את הראש הצידה',yaw};   // a real head reaches it at about 28°; a flat photo turned 50° stays under .15
+  return {ok:true,yaw}; }
 
 /* ---------- 2. camera, with a running check of light and framing ---------- */
 let wear='mine';
@@ -148,13 +169,28 @@ async function startCam(){
   show('s2'); const v=$('#vid'); stopCam(); const body=phase==='body';
   $('#oval').style.display=body?'none':''; $('#dim').style.display=body?'none':''; $('#body').hidden=!body; v.style.transform=facing==='user'?'scaleX(-1)':'none';
   $('#camHelp').textContent=body?(facing==='user'?'מניחים את הטלפון, לוחצים צילום, ויש 10 שניות להתרחק ולעמוד בתוך הקו.':'מצלמים ממרחק של 2–3 מטר, הטלפון בגובה החזה, כל הגוף בפריים.'):phase==='side'?'מחזיקים את הטלפון ישר ומסובבים רק את הראש, כך שרואים את הפנים בחצי פרופיל. אותו אור כמו בסלפי.':'טיפ: לעמוד מול חלון או מנורה, בלי כובע ובלי משקפי שמש. מבט ישר, פנים רגועות.';
+  const tip=$('#tip'), say=(t,warn)=>{ tip.textContent=t; tip.classList.toggle('warn',!!warn); };
+  $('#shoot').hidden=phase==='side'; $('#shoot').disabled=phase!=='body'; $('#flip').hidden=phase!=='body';
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1280},height:{ideal:1706}},audio:false}); v.srcObject=stream; await v.play(); }
-  catch(e){ $('#tip').textContent='אין גישה למצלמה. אפשר לבחור תמונה מהגלריה.'; $('#tip').classList.add('warn'); return; }
-  let i=0; clearInterval(tipT); tipT=setInterval(()=>{ checkLight(i++); },1400);
+  catch(e){ say('אין גישה למצלמה. צריך לאשר למצלמה בהגדרות הדפדפן.',true); return; }
+  let i=0; clearInterval(tipT);
+  if(phase==='body'){ tipT=setInterval(()=>{ checkLight(i++); },1400); return; }
+  say('טוענים את בדיקת הפנים…');
+  try{ await faceDet(); }catch(e){ say('בדיקת הפנים לא נטענה. רעננו את הדף ונסו שוב.',true); return; }
+  // the selfie: the button wakes when the face is right. From the side: straight first, then turned, then it shoots itself
+  let straight=false, good=0;
+  tipT=setInterval(()=>{ if(!v.videoWidth||!stream) return; const lum=lightOf(v);
+    if(lum<70) return say('חשוך מדי: עברו למקום מואר יותר',true);
+    if(lum>235) return say('יותר מדי אור מאחור או מלמעלה',true);
+    if(phase==='face'){ const r=judge(v,v.videoWidth,v.videoHeight,'front'); $('#shoot').disabled=!r.ok; return r.ok?say('מעולה! לוחצים צילום'):say(r.msg,true); }
+    if(!straight){ const r=judge(v,v.videoWidth,v.videoHeight,'front'); if(r.ok){ straight=true; say('עכשיו סובבו לאט את הראש הצידה'); } else say(r.msg==='מבט ישר למצלמה'?'קודם מסתכלים ישר למצלמה':r.msg,true); return; }
+    const r=judge(v,v.videoWidth,v.videoHeight,'side'); if(!r.ok){ good=0; return say(r.msg,!/סובבו/.test(r.msg)); }
+    if(++good>=3){ say('יש!'); shotFrom(v,v.videoWidth,v.videoHeight,facing==='user'); } else say('ככה! רגע אחד…'); },220);
 }
+function lightOf(v){ const g=probe.getContext('2d'); g.drawImage(v,0,0,48,64);
+  const d=g.getImageData(12,10,24,36).data; let s=0; for(let k=0;k<d.length;k+=4) s+=.3*d[k]+.59*d[k+1]+.11*d[k+2]; return s/(d.length/4); }
 const probe=document.createElement('canvas'); probe.width=48; probe.height=64;
-function checkLight(i){ const v=$('#vid'); if(!v.videoWidth) return; const g=probe.getContext('2d'); g.drawImage(v,0,0,48,64);
-  const d=g.getImageData(12,10,24,36).data; let s=0; for(let k=0;k<d.length;k+=4) s+=.3*d[k]+.59*d[k+1]+.11*d[k+2]; const lum=s/(d.length/4);
+function checkLight(i){ const v=$('#vid'); if(!v.videoWidth) return; const lum=lightOf(v);
   const tip=$('#tip'); if(lum<70){ tip.textContent='חשוך מדי: עברו למקום מואר יותר'; tip.classList.add('warn'); }
   else if(lum>235){ tip.textContent='יותר מדי אור מאחור או מלמעלה'; tip.classList.add('warn'); }
   else { const T=TIPS[phase]; tip.textContent=T[i%T.length]; tip.classList.remove('warn'); } }
@@ -166,14 +202,19 @@ function stopCam(){ clearInterval(tipT); if(stream){ stream.getTracks().forEach(
 
 /* the photo: 3:4, at most 1024 high, mirrored back for the camera (people expect the selfie they saw) */
 let shotData=null;
-function shotFrom(src,w,h,mirror){ stopCam(); const H=1024, W=768, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
-  const r=Math.max(W/w,H/h), dw=w*r, dh=h*r; if(mirror){ g.translate(W,0); g.scale(-1,1); } g.drawImage(src,(W-dw)/2,(H-dh)/2,dw,dh);
+function shotFrom(src,w,h,mirror){ const H=1024, W=768, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  const r=Math.max(W/w,H/h), dw=w*r, dh=h*r; if(mirror){ g.translate(W,0); g.scale(-1,1); } g.drawImage(src,(W-dw)/2,(H-dh)/2,dw,dh); g.setTransform(1,0,0,1,0,0);
+  stopCam();   // only now: a stopped camera may hand over a black frame
   shotData=c.toDataURL('image/jpeg',.9); $('#shot').src=shotData; if(phase==='face') faceData=shotData; else if(phase==='side') sideData=shotData; else bodyData=shotData;
-  // what else can be added: the face from the side, the whole body; each once
-  const only=!sideData&&!bodyData; $('#addBody').hidden=!!bodyData; $('#addSide').hidden=!!sideData;
-  $('#send').textContent=only?'רק הפנים, הכינו לי דמות':'זהו! הכינו לי דמות'; $('#send').className=only?'go2':'go';
   const d=g.getImageData(W*.3,H*.2,W*.4,H*.4).data; let s=0; for(let k=0;k<d.length;k+=16) s+=.3*d[k]+.59*d[k+1]+.11*d[k+2]; const lum=s/(d.length/16);
   const w2=$('#warn'); w2.hidden=lum>=70&&lum<=235; w2.textContent=lum<70?'התמונה חשוכה: הדמות תצא פחות דומה. כדאי לצלם שוב באור.':'התמונה בהירה מדי: כדאי לצלם שוב.';
+  // the shot itself checked again: the face may have moved during 3-2-1
+  const chk=phase==='body'?{ok:true}:judge(c,W,H,phase==='side'?'side':'front');
+  if(!chk.ok){ if(phase==='face') faceData=null; else sideData=null; w2.hidden=false; w2.textContent='לא רואים בתמונה פנים ברורות ('+chk.msg+'). צלמו שוב.'; }
+  // the steps: the face, then turning the head (both needed), then the whole body if wanted
+  const ready=!!(faceData&&sideData);
+  $('#addSide').hidden=!faceData||!!sideData||!chk.ok; $('#addBody').hidden=!ready||!!bodyData; $('#send').hidden=!ready; $('.wear').hidden=!ready;
+  $('#send').textContent='זהו! הכינו לי דמות'; $('#send').className=bodyData?'go':'go2';
   show('s3'); }
 $('#again').addEventListener('click',startCam);
 $('#addBody').addEventListener('click',()=>{ phase='body'; facing='environment'; startCam(); });
@@ -182,7 +223,7 @@ $('#addSide').addEventListener('click',()=>{ phase='side'; facing='user'; startC
 
 /* ---------- 3-4. send, and follow the chain ---------- */
 $('#send').addEventListener('click',async()=>{ show('s4'); setSteps('img',0); $('#err').hidden=true; $('#pv').hidden=true;
-  try{ const r=await fetch('api/avatar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({image:faceData,side:sideData||undefined,body:bodyData||undefined,wear})}); const j=await r.json();
+  try{ const r=await fetch('api/avatar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({image:faceData,side:sideData,body:bodyData||undefined,wear})}); const j=await r.json();
     if(!r.ok) throw new Error(j.error==='credit'?'credit':j.error||r.status);
     const job={stage:j.stage,t:j.t,at:Date.now()}; store.set(job); follow(job); }
   catch(e){ fail(e.message); } });

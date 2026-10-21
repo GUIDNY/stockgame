@@ -130,7 +130,7 @@ module.exports = async (req, res) => {
         const ext = m[1] === 'jpeg' ? 'jpg' : m[1], fd = new FormData(); fd.append('file', new Blob([Buffer.from(m[2], 'base64')], { type: 'image/' + m[1] }), 'photo.' + ext);
         const up = await tripo('/upload', { method: 'POST', body: fd }); files.push({ type: ext, file_token: up.image_token });
       }
-      if (!b.image || !files.length) return send(res, 400, { error: 'image' });
+      if (!b.image || !b.side || !files.length) return send(res, 400, { error: 'image' });   // the face and the turned head, both
       await sbJson('/rest/v1/mall_scans', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ owner }) });
       // Gemini 3 Pro Image keeps a face best (10 credits)
       const t = await task(Object.assign({ type: 'generate_image', model_version: 'gemini_3_pro_image_preview', prompt: prompt(!!b.side, !!b.body, b.wear), t_pose: true },
