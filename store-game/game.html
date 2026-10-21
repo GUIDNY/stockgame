@@ -2436,7 +2436,10 @@ function headNod(clip){
 // the Meshy figures (the player's, Alfred) have Mixamo's bone names: the crowd's clips go straight on
 function meshyAnims(gl){
   return loadGLTF(ASSET+'people/anims.glb?v='+PEOPLE.V).then(an=>{
-    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&headNod(mixRetarget(c,an.scene,gl.scene)); }).filter(Boolean);
+    // a scanned figure's spine is set straight when it takes the Meshy skeleton: the nod that straightens a Meshy
+    // figure's head would bow its head over the cart
+    const nod=gl.scene.userData.scan?c=>c:headNod;
+    gl.animations=['Idle','Walk','Run','Wave'].map(n=>{ const c=an.animations.find(a=>a.name===n); return c&&nod(mixRetarget(c,an.scene,gl.scene)); }).filter(Boolean);
     gl.scene.userData.mh=true; return gl; });
 }
 /* the wardrobe figure moving like the crowd: Mixamo's Happy Idle, Walking, Running and Waving (people/anims.glb),
@@ -3169,7 +3172,7 @@ function heroCartIK(H,dt,rec,pushing){
     const a=S.distanceTo(E), b=E.distanceTo(W); let d=S.distanceTo(target); d=Math.min(Math.max(d,Math.abs(a-b)+1e-3),a+b-1e-3);
     const dir=target.clone().sub(S).normalize();
     // the elbow bends outwards and down, like holding a handle
-    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2)), pole=out.multiplyScalar(.8).add(new THREE.Vector3(0,-1,0));
+    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2)), pole=out.multiplyScalar(h.model.userData.scan?.35:.8).add(new THREE.Vector3(0,-1,0));   // a scanned figure's broad shoulders: elbows kept nearer its sides
     pole.addScaledVector(dir,-pole.dot(dir)).normalize();
     const x=(a*a-b*b+d*d)/(2*d), hgt=Math.sqrt(Math.max(0,a*a-x*x));
     const Ed=S.clone().addScaledVector(dir,x).addScaledVector(pole,hgt);
