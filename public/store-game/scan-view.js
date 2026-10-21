@@ -57,6 +57,13 @@ function mapByShape(model){
   kids(chest).map(walk).forEach(c=>{ const end=P(c[c.length-1]), lat=end.clone().sub(cp).dot(right), up=end.y-cp.y;
     if(Math.abs(lat)>H*.12){ const s=lat>0?'Right':'Left', arm=c.slice(-4); const n=arm.length===4?['Shoulder','Arm','ForeArm','Hand']:['Arm','ForeArm','Hand'].slice(-arm.length); arm.forEach((b,i)=>got[s+n[i]]=b); }
     else if(up>0&&!got.Head){ if(c.length>=2){ got.Neck=c[0]; got.Head=c[1]; } else got.Head=c[0]; } });
+  // the fingers, so the clips can curl them (and the cart grip wrap them): off each hand, the chain that starts nearest
+  // the wrist is the thumb; the others in order of their distance from it, index to pinky
+  ['Left','Right'].forEach(s=>{ const hand=got[s+'Hand']; if(!hand) return; const hp2=P(hand);
+    const ch=kids(hand).map(walk).filter(c=>c.length>=2); if(ch.length<3) return;
+    ch.sort((a,b)=>P(a[0]).distanceTo(hp2)-P(b[0]).distanceTo(hp2)); const thumb=ch.shift(), t0=P(thumb[0]);
+    ch.sort((a,b)=>P(a[0]).distanceTo(t0)-P(b[0]).distanceTo(t0));
+    [['Thumb',thumb]].concat(['Index','Middle','Ring','Pinky'].map((f,i)=>[f,ch[i]])).forEach(([f,c])=>{ if(c) c.slice(0,4).forEach((b,i)=>got[s+'Hand'+f+(i+1)]=b); }); });
   Object.entries(got).forEach(([n,b])=>{ b.name='mixamorig'+n; });
   return {missing:MIX.filter(n=>!got[n]),fwd};
 }
@@ -74,7 +81,7 @@ function fitFigure(m,height){
    A-pose, as the image model often draws them) would take each turn from the wrong start: arms flung out, hands across
    the face. So its arms are lifted to straight out, and that pose made its rest: every vertex moved to where the bones
    now put it (normals too), and the bones' inverses taken anew. Run after mapByShape (it finds the arms by name). */
-function tposeArms(model){
+function tposeArms(model,fwd){
   model.updateMatrixWorld(true);
   const by=n=>{ let b=null; model.traverse(o=>{ if(!b&&o.isBone&&o.name==='mixamorig'+n) b=o; }); return b; };
   let moved=false; const q=new THREE.Quaternion(), pq=new THREE.Quaternion(), wq=new THREE.Quaternion();
@@ -83,7 +90,12 @@ function tposeArms(model){
     bone.quaternion.copy(pq.invert().multiply(q.multiply(wq))); bone.updateMatrixWorld(true); moved=true; };
   ['Left','Right'].forEach(s=>{ const arm=by(s+'Arm'), fore=by(s+'ForeArm'), hand=by(s+'Hand'); if(!arm||!fore||!hand) return;
     const d=P(fore).sub(P(arm)); d.y=0; if(d.lengthSq()<1e-8) return; d.normalize();   // out to the side, as it already leans
-    aim(arm,arm,fore,d); aim(fore,fore,hand,d); });
+    aim(arm,arm,fore,d); aim(fore,fore,hand,d);
+    const mid=by(s+'HandMiddle1'), ix=by(s+'HandIndex1'), pk=by(s+'HandPinky1'); if(!mid) return;
+    aim(hand,hand,mid,d);
+    if(ix&&pk&&fwd){ const a=P(ix).sub(P(pk)); a.addScaledVector(d,-a.dot(d)); const w=fwd.clone().setY(0); w.addScaledVector(d,-w.dot(d));
+      if(a.lengthSq()>1e-10&&w.lengthSq()>1e-10){ a.normalize(); w.normalize(); if(a.dot(w)<.995){ q.setFromUnitVectors(a,w); hand.getWorldQuaternion(wq); hand.parent.getWorldQuaternion(pq);
+        hand.quaternion.copy(pq.invert().multiply(q.multiply(wq))); hand.updateMatrixWorld(true); moved=true; } } } });
   if(!moved) return false;
   model.updateMatrixWorld(true);
   const meshes=[], M=new THREE.Matrix4(), B=new THREE.Matrix4(), T=new THREE.Matrix4(), N=new THREE.Matrix3(), v=V(), n=V();
@@ -139,7 +151,7 @@ window.avatarViewer=async function(box,urls,movesBox,note,base,prep){   // prep:
   if(!gl){ note('הקובץ לא נטען ('+((err&&err.message)||err)+')'); return null; }
   const m=gl.scene, turn=new THREE.Group(); turn.add(m); sc.add(turn);
   m.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; const mt=o.material; if(mt&&mt.map) mt.map.anisotropy=4; } });
-  if(prep) prep(m); const map=mapByShape(m); tposeArms(m);
+  if(prep) prep(m); const map=mapByShape(m); tposeArms(m,map.fwd);
   if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);   // face the camera
   fitFigure(m,1.8);
   const mixer=new THREE.AnimationMixer(m), acts={};
