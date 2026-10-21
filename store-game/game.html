@@ -2580,8 +2580,20 @@ function scanFigure(fig){
       if(window.scanTpose) scanTpose(m,map.fwd);   // arms drawn angled down are lifted straight out, as the clips expect
       if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);
       scanFit(m,1.87); m.traverse(x=>{ if(x.isMesh){ x.frustumCulled=false; const mt=x.material; if(mt){ mt.metalness=0; mt.roughness=Math.max(mt.roughness||0,.55); } } });
-      const wrap=new THREE.Group(); wrap.add(m); wrap.userData.scan=true; return meshyAnims({scene:wrap,animations:[]}); });
+      const wrap=new THREE.Group(); wrap.add(m); wrap.userData.scan=true; return meshyAnims({scene:wrap,animations:[]}).then(scanCalm); });
 }
+/* Its spine has fewer, longer bones than the clips were made for, so the walk's sway lands on fewer joints: the chest
+   rocked four times as far as on the Meshy figures. In standing and walking (not the dances) each torso joint keeps
+   its own mean pose and only part of its swing about it. */
+const SCAN_CALM={Hips:.45,Spine:.35,Spine1:.35,Spine2:.35,Neck:.6,Head:.7};
+function scanCalm(gl){ const q=new THREE.Quaternion(), mean=new THREE.Quaternion(), m4=[0,0,0,0];
+  gl.animations.forEach(c=>c.tracks.forEach(t=>{ const i=t.name.lastIndexOf('.'), k=SCAN_CALM[t.name.slice(0,i).replace(/^mixamorig/,'')];
+    if(k===undefined||t.name.slice(i+1)!=='quaternion') return; const v=t.values; m4.fill(0);
+    const ref=q.fromArray(v,0).clone();
+    for(let j=0;j<v.length;j+=4){ const s=ref.x*v[j]+ref.y*v[j+1]+ref.z*v[j+2]+ref.w*v[j+3]<0?-1:1; for(let e=0;e<4;e++) m4[e]+=s*v[j+e]; }   // one hemisphere
+    mean.fromArray(m4).normalize();
+    for(let j=0;j<v.length;j+=4){ q.fromArray(v,j); q.copy(mean.clone().slerp(q,k)); q.toArray(v,j); } }));
+  return gl; }
 // the player's own: by its id; one made before figures were kept (a Tripo task) is kept now, and remembered by its id
 function loadScanHero(s){
   if(s.fig) return scanFigure(s.fig);
@@ -3159,7 +3171,7 @@ function heroCartIK(H,dt,rec,pushing){
     const a=S.distanceTo(E), b=E.distanceTo(W); let d=S.distanceTo(target); d=Math.min(Math.max(d,Math.abs(a-b)+1e-3),a+b-1e-3);
     const dir=target.clone().sub(S).normalize();
     // the elbow bends outwards and down, like holding a handle
-    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2)), pole=out.multiplyScalar(.8).add(new THREE.Vector3(0,-1,0));
+    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2)), pole=out.multiplyScalar(h.model.userData.scan?.25:.8).add(new THREE.Vector3(0,-1,0));   // a scanned figure's broad shoulders: elbows kept nearer the sides
     pole.addScaledVector(dir,-pole.dot(dir)).normalize();
     const x=(a*a-b*b+d*d)/(2*d), hgt=Math.sqrt(Math.max(0,a*a-x*x));
     const Ed=S.clone().addScaledVector(dir,x).addScaledVector(pole,hgt);
