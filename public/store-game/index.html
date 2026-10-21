@@ -1148,6 +1148,10 @@ const SITE = 'https://buytoday.co.il';
    own WebView). There the relative paths of its own files would resolve against the shop, so off
    its home host it fetches them from play.buytoday.co.il by absolute URL. */
 const HOME = 'https://play.buytoday.co.il/', ASSET = location.hostname==='play.buytoday.co.il' ? '' : HOME;
+/* the mall's own server functions (api/), which only answer a request carrying the mall's pass: on its own host the
+   pass is a cookie there; inside the app the game is the shop's /mall, which adds the pass and passes the request on,
+   so they are asked for there (a request straight to the game's host from the app carries no pass) */
+const API = location.hostname==='play.buytoday.co.il' ? '' : /^\/mall(\/|$)/.test(location.pathname) ? '/mall/' : HOME;
 /* Inside the shop's iOS app a new tab is Safari: target=_blank throws the customer out of the app.
    The app stamps its user agent; there every link opens in place instead. */
 const IN_APP = /BuyTodayApp/.test(navigator.userAgent) || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -2572,7 +2576,7 @@ const SCAN_BUF={};
 let SCAN_VIEW=null;
 const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=7'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
 function scanFigure(fig){
-  if(!SCAN_BUF[fig]) SCAN_BUF[fig]=fetch(ASSET+'api/avatar?fig='+fig,{credentials:'include'}).then(r=>{ if(!r.ok) throw new Error('fig '+r.status); return r.arrayBuffer(); })
+  if(!SCAN_BUF[fig]) SCAN_BUF[fig]=fetch(API+'api/avatar?fig='+fig,{credentials:'include'}).then(r=>{ if(!r.ok) throw new Error('fig '+r.status); return r.arrayBuffer(); })
     .catch(e=>{ delete SCAN_BUF[fig]; throw e; });
   return Promise.all([SCAN_BUF[fig],scanViewReady(),gltfReady()]).then(([b])=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); L.parse(b.slice(0),'',res,rej); }))
     .then(gl=>{ const m=gl.scene, map=scanMap(m), core=map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n));
@@ -2591,12 +2595,12 @@ const scanDonor=()=>(SCAN_DONOR||(SCAN_DONOR=fetch(heroMainUrl({girl:false})).th
 // the player's own: by its id; one made before figures were kept (a Tripo task) is kept now, and remembered by its id
 function loadScanHero(s){
   if(s.fig) return scanFigure(s.fig);
-  return fetch(ASSET+'api/avatar?stage=rig&t='+encodeURIComponent(s.t),{credentials:'include',cache:'no-store'}).then(r=>r.json())
+  return fetch(API+'api/avatar?stage=rig&t='+encodeURIComponent(s.t),{credentials:'include',cache:'no-store'}).then(r=>r.json())
     .then(j=>{ if(!j.fig) throw new Error('scan: '+(j.error||j.stage)); scanSet(j.fig); return scanFigure(j.fig); });
 }
 // the account's figure, as the server has it: made or forgotten on another device, it is the same here
 function scanSync(){ if(!MESHY_HERO) return;
-  fetch(ASSET+'api/avatar?me=1',{credentials:'include',cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j||!('fig' in j)) return;
+  fetch(API+'api/avatar?me=1',{credentials:'include',cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j||!('fig' in j)) return;
     const cur=scanHero(), have=cur&&cur.fig||null; if(j.fig===have||(!j.fig&&cur&&!cur.fig)) return;
     scanSet(j.fig); if(HERO3D.owner&&typeof setAvatar==='function') setAvatar(avatar); }).catch(()=>{}); }
 setTimeout(scanSync,1500);
@@ -4518,7 +4522,7 @@ function renderCreator(){
           if(!id){ b.style.background='repeating-linear-gradient(45deg,#f1f2f6 0 6px,#dfe2ea 6px 12px)'; b.style.color='#161a2b'; b.innerHTML=on?CHECK:'<small style="font:800 9px Rubik,sans-serif">מקורי</small>'; }
           else { b.style.background=hex(col); b.style.color=light(col)?'#161a2b':'#fff'; b.innerHTML=CHECK; }
           b.addEventListener('click',()=>set(key,id)); c.appendChild(b); }); };
-      { const r=row('דמות מהפנים שלך'), a=document.createElement('a'); a.href='scan.html'; a.className='scanlink'; a.textContent=scanHero()?'📸 סריקה חדשה':'📸 סריקת פנים · ניסיוני'; r.appendChild(a); }
+      { const r=row('דמות מהפנים שלך'), a=document.createElement('a'); a.href=API+'scan.html'; a.className='scanlink'; a.textContent=scanHero()?'📸 סריקה חדשה':'📸 סריקת פנים · ניסיוני'; r.appendChild(a); }
       if(scanHero()) seg('הדמות במשחק','scanOff',[[false,'מהסריקה'],[true,'הרגילה']],!!avatar.scanOff);   // the selfie → 3D figure prototype (scan.html)
       msw('צבע שיער','mHair',M_HAIR);
       msw('גוון עור','mSkin',M_SKIN);
