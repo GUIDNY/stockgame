@@ -2570,17 +2570,17 @@ const scanHero=()=>{ try{ const s=JSON.parse(localStorage.getItem('bt-scan-hero'
 const scanSet=fig=>{ try{ if(fig) localStorage.setItem('bt-scan-hero',JSON.stringify({fig,at:Date.now()})); else localStorage.removeItem('bt-scan-hero'); }catch(e){} };
 const SCAN_BUF={};
 let SCAN_VIEW=null;
-const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=4'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
+const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=5'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
 function scanFigure(fig){
   if(!SCAN_BUF[fig]) SCAN_BUF[fig]=fetch(ASSET+'api/avatar?fig='+fig,{credentials:'include'}).then(r=>{ if(!r.ok) throw new Error('fig '+r.status); return r.arrayBuffer(); })
     .catch(e=>{ delete SCAN_BUF[fig]; throw e; });
   return Promise.all([SCAN_BUF[fig],scanViewReady(),gltfReady()]).then(([b])=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); L.parse(b.slice(0),'',res,rej); }))
     .then(gl=>{ const m=gl.scene, map=scanMap(m), core=map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n));
       if(core.length) throw new Error('scan bones: '+core.join(','));
-      if(window.scanTpose) scanTpose(m,map.fwd);   // arms drawn angled down are lifted straight out, as the clips expect
+      const untpose=window.scanTpose?scanTpose(m,map.fwd):()=>{};   // arms drawn angled down: lifted straight out while the clips are fitted
       if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);
       scanFit(m,1.87); m.traverse(x=>{ if(x.isMesh){ x.frustumCulled=false; const mt=x.material; if(mt){ mt.metalness=0; mt.roughness=Math.max(mt.roughness||0,.55); } } });
-      const wrap=new THREE.Group(); wrap.add(m); wrap.userData.scan=true; return meshyAnims({scene:wrap,animations:[]}).then(scanCalm); });
+      const wrap=new THREE.Group(); wrap.add(m); wrap.userData.scan=true; return meshyAnims({scene:wrap,animations:[]}).then(g=>{ untpose(); return scanCalm(g); }); });
 }
 /* Its spine has fewer, longer bones than the clips were made for, so the walk's sway lands on fewer joints: the chest
    rocked four times as far as on the Meshy figures. In standing and walking (not the dances) each torso joint keeps
@@ -3148,6 +3148,7 @@ function ikCurl(ch,side,angles,k){
     const a=angles[j]*k, up=c.clone().applyAxisAngle(side,a).y, dn=c.clone().applyAxisAngle(side,-a).y;
     q.setFromAxisAngle(side,up<dn?a:-a); ikTurn(b,q); });
 }
+let SCAN_ELBOW=.8;   // how far out a scanned figure's elbows bend pushing the cart (the Meshy figures: .8)
 function heroCartIK(H,dt,rec,pushing){
   const h=rec||H.h3d, ik=h&&h.ik; if(!ik) return;
   const on=!h.gest&&!h.cele&&(rec?!!pushing:typeof cart!=='undefined'&&cart.c.visible&&cart.c.parent===H.g&&h.model.visible);   // hands off the bar for a gesture
@@ -3171,7 +3172,7 @@ function heroCartIK(H,dt,rec,pushing){
     const a=S.distanceTo(E), b=E.distanceTo(W); let d=S.distanceTo(target); d=Math.min(Math.max(d,Math.abs(a-b)+1e-3),a+b-1e-3);
     const dir=target.clone().sub(S).normalize();
     // the elbow bends outwards and down, like holding a handle
-    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2)), pole=out.multiplyScalar(h.model.userData.scan?.25:.8).add(new THREE.Vector3(0,-1,0));   // a scanned figure's broad shoulders: elbows kept nearer the sides
+    const out=new THREE.Vector3(i===0?-1:1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2)), pole=out.multiplyScalar(h.model.userData.scan?SCAN_ELBOW:.8).add(new THREE.Vector3(0,-1,0));
     pole.addScaledVector(dir,-pole.dot(dir)).normalize();
     const x=(a*a-b*b+d*d)/(2*d), hgt=Math.sqrt(Math.max(0,a*a-x*x));
     const Ed=S.clone().addScaledVector(dir,x).addScaledVector(pole,hgt);

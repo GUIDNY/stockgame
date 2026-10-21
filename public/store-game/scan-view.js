@@ -77,42 +77,27 @@ function fitFigure(m,height){
   const b2=skinBox(); m.position.y-=b2.min.y; m.position.x-=(b2.min.x+b2.max.x)/2; m.position.z-=(b2.min.z+b2.max.z)/2; m.updateMatrixWorld(true);
 }
 // for the mall (game.html): the same reading of the bones and the same fitting, for the player's own figure
-/* The crowd's clips are made for a T-pose: arms straight out to the sides. A figure drawn with its arms angled down (an
-   A-pose, as the image model often draws them) would take each turn from the wrong start: arms flung out, hands across
-   the face. So its arms are lifted to straight out, and that pose made its rest: every vertex moved to where the bones
-   now put it (normals too), and the bones' inverses taken anew. Run after mapByShape (it finds the arms by name). */
+/* The crowd's clips are made for a T-pose: arms straight out to the sides, hands palm down. A figure drawn with its arms
+   angled down (an A-pose, as the image model often draws them) would take each turn from the wrong start: arms flung
+   out, hands across the face. So for as long as the clips are being fitted to it, its arms are lifted straight out
+   (and its hands set straight on and palm down); then they go back. The skin is never moved: arms that hang from the
+   start bend far less at the shoulder to come down than arms made straight out would (those crush the sleeve into
+   the chest). Run after mapByShape (it finds the arms by name); returns a function that puts the arms back. */
 function tposeArms(model,fwd){
   model.updateMatrixWorld(true);
   const by=n=>{ let b=null; model.traverse(o=>{ if(!b&&o.isBone&&o.name==='mixamorig'+n) b=o; }); return b; };
-  let moved=false; const q=new THREE.Quaternion(), pq=new THREE.Quaternion(), wq=new THREE.Quaternion();
-  const aim=(bone,from,to,want)=>{ const d=P(to).sub(P(from)).normalize(); if(d.dot(want)>.995) return;
-    q.setFromUnitVectors(d,want); bone.getWorldQuaternion(wq); bone.parent.getWorldQuaternion(pq);
-    bone.quaternion.copy(pq.invert().multiply(q.multiply(wq))); bone.updateMatrixWorld(true); moved=true; };
+  const kept=[], q=new THREE.Quaternion(), pq=new THREE.Quaternion(), wq=new THREE.Quaternion();
+  const turn=(bone,qw)=>{ kept.push([bone,bone.quaternion.clone()]); bone.getWorldQuaternion(wq); bone.parent.getWorldQuaternion(pq);
+    bone.quaternion.copy(pq.invert().multiply(qw.multiply(wq))); bone.updateMatrixWorld(true); };
+  const aim=(bone,from,to,want)=>{ const d=P(to).sub(P(from)).normalize(); if(d.dot(want)<.995) turn(bone,q.setFromUnitVectors(d,want)); };
   ['Left','Right'].forEach(s=>{ const arm=by(s+'Arm'), fore=by(s+'ForeArm'), hand=by(s+'Hand'); if(!arm||!fore||!hand) return;
     const d=P(fore).sub(P(arm)); d.y=0; if(d.lengthSq()<1e-8) return; d.normalize();   // out to the side, as it already leans
     aim(arm,arm,fore,d); aim(fore,fore,hand,d);
     const mid=by(s+'HandMiddle1'), ix=by(s+'HandIndex1'), pk=by(s+'HandPinky1'); if(!mid) return;
     aim(hand,hand,mid,d);
     if(ix&&pk&&fwd){ const a=P(ix).sub(P(pk)); a.addScaledVector(d,-a.dot(d)); const w=fwd.clone().setY(0); w.addScaledVector(d,-w.dot(d));
-      if(a.lengthSq()>1e-10&&w.lengthSq()>1e-10){ a.normalize(); w.normalize(); if(a.dot(w)<.995){ q.setFromUnitVectors(a,w); hand.getWorldQuaternion(wq); hand.parent.getWorldQuaternion(pq);
-        hand.quaternion.copy(pq.invert().multiply(q.multiply(wq))); hand.updateMatrixWorld(true); moved=true; } } } });
-  if(!moved) return false;
-  model.updateMatrixWorld(true);
-  const meshes=[], M=new THREE.Matrix4(), B=new THREE.Matrix4(), T=new THREE.Matrix4(), N=new THREE.Matrix3(), v=V(), n=V();
-  model.traverse(o=>{ if(!o.isSkinnedMesh) return; o.skeleton.update(); meshes.push(o);
-    const g=o.geometry, pa=g.attributes.position, na=g.attributes.normal, si=g.attributes.skinIndex, sw=g.attributes.skinWeight, bm=o.skeleton.boneMatrices;
-    for(let k=0;k<pa.count;k++){ M.set(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-      // weights as stored may be whole numbers (a normalized byte or short reads 0..255 here): taken as shares of their sum
-      const ws=[sw.getX(k),sw.getY(k),sw.getZ(k),sw.getW(k)], is=[si.getX(k),si.getY(k),si.getZ(k),si.getW(k)], sum=ws[0]+ws[1]+ws[2]+ws[3]; if(!sum) continue;
-      for(let j=0;j<4;j++){ if(!ws[j]) continue; B.fromArray(bm,is[j]*16); for(let e=0;e<16;e++) M.elements[e]+=B.elements[e]*ws[j]/sum; }
-      T.copy(o.bindMatrixInverse).multiply(M).multiply(o.bindMatrix);
-      v.fromBufferAttribute(pa,k).applyMatrix4(T); pa.setXYZ(k,v.x,v.y,v.z);
-      if(na){ N.setFromMatrix4(T); n.fromBufferAttribute(na,k).applyMatrix3(N).normalize(); na.setXYZ(k,n.x,n.y,n.z); } }
-    pa.needsUpdate=true; if(na) na.needsUpdate=true; g.computeBoundingBox(); g.computeBoundingSphere(); });
-  // bound again as it stands now: the bones' inverses and the mesh's bind matrix taken at the same moment (bind() with no
-  // matrix does both), so the new rest is exactly this pose
-  meshes.forEach(o=>o.bind(o.skeleton));
-  return true;
+      if(a.lengthSq()>1e-10&&w.lengthSq()>1e-10){ a.normalize(); w.normalize(); if(a.dot(w)<.995) turn(hand,q.setFromUnitVectors(a,w)); } } });
+  return ()=>{ for(let i=kept.length-1;i>=0;i--) kept[i][0].quaternion.copy(kept[i][1]); model.updateMatrixWorld(true); };
 }
 window.scanMap=mapByShape; window.scanFit=fitFigure; window.scanTpose=tposeArms;
 
@@ -151,16 +136,18 @@ window.avatarViewer=async function(box,urls,movesBox,note,base,prep){   // prep:
   if(!gl){ note('הקובץ לא נטען ('+((err&&err.message)||err)+')'); return null; }
   const m=gl.scene, turn=new THREE.Group(); turn.add(m); sc.add(turn);
   m.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; const mt=o.material; if(mt&&mt.map) mt.map.anisotropy=4; } });
-  if(prep) prep(m); const map=mapByShape(m); tposeArms(m,map.fwd);
+  if(prep) prep(m); const map=mapByShape(m); m.visible=false; const untpose=tposeArms(m,map.fwd);
   if(map.fwd) m.rotation.y=Math.atan2(-map.fwd.x,map.fwd.z);   // face the camera
   fitFigure(m,1.8);
   const mixer=new THREE.AnimationMixer(m), acts={};
   let yaw=0, drag=null; box.addEventListener('pointerdown',e=>{ drag=e.clientX; try{ box.setPointerCapture(e.pointerId); }catch(_){} });
   box.addEventListener('pointermove',e=>{ if(drag!==null){ yaw+=(e.clientX-drag)*.012; drag=e.clientX; } }); box.addEventListener('pointerup',()=>drag=null);
   let last=performance.now(); (function tick(now){ const dt=Math.min(.05,(now-last)/1000); last=now; mixer.update(dt); if(drag===null) yaw+=dt*.25; turn.rotation.y=yaw; cam.lookAt(0,.95,0); r.render(sc,cam); requestAnimationFrame(tick); })(last);
-  if(map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n)).length){ note('השלד של הדמות לא זוהה עד הסוף, אז היא עומדת בלי תנועה. (חסרים: '+map.missing.slice(0,6).join(', ')+')'); return {model:m,map}; }
+  if(map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n)).length){ untpose(); m.visible=true; note('השלד של הדמות לא זוהה עד הסוף, אז היא עומדת בלי תנועה. (חסרים: '+map.missing.slice(0,6).join(', ')+')'); return {model:m,map}; }
   const [an,mv]=await Promise.all([load(base+'people/anims.glb'),load(base+'people/moves.glb').catch(()=>null)]);
-  [['Idle',an],['Walk',an],['Wave',an]].concat(mv?[['Dance',mv],['Dance2',mv],['Jump',mv],['Cheer',mv]]:[]).forEach(([n,g])=>{ const c=g.animations.find(a=>a.name===n); if(c) acts[n]=mixer.clipAction(retarget(c,g.scene,m)); });
+  // fitted while the arms are out; then they go back, and only then does the mixer take the bones' rest
+  const clips=[['Idle',an],['Walk',an],['Wave',an]].concat(mv?[['Dance',mv],['Dance2',mv],['Jump',mv],['Cheer',mv]]:[]).map(([n,g])=>{ const c=g.animations.find(a=>a.name===n); return c&&[n,retarget(c,g.scene,m)]; }).filter(Boolean);
+  untpose(); m.visible=true; clips.forEach(([n,c])=>{ acts[n]=mixer.clipAction(c); });
   const play=n=>{ const a=acts[n]; if(!a) return; Object.values(acts).forEach(x=>x!==a&&x.fadeOut(.25)); a.reset().fadeIn(.25).play(); if(movesBox) movesBox.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.n===n)); };
   if(movesBox) Object.keys(acts).forEach(n=>{ const bt=document.createElement('button'); bt.textContent=LABEL[n]||n; bt.dataset.n=n; bt.addEventListener('click',()=>play(n)); movesBox.appendChild(bt); });
   play(acts.Dance?'Dance':'Idle');
