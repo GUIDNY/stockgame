@@ -123,7 +123,7 @@
 <script src="gltf-loader.js"></script>
 <script src="meshopt_decoder.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-<script src="scan-view.js?v=7"></script>
+<script src="scan-view.js?v=8"></script>
 <script>
 const $=s=>document.querySelector(s), KEY='bt-scan';
 const show=id=>document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==id);
@@ -259,7 +259,12 @@ async function viewer(job){ show('s5'); $('#moves').innerHTML=''; $('#view').inn
   if(!fig&&job.t){ try{ const r=await fetch('api/avatar?stage=rig&t='+encodeURIComponent(job.t),{credentials:'same-origin',cache:'no-store'}); fig=(await r.json()).fig; }catch(e){} }   // one made before figures were kept
   if(!fig){ $('#note').textContent='לא הצלחנו לטעון את הדמות. אפשר לנסות שוב מאוחר יותר.'; $('#useMe').hidden=true; return; }
   job.fig=fig; store.set(job); setHero(fig);
-  const v=await avatarViewer($('#view'),['api/avatar?fig='+fig],$('#moves'),t=>{ $('#note').textContent=t; });
+  // the figure shows only once its skeleton and moves are ready (a few seconds on a phone): say so meanwhile, and say
+  // what went wrong if it does not come
+  $('#note').textContent='טוענים את הדמות שלך…'; const slow=setTimeout(()=>{ if(!v0) $('#note').textContent='עוד רגע… הדמות עדיין נטענת'; },12000); let v0=null;
+  let v=null; try{ v=v0=await avatarViewer($('#view'),['api/avatar?fig='+fig],$('#moves'),t=>{ $('#note').textContent=t; }); }
+  catch(e){ $('#note').textContent='הדמות לא נטענה: '+((e&&e.message)||e); }
+  clearTimeout(slow); if(v&&v.play&&/נטענת|טוענים/.test($('#note').textContent)) $('#note').textContent='גוררים כדי לסובב.';
   const ok=v&&v.play; $('#useMe').hidden=!ok; $('#saved').hidden=!ok;
   $('#useMe').onclick=()=>{ location.href='./'; }; }
 $('#forget').addEventListener('click',async()=>{ if(!confirm('למחוק את הדמות שלך? היא תימחק מהשרת, ובקניון תחזור הדמות הרגילה.')) return;
@@ -268,7 +273,9 @@ $('#forget').addEventListener('click',async()=>{ if(!confirm('למחוק את ה
 
 /* back to a scan in progress, or the figure already made (on this device or, through the account, another one) */
 const job=store.get();
-if(job&&job.stage){ if(job.stage==='done') viewer(job); else follow(job); }
+// ?new=1 (the mall's "new scan"): straight to a new scan, whatever is kept
+if(/[?&]new=1/.test(location.search)){ if(job&&job.stage==='done') store.set(null); show('s1'); }
+else if(job&&job.stage){ if(job.stage==='done') viewer(job); else follow(job); }
 else fetch('api/avatar?me=1',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(j=>{ if(j.fig&&!(store.get()||{}).stage) viewer({stage:'done',fig:j.fig}); }).catch(()=>{});
 </script>
 </body>

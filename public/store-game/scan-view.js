@@ -240,7 +240,8 @@ window.avatarViewer=async function(box,urls,movesBox,note,base,prep){   // prep:
   box.addEventListener('pointermove',e=>{ if(drag!==null){ yaw+=(e.clientX-drag)*.012; drag=e.clientX; } }); box.addEventListener('pointerup',()=>drag=null);
   let last=performance.now(); (function tick(now){ const dt=Math.min(.05,(now-last)/1000); last=now; mixer.update(dt); if(drag===null) yaw+=dt*.25; turn.rotation.y=yaw; cam.lookAt(0,.95,0); r.render(sc,cam); requestAnimationFrame(tick); })(last);
   if(map.missing.filter(n=>!/ToeBase|Shoulder|Spine2|Neck/.test(n)).length){ untpose(); m.visible=true; note('השלד של הדמות לא זוהה עד הסוף, אז היא עומדת בלי תנועה. (חסרים: '+map.missing.slice(0,6).join(', ')+')'); return {model:m,map}; }
-  const [an,mv]=await Promise.all([load(base+'people/anims.glb'),load(base+'people/moves.glb').catch(()=>null)]);
+  let an=null, mv=null; try{ [an,mv]=await Promise.all([load(base+'people/anims.glb'),load(base+'people/moves.glb').catch(()=>null)]); }
+  catch(e){ untpose(); m.visible=true; note('התנועות לא נטענו ('+((e&&e.message)||e)+')'); return {model:m,map}; }
   // fitted while the arms are out; then they go back, and only then does the mixer take the bones' rest
   const clips=[['Idle',an],['Walk',an],['Wave',an]].concat(mv?[['Dance',mv],['Dance2',mv],['Jump',mv],['Cheer',mv]]:[]).map(([n,g])=>{ const c=g.animations.find(a=>a.name===n); return c&&[n,retarget(c,g.scene,m)]; }).filter(Boolean);
   untpose(); m.visible=true; clips.forEach(([n,c])=>{ acts[n]=mixer.clipAction(c); });
