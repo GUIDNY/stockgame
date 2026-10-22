@@ -6277,6 +6277,8 @@ function updatePlayer(dt){
   const w=ad?1:clamp(Math.cos(sa)+.9,0,1)*mag;
   if(dragT<=0 && w>.05 && speed>.5) camYaw=lerpAngle(camYaw,player.yaw+Math.PI,1-Math.exp(-dt*CAM.follow*w));
 }
+// out in the open aisle, the whole mall behind: no counter or stall in front of the legs
+const MENU_SPOT={x:0,z:14,yaw:0,camY:.9,lookY:1.12};
 let menuOrbit=0;   // dragging on the character turns the camera round it
 function menuRegion(W,H){ const sh=$('#csheet').getBoundingClientRect(), tp=$('.creator .ctop').getBoundingClientRect();
   if(W>=900) return {x:0,y:0,w:Math.max(200,sh.left-24),h:H};
@@ -6286,10 +6288,11 @@ function updateCamera(dt,menu){
     /* the character, whole, in the part of the screen the panel leaves free: the camera stands off just far
        enough for its height to fill that part, and the picture is shifted so it sits in the middle of it */
     // on the way in it poses in the open lobby, clear of the help desk; editing in the mall, it stays where it is
-    if(G.state==='menu'){ player.pos.set(0,0,9.5); player.yaw=0; hero.g.position.copy(player.pos); hero.g.rotation.y=0; }
+    if(G.state==='menu'){ player.pos.set(MENU_SPOT.x,0,MENU_SPOT.z); player.yaw=MENU_SPOT.yaw; hero.g.position.copy(player.pos); hero.g.rotation.y=MENU_SPOT.yaw; }
     const p=hero.g.position, W=innerWidth, H=innerHeight, R=menuRegion(W,H), fov=camera.fov*Math.PI/180;
     const d=clamp(2.9/(2*Math.tan(fov/2))*(H/R.h)/.9,2.4,9), a=player.yaw+menuOrbit;
-    tmp.set(clamp(p.x+Math.sin(a)*d,-BX+.5,BX-.5),p.y+1.2,clamp(p.z+Math.cos(a)*d,-BZ+.5,BZ-.3)); look.set(p.x,p.y+1.12,p.z);
+    const cy=G.state==='menu'?MENU_SPOT.camY:1.2;   // on the way in, the camera a little low: the figure stands tall against the mall
+    tmp.set(clamp(p.x+Math.sin(a)*d,-BX+.5,BX-.5),p.y+cy,clamp(p.z+Math.cos(a)*d,-BZ+.5,BZ-.3)); look.set(p.x,p.y+(G.state==='menu'?MENU_SPOT.lookY:1.12),p.z);
     camera.setViewOffset(W,H,W/2-(R.x+R.w/2),H/2-(R.y+R.h/2),W,H);
     const hint=$('.spinhint'); hint.style.left=(R.x+R.w/2)+'px'; hint.style.top=(R.y+R.h-34)+'px';
   }
@@ -6790,7 +6793,7 @@ function loop(now){ fadeTapMark(); kioskGlow(now/1000);
     if(frame%2===0) drawMap();
   } else {
     updateCamera(dt,G.state==='menu'||G.state==='edit'); arrow.visible=false;
-    hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.7)*.55; animGuy(hero,0,dt,false); if(hero.h3d) heroAnimTick(hero,0,dt);
+    hero.g.position.copy(player.pos); hero.g.rotation.y=player.yaw+Math.sin(t*.5)*.2; animGuy(hero,0,dt,false); if(hero.h3d) heroAnimTick(hero,0,dt);
   }
   updateNPCs(dt,t); netUpdate(dt,now); botsUpdate(dt,now);
   gfxRender();
@@ -6805,7 +6808,7 @@ player.pos.set(0,0,24); player.yaw=Math.PI; hero.g.position.copy(player.pos); ca
 ui.menu.hidden=false; renderCreator(); menuMode();
 { // the start: the screen stays until the figure is the one that stays (the account and the server may change it first)
   const settled=Promise.race([Promise.all([acctLoad(),SCAN_SYNCED]),new Promise(r=>setTimeout(r,6000))]); let ok=false; settled.then(()=>{ ok=true; });
-  LOADER.until(()=>ok&&HERO3D.status!=='loading'&&(!hero.h3d||hero.h3d.model||HERO3D.status!=='loaded'),{min:700,max:20000}); }
+  LOADER.until(()=>ok&&HERO3D.status!=='loading'&&(!hero.h3d||hero.h3d.model||HERO3D.status!=='loaded'),{min:700,max:20000,then:()=>{ if(G.state==='menu') setTimeout(()=>heroGesture('Wave',1),300); }}); }   // and a wave hello
 if(loadResume()) $('#startBtn').textContent='חזרה לקניון';
 requestAnimationFrame(loop);
 });
