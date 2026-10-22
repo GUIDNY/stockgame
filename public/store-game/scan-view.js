@@ -20,7 +20,13 @@ function mapByShape(model){
   const legs=chains.filter(c=>P(c[c.length-1]).y<floor+H*.2&&c.length>=3);
   const ups=chains.filter(c=>kids(c[c.length-1]).length>=2&&P(c[c.length-1]).y>hp.y);
   if(legs.length<2||!ups.length) return {missing:MIX};
-  const spine=ups.sort((a,b)=>P(b[b.length-1]).y-P(a[a.length-1]).y)[0], chest=spine[spine.length-1];
+  let spine=ups.sort((a,b)=>P(b[b.length-1]).y-P(a[a.length-1]).y)[0], chest=spine[spine.length-1];
+  // the chest is where the arms branch off: a chain that reaches out sideways. A rig may branch lower down too (a
+  // short bone for the belly or a pocket beside the spine): from there, on up the branch that goes highest
+  const flat=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z), top=b=>{ let y=-1e9; b.traverse(o=>{ if(o.isBone) y=Math.max(y,P(o).y); }); return y; };
+  const armsOff=b=>kids(b).map(walk).filter(c=>flat(P(c[c.length-1]),P(b))>H*.12).length>=2;
+  for(let n=0;n<6&&!armsOff(chest);n++){ const up=kids(chest).sort((a,b)=>top(b)-top(a))[0]; if(!up||top(up)<=P(chest).y) break;
+    const c=walk(up); spine=spine.concat(c); chest=c[c.length-1]; }
   // which way the figure faces. Across: from one leg to the other. Of the two ways square to that, the one the feet
   // reach out to, measured on the skinned vertices the feet carry (a rig need not have toe bones; this one may not)
   const across=P(legs[0][0]).sub(P(legs[1][0])); across.y=0; across.normalize();
