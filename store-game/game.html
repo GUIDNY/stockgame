@@ -3170,14 +3170,17 @@ function heroFindArms(model){
   const chest=bones.find(b=>/chest|spine2/i.test(b.name))||bones.find(b=>/torso|spine1/i.test(b.name));
   const R=arm(-1), L=arm(1);
   if(!(R&&L)) return null;
-  // a scanned figure behind the cart: the upper body held as it stands (so the elbows stay put however the walk
-  // sways the hips and spine) and the wrists straight on the forearm (it has no fingers to grip with). The rest
+  // a scanned figure behind the cart: the upper body and head held as it stands (so the elbows stay put however
+  // the walk sways the hips and spine, and the head does not turn against a twist the body no longer makes) and the wrists straight on the forearm (it has no fingers to grip with). The rest
   // pose is now: nothing has played on the model yet.
   let calm=null;
   if(model.userData.scan){ const by=re=>bones.find(b=>re.test(strip(b.name)));
     const hips=by(/^Hips$/), first=hips&&hips.children.find(b=>b.isBone&&/Spine/.test(b.name));
-    if(first){ const rest=[]; first.traverse(b=>{ if(b!==first&&b.isBone&&/Spine|Shoulder/.test(b.name)) rest.push([b,b.quaternion.clone()]); });
-      calm={hips,hipsRest:hips.quaternion.clone(),first,firstRest:first.quaternion.clone(),rest}; }
+    if(first){ const rest=[]; first.traverse(b=>{ if(b!==first&&b.isBone&&/Spine|Shoulder|Neck|Head$/.test(b.name)) rest.push([b,b.quaternion.clone()]); });
+      // and the head's own bearing in the figure, so it looks ahead rather than down with the lean
+      const head=by(/^Head$/); let headRest=null;
+      if(head){ model.updateMatrixWorld(true); headRest=model.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(head.getWorldQuaternion(new THREE.Quaternion())); }
+      calm={hips,hipsRest:hips.quaternion.clone(),first,firstRest:first.quaternion.clone(),rest,head,headRest}; }
     [R,L].forEach(A=>{ if(!A.mid) A.wRest=A.w.quaternion.clone(); }); }
   return {arms:[R,L],chest,calm};
 }
@@ -3221,6 +3224,9 @@ function heroCartIK(H,dt,rec,pushing){
     const tip=_ik.c.copy(o).add(_ik.t.set(0,.5,0)), lean=_ik.t.copy(o).add(_ik.a.set(0,.5*Math.cos(HERO_CART_LEAN),0)).addScaledVector(fwd,.5*Math.sin(HERO_CART_LEAN));
     ikAim(ik.chest,tip.clone(),lean.clone(),k);
   }
+  if(ik.calm&&ik.calm.head){ const c=ik.calm;
+    h.model.getWorldQuaternion(_ik.q2).multiply(c.headRest); c.head.parent.getWorldQuaternion(_ik.q3).invert();
+    c.head.quaternion.slerp(_ik.q3.multiply(_ik.q2),k*.92); c.head.updateMatrixWorld(true); }
   ik.arms.forEach((A,i)=>{
     const g=HERO_CART_GRIPS[i];
     // the wrist sits a palm's length behind the bar and a little above it, so the palm lies on the bar
