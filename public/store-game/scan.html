@@ -59,6 +59,8 @@
 
   <!-- 1. what happens, and consent -->
   <section id="s1">
+    <div class="card" id="haveFig" hidden><h2>כבר יש לך דמות</h2><p class="muted" style="margin:0 0 10px">אפשר לראות אותה, או לסרוק מחדש: הדמות החדשה תחליף אותה רק כשתהיה מוכנה.</p>
+      <button class="go2" id="showFig">להציג את הדמות שלי</button></div>
     <div class="card"><h2>מכינים דמות שלך מהפנים שלך</h2>
       <ul><li>מצלמים את הפנים, ישר למצלמה, באור טוב. הטלפון בודק שיש בתמונה פנים אמיתיות, רק שלכם.</li>
         <li>אחר כך מסובבים לאט את הראש לצד, והצילום נלקח לבד. ככה יודעים שזה אדם חי מול המצלמה, והדמות יוצאת דומה יותר.</li>
@@ -249,7 +251,9 @@ async function follow(job){
   setSteps('done',100); viewer(job);
 }
 $('#restart').addEventListener('click',()=>{ store.set(null); show('s1'); });
-$('#newScan').addEventListener('click',()=>{ store.set(null); location.reload(); });
+// a new scan: the kept figure stays until the new one is ready (then the server replaces it)
+const newScan=()=>{ store.set(null); haveFig(KEPT); show('s1'); scrollTo(0,0); };
+$('#newScan').addEventListener('click',newScan);
 
 /* ---------- 5. the figure, dancing with the mall's own moves (scan-view.js) ---------- */
 // done: the server has made it light and kept it as this account's figure; here it becomes the one in the mall too
@@ -257,7 +261,7 @@ const setHero=fig=>{ try{ if(fig) localStorage.setItem('bt-scan-hero',JSON.strin
 async function viewer(job){ show('s5'); $('#moves').innerHTML=''; $('#view').innerHTML=''; $('#saved').hidden=true;
   let fig=job.fig;
   if(!fig&&job.t){ try{ const r=await fetch('api/avatar?stage=rig&t='+encodeURIComponent(job.t),{credentials:'same-origin',cache:'no-store'}); fig=(await r.json()).fig; }catch(e){} }   // one made before figures were kept
-  if(!fig){ $('#note').textContent='לא הצלחנו לטעון את הדמות. אפשר לנסות שוב מאוחר יותר.'; $('#useMe').hidden=true; return; }
+  if(!fig){ $('#note').textContent='לא הצלחנו לטעון את הדמות. אפשר לנסות שוב מאוחר יותר, או לסרוק מחדש.'; $('#useMe').hidden=true; return; }
   job.fig=fig; store.set(job); setHero(fig);
   // the figure shows only once its skeleton and moves are ready (a few seconds on a phone): say so meanwhile, and say
   // what went wrong if it does not come
@@ -266,17 +270,24 @@ async function viewer(job){ show('s5'); $('#moves').innerHTML=''; $('#view').inn
   catch(e){ $('#note').textContent='הדמות לא נטענה: '+((e&&e.message)||e); }
   clearTimeout(slow); if(v&&v.play&&/נטענת|טוענים/.test($('#note').textContent)) $('#note').textContent='גוררים כדי לסובב.';
   const ok=v&&v.play; $('#useMe').hidden=!ok; $('#saved').hidden=!ok;
+  if(!v&&!/לא נטענה/.test($('#note').textContent)) $('#note').textContent='הדמות לא נטענה. אפשר לנסות שוב מאוחר יותר, או לסרוק מחדש.';
   $('#useMe').onclick=()=>{ location.href='./'; }; }
 $('#forget').addEventListener('click',async()=>{ if(!confirm('למחוק את הדמות שלך? היא תימחק מהשרת, ובקניון תחזור הדמות הרגילה.')) return;
   try{ await fetch('api/avatar?me=1',{method:'DELETE',credentials:'same-origin'}); }catch(e){}
-  setHero(null); store.set(null); show('s1'); });
+  setHero(null); store.set(null); KEPT=null; haveFig(null); show('s1'); });
 
 /* back to a scan in progress, or the figure already made (on this device or, through the account, another one) */
 const job=store.get();
 // ?new=1 (the mall's "new scan"): straight to a new scan, whatever is kept
-if(/[?&]new=1/.test(location.search)){ if(job&&job.stage==='done') store.set(null); show('s1'); }
-else if(job&&job.stage){ if(job.stage==='done') viewer(job); else follow(job); }
-else fetch('api/avatar?me=1',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(j=>{ if(j.fig&&!(store.get()||{}).stage) viewer({stage:'done',fig:j.fig}); }).catch(()=>{});
+// a figure already made never takes the page over: the first screen says so, with a button to see it, and a new
+// scan is always one tap away
+let KEPT=null;
+function haveFig(f){ $('#haveFig').hidden=!f; }
+$('#showFig').addEventListener('click',()=>{ if(KEPT) viewer({stage:'done',fig:KEPT}); });
+if(job&&job.stage&&job.stage!=='done') follow(job);
+else { if(job&&job.fig){ KEPT=job.fig; haveFig(KEPT); } store.set(null);
+  fetch('api/avatar?me=1',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(j=>{ if(!('fig' in j)) return; KEPT=j.fig||null;
+    if(!$('#s1').hidden) haveFig(KEPT); }).catch(()=>{}); }
 </script>
 </body>
 </html>

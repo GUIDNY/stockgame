@@ -638,10 +638,24 @@
   .ccount{font-size:12px;font-weight:700;color:#8a90a3;margin:0 2px -4px;}
   .skel{border-radius:16px;background:linear-gradient(90deg,#eceef3,#f7f8fb,#eceef3);background-size:200% 100%;animation:skel 1.2s linear infinite;aspect-ratio:.62;}
   @keyframes skel{to{background-position:-200% 0}}
-  #loading{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;background:radial-gradient(90% 60% at 50% 40%,#1b2350,#0b0f26);color:var(--ink-dim);font-size:14px;direction:rtl;z-index:20;}
+  #loading{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;background:radial-gradient(90% 60% at 50% 40%,#1b2350,#0b0f26);color:var(--ink-dim);font-size:14px;direction:rtl;z-index:70;transition:opacity .45s ease;}
+  #loading.out{opacity:0;pointer-events:none;}
   #loading .logo{height:40px;font-size:19px;padding:0 16px;border-radius:12px;}
-  #loading .bar{width:180px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;}
-  #loading .bar i{display:block;width:40%;height:100%;border-radius:2px;background:var(--brand);animation:load 1.1s ease-in-out infinite;}
+  #loading .ldStage{position:relative;width:170px;height:104px;overflow:hidden;direction:ltr;}
+  #loading .ldCart{position:absolute;left:38px;bottom:14px;width:94px;height:72px;animation:ldBob .5s ease-in-out infinite alternate;will-change:transform;}
+  #loading .ldCart svg{width:100%;height:100%;overflow:visible;}
+  #loading .ldWheel{transform-box:fill-box;transform-origin:center;animation:ldSpin .6s linear infinite;}
+  #loading .ldBox{position:absolute;bottom:52px;width:16px;height:16px;border-radius:4px;opacity:0;will-change:transform,opacity;animation:ldDrop 2.1s cubic-bezier(.5,0,.75,0) infinite;}
+  #loading .ldBox.b1{left:62px;background:var(--brand);}
+  #loading .ldBox.b2{left:82px;width:13px;height:20px;background:#ffb4aa;animation-delay:.7s;}
+  #loading .ldBox.b3{left:100px;width:14px;height:14px;border-radius:50%;background:#c1c1ff;animation-delay:1.4s;}
+  #loading .ldFloor{position:absolute;left:0;bottom:8px;width:340px;height:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 14px,transparent 14px 28px);animation:ldRoll .6s linear infinite;will-change:transform;}
+  #loading .bar{width:180px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;direction:ltr;}
+  #loading .bar i{display:block;width:100%;height:100%;border-radius:2px;background:var(--brand);transform:scaleX(.04);transform-origin:left;transition:transform .35s ease-out;}
+  @keyframes ldBob{from{transform:translateY(0) rotate(-1deg)}to{transform:translateY(-3px) rotate(1deg)}}
+  @keyframes ldSpin{to{transform:rotate(360deg)}}
+  @keyframes ldRoll{to{transform:translateX(-28px)}}
+  @keyframes ldDrop{0%{transform:translateY(-70px) rotate(-20deg);opacity:0}12%{opacity:1}55%{transform:translateY(0) rotate(0);opacity:1}75%,100%{transform:translateY(4px);opacity:0}}
   @keyframes load{0%{transform:translateX(160%)}100%{transform:translateX(-260%)}}
   @keyframes rise{from{transform:translate(-50%,14px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
   @keyframes sheetUp{from{transform:translateY(48px);opacity:0}to{transform:none;opacity:1}}
@@ -1132,7 +1146,10 @@
   </div>
 </div>
 
-<div id="loading"><span class="logo">BuyToday</span><span>פותחים את הקניון…</span><div class="bar"><i></i></div></div>
+<div id="loading" role="status" aria-live="polite"><div class="ldStage" aria-hidden="true"><i class="ldBox b1"></i><i class="ldBox b2"></i><i class="ldBox b3"></i>
+  <div class="ldCart"><svg viewBox="0 0 94 72"><path d="M4 8h12l9 38h52l9-28H21" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 22h58l-6 18H28z" fill="rgba(255,122,26,.22)"/>
+  <g class="ldWheel"><circle cx="32" cy="59" r="7" fill="#0b0f26" stroke="#fff" stroke-width="4"/><path d="M32 54v10" stroke="#fff" stroke-width="2"/></g><g class="ldWheel"><circle cx="72" cy="59" r="7" fill="#0b0f26" stroke="#fff" stroke-width="4"/><path d="M72 54v10" stroke="#fff" stroke-width="2"/></g></svg></div>
+  <div class="ldFloor"></div></div><span class="logo">BuyToday</span><span id="ldMsg">פותחים את הקניון…</span><div class="bar"><i id="ldBar"></i></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -1186,6 +1203,10 @@ const canvas = $('#c');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
 let last=performance.now();
+const LOADQ={n:0,p:0,seen:0,done:0,quiet:0,wim:0};
+(()=>{ const M=THREE.DefaultLoadingManager, s=M.itemStart, e=M.itemEnd;
+  M.itemStart=function(u){ LOADQ.n++; LOADQ.seen++; (LOADQ.urls=LOADQ.urls||new Map()).set(u,performance.now()); return s.call(this,u); };
+  M.itemEnd=function(u){ LOADQ.n=Math.max(0,LOADQ.n-1); LOADQ.done++; LOADQ.urls&&LOADQ.urls.delete(u); return e.call(this,u); }; })();
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -2411,10 +2432,32 @@ let GLTF_READY=null;
 function gltfReady(){ if(GLTF_READY) return GLTF_READY;
   const js=f=>new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=ASSET+f; sc.onload=res; sc.onerror=()=>rej(new Error(f+' failed')); document.head.appendChild(sc); });
   return GLTF_READY=Promise.all([THREE.GLTFLoader?0:js('gltf-loader.js'), window.MeshoptDecoder?0:js('meshopt_decoder.js?v=1')]).then(()=>window.MeshoptDecoder&&MeshoptDecoder.ready); }
+/* The loading screen. It stays up until everything the shopper would otherwise see arriving has arrived:
+   at the start the player's own figure (and any change the account or the server makes to it), on the way
+   in the mall's people, staff and decor. Nothing swaps or stutters in front of the shopper; if something
+   hangs, the screen goes after a maximum wait all the same. */
+const LOADER={el:null,shown:1,t0:performance.now(),seen0:0,done0:0,prog:0,timer:null,
+  show(msg){ let el=document.getElementById('loading'); if(!el) return; el.classList.remove('out'); el.hidden=false; this.shown=1; this.prog=0; this.t0=performance.now(); this.seen0=LOADQ.seen; this.done0=LOADQ.done; this.bar(.04);
+    const m=document.getElementById('ldMsg'); if(m&&msg) m.textContent=msg; },
+  bar(v){ const b=document.getElementById('ldBar'); if(b) b.style.transform='scaleX('+v.toFixed(3)+')'; },
+  // ready(): true once there is nothing left to wait for; min/max in ms; then() once the screen is gone
+  until(ready,{min=600,max=20000,then}={}){ clearInterval(this.timer); let calm=0;
+    const tick=()=>{ const t=performance.now()-this.t0, busy=LOADQ.n+LOADQ.p, seen=LOADQ.seen-this.seen0, got=LOADQ.done-this.done0;
+      calm=busy?0:calm+1;
+      const goal=Math.min(.92,Math.max(1-Math.exp(-t/5000),seen?got/seen:0)*.92); this.prog+=(goal-this.prog)*.2; this.bar(Math.max(.04,this.prog));
+      let ok=false; try{ ok=t>=min&&calm>=4&&ready(); }catch(e){}
+      if(ok||t>=max){ clearInterval(this.timer); this.bar(1); this.why=(ok?'ready ':'max ')+Math.round(t);
+        try{ renderer.compile(scene,camera); }catch(e){}   // the shaders now, behind the screen, not on the first steps
+        requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{ this.hide(); then&&then(); },250))); } };
+    this.timer=setInterval(tick,200); },
+  hide(){ const el=document.getElementById('loading'); if(!el||!this.shown) return; this.shown=0; el.classList.add('out'); setTimeout(()=>{ if(!this.shown) el.hidden=true; },500); }
+};
 function loadGLTF(url){
   if(GLTF_CACHE[url]) return GLTF_CACHE[url];
+  LOADQ.p++; const left=()=>{ LOADQ.p=Math.max(0,LOADQ.p-1); };
   return GLTF_CACHE[url] = gltfReady().then(()=>new Promise((res,rej)=>{ const L=new THREE.GLTFLoader(); if(window.MeshoptDecoder) L.setMeshoptDecoder(window.MeshoptDecoder); L.load(url,res,undefined,rej); }))
-    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb|CASHIER(-m)?\.glb|K_[a-z]+(-m)?\.glb|KK\d(-m)?\.glb/.test(url)) return meshyAnims(gl).then(g=>armsOut(g,url)); return gl; });
+    .then(gl=>{ if(/hero-[mw]\.glb/.test(url)){ smoothGLTF(gl); if(HERO_MIX) return heroMixClips(gl); } if(/MESHY-(\d+|F\d+)\.glb|ALFRED(-m)?\.glb|SELLER(-m)?\.glb|CASHIER(-m)?\.glb|K_[a-z]+(-m)?\.glb|KK\d(-m)?\.glb/.test(url)) return meshyAnims(gl).then(g=>armsOut(g,url)); return gl; })
+    .then(g=>{ left(); return g; },e=>{ left(); throw e; });
 }
 const HEAD_NOD=[.12,.2];   // radians forward at the neck and the head
 // their spine is curved where Mixamo's is straight, so the clips leave the head tipped back: nod it forward
@@ -2604,11 +2647,11 @@ function loadScanHero(s){
     .then(j=>{ if(!j.fig) throw new Error('scan: '+(j.error||j.stage)); scanSet(j.fig); return scanFigure(j.fig); });
 }
 // the account's figure, as the server has it: made or forgotten on another device, it is the same here
-function scanSync(){ if(!MESHY_HERO) return;
-  fetch(API+'api/avatar?me=1',{credentials:'include',cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j||!('fig' in j)) return;
+function scanSync(){ if(!MESHY_HERO) return Promise.resolve();
+  return fetch(API+'api/avatar?me=1',{credentials:'include',cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j||!('fig' in j)) return;
     const cur=scanHero(), have=cur&&cur.fig||null; if(j.fig===have||(!j.fig&&cur&&!cur.fig)) return;
     scanSet(j.fig); if(HERO3D.owner&&typeof setAvatar==='function') setAvatar(avatar); }).catch(()=>{}); }
-setTimeout(scanSync,1500);
+const SCAN_SYNCED=scanSync();
 function mkGuy3D(o){
   const G = mkGuy(o);
   if(!USE_3D_HERO) return G;
@@ -2635,8 +2678,8 @@ function heroLoading(on){ let el=document.getElementById('heroLoad');
     document.body.appendChild(el); }
   if(!on&&el) el.remove(); }
 // once the shopper has walked in (and the page has caught its breath): things the entrance screen never shows
-function whenInMall(fn){ const w=()=>{ let inMall=false; try{ inMall=G.state==='play'; }catch(e){}   // G may not exist yet while the page is still being built
-    if(inMall) setTimeout(()=>(window.requestIdleCallback||setTimeout)(fn,{timeout:2000}),1200); else setTimeout(w,400); }; w(); }
+function whenInMall(fn){ LOADQ.wim++; const w=()=>{ let inMall=false; try{ inMall=G.state==='play'; }catch(e){}   // G may not exist yet while the page is still being built
+    if(inMall) setTimeout(()=>(window.requestIdleCallback||setTimeout)(()=>{ LOADQ.wim--; fn(); },{timeout:2000}),1200); else setTimeout(w,400); }; w(); }
 function afterHero(fn){ const t0=performance.now(); const w=()=>{ if(HERO3D.status==='loaded'||HERO3D.status==='failed'||HERO3D.status==='off'||performance.now()-t0>8000) fn(); else setTimeout(w,250); }; setTimeout(w,300); }
 function attachHeroModel(G, gltf){
   const h = G.h3d;
@@ -3126,7 +3169,17 @@ function heroFindArms(model){
     return {u,l,w,fingers,thumb:chain('Thumb',sd),mid:(fingers[1]||fingers[0]||[])[0]||null}; };
   const chest=bones.find(b=>/chest|spine2/i.test(b.name))||bones.find(b=>/torso|spine1/i.test(b.name));
   const R=arm(-1), L=arm(1);
-  return R&&L?{arms:[R,L],chest}:null;
+  if(!(R&&L)) return null;
+  // a scanned figure behind the cart: the upper body held as it stands (so the elbows stay put however the walk
+  // sways the hips and spine) and the wrists straight on the forearm (it has no fingers to grip with). The rest
+  // pose is now: nothing has played on the model yet.
+  let calm=null;
+  if(model.userData.scan){ const by=re=>bones.find(b=>re.test(strip(b.name)));
+    const hips=by(/^Hips$/), first=hips&&hips.children.find(b=>b.isBone&&/Spine/.test(b.name));
+    if(first){ const rest=[]; first.traverse(b=>{ if(b!==first&&b.isBone&&/Spine|Shoulder/.test(b.name)) rest.push([b,b.quaternion.clone()]); });
+      calm={hips,hipsRest:hips.quaternion.clone(),first,firstRest:first.quaternion.clone(),rest}; }
+    [R,L].forEach(A=>{ if(!A.mid) A.wRest=A.w.quaternion.clone(); }); }
+  return {arms:[R,L],chest,calm};
 }
 const _ik={a:new THREE.Vector3(),b:new THREE.Vector3(),c:new THREE.Vector3(),t:new THREE.Vector3(),p:new THREE.Vector3(),e:new THREE.Vector3(),
   q:new THREE.Quaternion(),q2:new THREE.Quaternion(),q3:new THREE.Quaternion(),v:new THREE.Vector3(),w:new THREE.Vector3()};
@@ -3158,6 +3211,9 @@ function heroCartIK(H,dt,rec,pushing){
   h.model.position.z=HERO_CART_STEP_IN*h.push;
   if(h.push<.01) return;
   const k=h.push;
+  if(ik.calm){ const c=ik.calm, a=k*.92;
+    c.first.quaternion.slerp(_ik.q3.copy(c.hips.quaternion).invert().multiply(c.hipsRest).multiply(c.firstRest),a);
+    c.rest.forEach(([b,q])=>b.quaternion.slerp(q,a)); }
   h.model.updateMatrixWorld(true);
   if(ik.chest){ // lean in: rotate the chest about the figure's own right-hand axis
     const right=_ik.w.set(1,0,0).applyQuaternion(H.g.getWorldQuaternion(_ik.q2));
@@ -3193,7 +3249,8 @@ function heroCartIK(H,dt,rec,pushing){
       const bar=new THREE.Vector3(g[0],HERO_CART_BAR.y,HERO_CART_BAR.z); H.g.localToWorld(bar);
       const tip=new THREE.Vector3().setFromMatrixPosition((A.fingers[1]||A.fingers[0]).slice(-1)[0].matrixWorld);
       h.ikErr=(h.ikErr||[]); h.ikErr[i]=+Math.hypot(tip.y-bar.y, (tip.clone().sub(bar)).dot(fwd)).toFixed(3); }
-    else { h.ikErr=(h.ikErr||[]); h.ikErr[i]=+new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld).distanceTo(target).toFixed(3); }
+    else { if(A.wRest){ A.w.quaternion.slerp(A.wRest,k); A.w.updateMatrixWorld(true); }
+      h.ikErr=(h.ikErr||[]); h.ikErr[i]=+new THREE.Vector3().setFromMatrixPosition(A.w.matrixWorld).distanceTo(target).toFixed(3); }
   });
 }
 /* the old figure is being replaced (setAvatar): stop its animation and take the model off it. Textures and
@@ -3361,7 +3418,7 @@ function peopleStart(){
   const P=ASSET+'people/';
   script(P+'skeleton-utils.js?v='+PEOPLE.V).then(()=>loadGLTF(P+'anims.glb?v='+PEOPLE.V)).then(an=>{
     const want={Idle:'Idle',Walk:'Walk',Run:'Run',Wave:'Wave'};   // Mixamo Happy Idle, Walking, Running, Waving
-    const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)) return;
+    const one=i=>{ if(i>=Math.min(PEOPLE.max,PEOPLE.names.length)){ PEOPLE.done=true; return; }
       loadGLTF(P+PEOPLE.names[i]+'.glb?v='+PEOPLE.V).then(g=>{
         const m=g.scene; m.traverse(o=>{ if(o.isMesh){ dequant(o.geometry); o.castShadow=false; o.receiveShadow=false; o.frustumCulled=false;
           (Array.isArray(o.material)?o.material:[o.material]).forEach(mt=>{ mt.metalness=0; mt.roughness=Math.max(mt.roughness,.6); mt.envMapIntensity=1; if(mt.map) mt.map.anisotropy=renderer.capabilities.getMaxAnisotropy(); }); } });
@@ -4444,10 +4501,12 @@ function enterMall(){
   try{ navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){}
   avatar.name=cleanName(avatar.name); saveAvatar(); acctSave(); cart.c.visible=true;
   if(G.state==='edit'){ G.state='play'; G.paused=false; ui.menu.hidden=true; ui.hud.hidden=false; last=performance.now(); toast('נראה מעולה!','good'); netRetrack(); return; }
-  resetGame(); G.state='play'; Q.hold=performance.now()+8000;   // the mall is still loading in: judge the frame rate after that
+  resetGame(); G.state='play'; Q.hold=performance.now()+30000;   // the mall is still loading in: judge the frame rate after that
+  // behind the loading screen until the people, staff and decor are in (whenInMall starts them about now)
+  LOADER.show('נכנסים לקניון…');
+  LOADER.until(()=>LOADQ.wim<=0&&(PEOPLE.done||PEOPLE.gaveUp||!USE_3D_NPCS)&&HERO3D.status!=='loading',{min:LOADQ.wim>0?2400:900,max:16000,then:mallIn});
   ui.menu.hidden=true; ui.end.hidden=true; ui.hud.hidden=false;
   requestAnimationFrame(()=>{ joyHome(); if(tourDone) joyTeach(); }); Prog.newDay(); scLoad();
-  if(!tourDone) setTimeout(tourStart,1200);
   if(coPending){ coPending=false; setTimeout(()=>openCheckout(utm(SITE+'/checkout','signin-return')),400); }
   const rs=loadResume();
   if(rs){ setFloor(rs.f); player.pos.set(clamp(rs.x,-BX+1,BX-1),rs.f*FH,clamp(rs.z,-BZ+1,BZ-1)); player.yaw=rs.yaw||0; camYaw=player.yaw+Math.PI; camYawSm=null;
@@ -4458,9 +4517,11 @@ function enterMall(){
     CATALOG.forEach(it=>{ if((rs.cart||[]).includes(it.slug)){ it.taken=true; it.model.visible=false; it.tag.visible=false; it.ring.visible=false; } });
     rebuildCart(); renderMoney(); updateCartBadge(); renderList(); }
   if(!Bots.started){ Bots.started=true; const n=Math.max(0,Bots.target-1); for(let i=0;i<n;i++) botSpawn(); }
-  toast(rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה');
+  mallIn.msg=rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה';
   netStart();
 }
+// the loading screen is gone: the welcome, the tour, and from now the frame rate counts
+function mallIn(){ if(G.state!=='play') return; Q.hold=performance.now()+5000; toast(mallIn.msg||'ברוכים הבאים'); if(!tourDone) setTimeout(tourStart,900); }
 let menuEdit=false;
 /* a returning shopper with a character goes straight in: a welcome, the level and coins, and a button to
    change the look; a first visit (or the edit button in the mall) opens the whole creator */
@@ -6735,7 +6796,11 @@ function applyTagMode(){ const ph=PHONE.matches; CATALOG.forEach(it=>{ tagTextur
 applyTagMode();
 PHONE.addEventListener&&PHONE.addEventListener('change',()=>{ applyTagMode(); syncCardSpace(); joyHome(); });
 player.pos.set(0,0,24); player.yaw=Math.PI; hero.g.position.copy(player.pos); cart.c.visible=false; renderCreator();
-$('#loading').remove(); ui.menu.hidden=false; renderCreator(); menuMode(); acctLoad(); if(loadResume()) $('#startBtn').textContent='חזרה לקניון';
+ui.menu.hidden=false; renderCreator(); menuMode();
+{ // the start: the screen stays until the figure is the one that stays (the account and the server may change it first)
+  const settled=Promise.race([Promise.all([acctLoad(),SCAN_SYNCED]),new Promise(r=>setTimeout(r,6000))]); let ok=false; settled.then(()=>{ ok=true; });
+  LOADER.until(()=>ok&&HERO3D.status!=='loading'&&(!hero.h3d||hero.h3d.model||HERO3D.status!=='loaded'),{min:700,max:20000}); }
+if(loadResume()) $('#startBtn').textContent='חזרה לקניון';
 requestAnimationFrame(loop);
 });
 </script>
