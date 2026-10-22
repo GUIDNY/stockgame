@@ -1148,6 +1148,8 @@ const SITE = 'https://buytoday.co.il';
    own WebView). There the relative paths of its own files would resolve against the shop, so off
    its home host it fetches them from play.buytoday.co.il by absolute URL. */
 const HOME = 'https://play.buytoday.co.il/', ASSET = location.hostname==='play.buytoday.co.il' ? '' : HOME;
+// the product photos are files beside the page too (img/<hash>), named relative to it: the same rule
+if(ASSET) (STORE.items||[]).forEach(it=>['img','cut','cutHi'].forEach(k=>{ if(typeof it[k]==='string'&&it[k].startsWith('img/')) it[k]=ASSET+it[k]; }));
 /* the mall's own server functions (api/), which only answer a request carrying the mall's pass: on its own host the
    pass is a cookie there; inside the app the game is the shop's /mall, which adds the pass and passes the request on,
    so they are asked for there (a request straight to the game's host from the app carries no pass) */
