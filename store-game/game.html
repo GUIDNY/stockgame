@@ -2622,7 +2622,7 @@ const scanHero=()=>{ try{ const s=JSON.parse(localStorage.getItem('bt-scan-hero'
 const scanSet=fig=>{ try{ if(fig) localStorage.setItem('bt-scan-hero',JSON.stringify({fig,at:Date.now()})); else localStorage.removeItem('bt-scan-hero'); }catch(e){} };
 const SCAN_BUF={};
 let SCAN_VIEW=null;
-const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=9'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
+const scanViewReady=()=>SCAN_VIEW||(SCAN_VIEW=new Promise((res,rej)=>{ if(window.scanMap) return res(); const sc=document.createElement('script'); sc.src=ASSET+'scan-view.js?v=10'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }));
 function scanFigure(fig){
   if(!SCAN_BUF[fig]) SCAN_BUF[fig]=fetch(API+'api/avatar?fig='+fig,{credentials:'include'}).then(r=>{ if(!r.ok) throw new Error('fig '+r.status); return r.arrayBuffer(); })
     .catch(e=>{ delete SCAN_BUF[fig]; throw e; });

@@ -105,6 +105,7 @@
       <div class="step" id="st-rig"><i>3</i><div style="flex:1"><b>מוסיפים שלד</b><small>כדי שתוכלו ללכת, לרקוד ולקפוץ</small><div class="bar"><span></span></div></div></div>
     </div>
     <img class="pv" id="pv" alt="הדמות המצוירת" hidden>
+    <p class="muted" id="again" hidden>בדקנו את הדמות, והיא עוד לא זזה כמו שצריך. אנחנו מכינים אותה שוב, זה לוקח עוד כמה דקות.</p>
     <p class="err" id="err" hidden></p>
     <button class="go2" id="restart" hidden>להתחיל מחדש</button>
   </section>
@@ -125,7 +126,7 @@
 <script src="gltf-loader.js"></script>
 <script src="meshopt_decoder.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-<script src="scan-view.js?v=9"></script>
+<script src="scan-view.js?v=10"></script>
 <script>
 const $=s=>document.querySelector(s), KEY='bt-scan';
 const show=id=>document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==id);
@@ -224,7 +225,7 @@ $('#addSide').addEventListener('click',()=>{ phase='side'; facing='user'; startC
 
 
 /* ---------- 3-4. send, and follow the chain ---------- */
-$('#send').addEventListener('click',async()=>{ show('s4'); setSteps('img',0); $('#err').hidden=true; $('#pv').hidden=true;
+$('#send').addEventListener('click',async()=>{ show('s4'); setSteps('img',0); $('#err').hidden=true; $('#again').hidden=true; $('#pv').hidden=true;
   try{ const r=await fetch('api/avatar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({image:faceData,side:sideData,body:bodyData||undefined,wear})}); const j=await r.json();
     if(!r.ok) throw new Error(j.error==='credit'?'credit':j.error||r.status);
     const job={stage:j.stage,t:j.t,at:Date.now()}; store.set(job); follow(job); }
@@ -234,7 +235,8 @@ function setSteps(stage,p){ ORDER.forEach((s,i)=>{ const el=$('#st-'+s), k=ORDER
   el.querySelector('.bar span').style.width=(i<k||stage==='done'?100:i===k?Math.max(4,p):0)+'%'; }); }
 function fail(m){ $('#err').hidden=false; $('#restart').hidden=false;
   $('#err').textContent=m==='credit'?'אין מספיק קרדיטים בחשבון Tripo. צריך להטעין ואז לנסות שוב.':m==='not configured'?'השירות עוד לא מוגדר בשרת.':
-    m==='limit'?'הגעת למספר הסריקות היומי. אפשר לסרוק שוב מחר.':m==='who'?'צריך להיכנס לקניון מהחשבון שלך ואז לנסות שוב.':'משהו לא הצליח ('+m+'). אפשר לנסות שוב, עדיף עם תמונה אחרת.'; }
+    m==='limit'?'הגעת למספר הסריקות היומי. אפשר לסרוק שוב מחר.':
+    m==='figure'?'הפעם לא הצלחנו להכין דמות שזזה כמו שצריך, גם אחרי כמה ניסיונות. הסריקה לא נספרה, ובקניון נשארת הדמות שהייתה לך. כדאי לנסות שוב: פנים ישר למצלמה, באור טוב.':m==='who'?'צריך להיכנס לקניון מהחשבון שלך ואז לנסות שוב.':'משהו לא הצליח ('+m+'). אפשר לנסות שוב, עדיף עם תמונה אחרת.'; }
 async function follow(job){
   show('s4'); if(job.preview){ $('#pv').src=job.preview; $('#pv').hidden=false; }
   let miss=0;
@@ -244,7 +246,8 @@ async function follow(job){
     let j; try{ const r=await fetch('api/avatar?stage='+job.stage+'&t='+encodeURIComponent(job.t),{credentials:'same-origin',cache:'no-store'}); j=await r.json(); if(!r.ok) throw new Error(j.error||r.status); }
     catch(e){ const m=/credit|who|limit/.exec(e.message); if(m) return fail(m[0]); if(++miss>=8) return fail(e.message); continue; }   // a hiccup: try again, but not for ever
     miss=0;
-    if(j.stage==='failed'){ store.set(null); return fail(j.error+' · '+j.at); }
+    if(j.stage==='failed'){ store.set(null); return fail(j.error==='figure'?'figure':j.error+' · '+j.at); }
+    if(j.again) $('#again').hidden=false;   // the server found the figure would not move right, and is making it again
     if(j.preview){ job.preview=j.preview; $('#pv').src=j.preview; $('#pv').hidden=false; }
     Object.assign(job,{stage:j.stage,t:j.t||job.t,progress:j.progress||0,fig:j.fig||null}); store.set(job);
   }

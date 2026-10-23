@@ -129,7 +129,8 @@
   ],
   "functions": {
     "api/avatar.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "{gltf-loader.js,scan-view.js,api/_donor.glb}"
     }
   }
 }

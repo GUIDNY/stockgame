@@ -13,11 +13,13 @@ const walk=b=>{ const c=[b]; let q=b; while(kids(q).length===1){ q=kids(q)[0]; c
 function mapByShape(model){
   model.updateMatrixWorld(true);
   const bones=[]; model.traverse(o=>{ if(o.isBone) bones.push(o); }); if(!bones.length) return {missing:MIX};
-  const box=new THREE.Box3().setFromObject(model), H=box.max.y-box.min.y, floor=box.min.y;
+  // the height from the skeleton itself: the mesh's own box can be in another scale than the bones (it is read
+  // before skinning), and then the spine, ending at the chest, looked low enough to be a leg
+  let floor=1e9, topY=-1e9; bones.forEach(b=>{ const y=P(b).y; floor=Math.min(floor,y); topY=Math.max(topY,y); }); const H=Math.max(1e-4,topY-floor);
   let hips=bones.find(b=>!isB(b.parent)); while(hips&&kids(hips).length===1) hips=kids(hips)[0];
   if(!hips) return {missing:MIX};
   const hp=P(hips), chains=kids(hips).map(walk);
-  const legs=chains.filter(c=>P(c[c.length-1]).y<floor+H*.2&&c.length>=3);
+  const legs=chains.filter(c=>c.length>=3&&P(c[c.length-1]).y<floor+H*.2&&P(c[c.length-1]).y<P(c[0]).y-H*.25);   // down to the floor from the hips
   const ups=chains.filter(c=>kids(c[c.length-1]).length>=2&&P(c[c.length-1]).y>hp.y);
   if(legs.length<2||!ups.length) return {missing:MIX};
   let spine=ups.sort((a,b)=>P(b[b.length-1]).y-P(a[a.length-1]).y)[0], chest=spine[spine.length-1];
@@ -163,14 +165,25 @@ function reskin(model,donor){
   const byPart=new Map(); for(let i=0;i<N;i++){ const n=dn(dbones[heavy(dsi,dsw,i)]); let L=byPart.get(n); if(!L) byPart.set(n,L=[]); L.push(i); }
   const pool=new Map();   // the donor points a part may take from: its own, and the parts either side of its joints
   const cands=n=>{ if(pool.has(n)) return pool.get(n); const L=[]; (near.get(n)||new Set(['Hips'])).forEach(m=>{ (byPart.get(m)||[]).forEach(i=>L.push(i)); }); pool.set(n,L); return L; };
+  // and the donor bones a part may be moved by: the bones of its pool, and below them (a hand's fingers). A point
+  // takes no weight from any other bone, however near: the donor's own fingertips, made hanging by its thighs, carry
+  // some hip, and that pulled this figure's fingertips toward its hips at every step
+  const desc=new Map(); dbones.forEach(b=>{ const s=new Set(); b.traverse(o=>{ if(o.isBone) s.add(dbones.indexOf(o)); }); desc.set(dn(b),s); });
+  const allowed=new Map(), allow=n=>{ if(allowed.has(n)) return allowed.get(n); const s=new Set(); (near.get(n)||new Set(['Hips'])).forEach(m=>{ const b=dbones.find(x=>dn(x)===m); if(b) s.add(dbones.indexOf(b)); });
+    if(/Hand$/.test(n)) (desc.get(n)||[]).forEach(i=>s.add(i)); allowed.set(n,s); return s; };
+  // a point Tripo's weights put on a part it is nowhere near (a hand point on the foot: a spike across the room when
+  // walking) goes by where it is instead: the part of the nearest donor point
+  const far2=Math.pow((headS.y-hipsS.y)*.18,2), dpart=i=>dn(dbones[heavy(dsi,dsw,i)]);
+  const nearest=(L,v,best)=>{ best.length=0; for(const j of L){ const dx=DP[j*3]-v.x, dy=DP[j*3+1]-v.y, dz=DP[j*3+2]-v.z, d2=dx*dx+dy*dy+dz*dz;
+      if(best.length<4||d2<best[best.length-1][0]){ best.push([d2,j]); best.sort((p1,p2)=>p1[0]-p2[0]); if(best.length>4) best.pop(); } } return best; };
+  const ALL=[...Array(N).keys()];
   const meshes=[]; model.traverse(o=>{ if(o.isSkinnedMesh) meshes.push(o); });
   meshes.forEach(o=>{ const g=o.geometry, pa=g.attributes.position, osi=g.attributes.skinIndex, osw=g.attributes.skinWeight, ob=o.skeleton.bones, n=pa.count, SI=new Uint16Array(n*4), SW=new Float32Array(n*4), best=[];
     for(let i=0;i<n;i++){ v.fromBufferAttribute(pa,i); o.boneTransform(i,v); v.applyMatrix4(o.matrixWorld);
-      const L=cands(part(ob[heavy(osi,osw,i)])); best.length=0;
-      for(const j of L){ const dx=DP[j*3]-v.x, dy=DP[j*3+1]-v.y, dz=DP[j*3+2]-v.z, d2=dx*dx+dy*dy+dz*dz;
-        if(best.length<4||d2<best[best.length-1][0]){ best.push([d2,j]); best.sort((p1,p2)=>p1[0]-p2[0]); if(best.length>4) best.pop(); } }
-      const acc=new Map();
-      best.forEach(([d2,j])=>{ const wgt=1/(Math.sqrt(d2)+1e-4); [['getX'],['getY'],['getZ'],['getW']].forEach(([gg])=>{ const w=dsw[gg](j); if(w>0){ const bi=dsi[gg](j); acc.set(bi,(acc.get(bi)||0)+w*wgt); } }); });
+      let pn=part(ob[heavy(osi,osw,i)]); nearest(cands(pn),v,best);
+      if(!best.length||best[0][0]>far2){ const g0=nearest(ALL,v,[]); if(g0.length&&(!best.length||g0[0][0]<best[0][0]*.25)){ pn=dpart(g0[0][1]); nearest(cands(pn),v,best); } }
+      const ok=allow(pn), acc=new Map();
+      best.forEach(([d2,j])=>{ const wgt=1/(Math.sqrt(d2)+1e-4); [['getX'],['getY'],['getZ'],['getW']].forEach(([gg])=>{ const w=dsw[gg](j); if(w>0){ const bi=dsi[gg](j); if(ok.has(bi)) acc.set(bi,(acc.get(bi)||0)+w*wgt); } }); });
       const top=[...acc.entries()].sort((x,y)=>y[1]-x[1]).slice(0,4), sum=top.reduce((t,x)=>t+x[1],0)||1;
       if(!top.length) top.push([dbones.indexOf(named(donor,'Hips')),1]);
       top.forEach(([bi,w],e)=>{ SI[i*4+e]=bi; SW[i*4+e]=w/sum; }); }

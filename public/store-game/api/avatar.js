@@ -72,17 +72,41 @@ function ownerOf(req) {
 }
 const myFig = async owner => { const r = await sbJson('/rest/v1/mall_figures?select=fig,task&owner=eq.' + owner); return r && r[0] || null; };
 const dropFile = fig => sb('/storage/v1/object/' + BUCKET, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: ['figs/' + fig + '.glb'] }) });
-/* the finished rig: fetched from Tripo, made light, kept, and made this account's figure (the old one goes) */
+/* the finished rig: fetched from Tripo, made light, checked (_check.js: the mall can read and move it), kept, and made
+   this account's figure (the old one goes). One that fails the check is not kept: { bad } says why, and the file goes
+   aside (fails/) so it can be looked at */
 async function keep(owner, task, url) {
-  const cur = await myFig(owner); if (cur && cur.task === task) return cur.fig;   // asked again: already kept
+  const cur = await myFig(owner); if (cur && cur.task === task) return { fig: cur.fig };   // asked again: already kept
   const r = await fetch(url); if (!r.ok) throw new Error('rig file ' + r.status);
   const out = await require('./_fig.js')(Buffer.from(await r.arrayBuffer())), fig = crypto.randomBytes(10).toString('hex');
+  let verdict; try { verdict = await require('./_check.js')(out); } catch (e) { verdict = { ok: false, why: 'error', error: String(e.message || e).slice(0, 200) }; }
+  if (!verdict.ok) {
+    await sb('/storage/v1/object/' + BUCKET + '/fails/' + task + '.glb', { method: 'POST', headers: { 'Content-Type': 'model/gltf-binary', 'x-upsert': 'true' }, body: out }).catch(() => {});
+    await sbJson('/rest/v1/mall_fig_fails?on_conflict=task', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({ owner, task, why: verdict }) });
+    return { bad: verdict };
+  }
   const up = await sb('/storage/v1/object/' + BUCKET + '/figs/' + fig + '.glb', { method: 'POST', headers: { 'Content-Type': 'model/gltf-binary', 'Cache-Control': '31536000' }, body: out });
   if (!up.ok) throw new Error('upload ' + up.status);
   await sbJson('/rest/v1/mall_figures?on_conflict=owner', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify({ owner, fig, task, bytes: out.length, updated_at: new Date().toISOString() }) });
   if (cur) await dropFile(cur.fig).catch(() => {});
-  return fig;
+  return { fig };
+}
+/* a rig the mall cannot move: rigged again (it can come out another way), then the figure made again from the same
+   picture and rigged, and if that too fails the player is told, and the scan does not count toward the day's */
+async function again(owner, rigTask) {
+  const since = new Date(Date.now() - 36e5).toISOString(), fails = await sbJson('/rest/v1/mall_fig_fails?select=id&owner=eq.' + owner + '&at=gte.' + since) || [];
+  const rig = await tripo('/task/' + rigTask, { method: 'GET' }), modelId = rig.input && rig.input.original_model_id;
+  try {
+    if (modelId && fails.length <= 1) return { stage: 'rig', t: await task({ type: 'animate_rig', original_model_task_id: modelId, model_version: 'v2.5-20260210', out_format: 'glb', rig_type: 'biped', spec: 'tripo' }), again: true };
+    if (modelId && fails.length === 2) {
+      const mod = await tripo('/task/' + modelId, { method: 'GET' }), file = mod.input && mod.input.file;
+      if (file) return { stage: 'model', t: await task({ type: 'image_to_model', model_version: 'v3.1-20260211', file, texture: true, pbr: true, texture_quality: 'detailed', face_limit: 40000 }), again: true };
+    }
+  } catch (e) { if (e.code === 2010) throw e; }
+  const last = await sbJson('/rest/v1/mall_scans?select=id&owner=eq.' + owner + '&order=at.desc&limit=1');
+  if (last && last[0]) await sbJson('/rest/v1/mall_scans?id=eq.' + last[0].id, { method: 'DELETE' });
+  return { stage: 'failed', error: 'figure', at: 'rig' };
 }
 async function tripo(path, init) {
   const r = await fetch(API + path, Object.assign({}, init, { headers: Object.assign({ Authorization: 'Bearer ' + key() }, (init && init.headers) || {}) }));
@@ -116,7 +140,12 @@ module.exports = async (req, res) => {
     }
     if (!owner) return send(res, 401, { error: 'who' });
     if (u.searchParams.has('me')) {
-      if (req.method === 'DELETE') { const cur = await myFig(owner); if (cur) { await dropFile(cur.fig); await sbJson('/rest/v1/mall_figures?owner=eq.' + owner, { method: 'DELETE' }); } return send(res, 200, { fig: null }); }
+      if (req.method === 'DELETE') { const cur = await myFig(owner); if (cur) { await dropFile(cur.fig); await sbJson('/rest/v1/mall_figures?owner=eq.' + owner, { method: 'DELETE' }); }
+        // and any that failed the check, kept aside to be looked at: they are this person's face too
+        const bad = await sbJson('/rest/v1/mall_fig_fails?select=task&owner=eq.' + owner) || [];
+        if (bad.length) { await sb('/storage/v1/object/' + BUCKET, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: bad.map(b => 'fails/' + b.task + '.glb') }) }).catch(() => {});
+          await sbJson('/rest/v1/mall_fig_fails?owner=eq.' + owner, { method: 'DELETE' }); }
+        return send(res, 200, { fig: null }); }
       const cur = await myFig(owner); return send(res, 200, { fig: cur ? cur.fig : null });
     }
 
@@ -154,7 +183,12 @@ module.exports = async (req, res) => {
       return send(res, 200, { stage: 'rig', t: n, render: o.rendered_image || null });
     }
     const url = o.model || o.pbr_model || o.base_model; if (!url) return send(res, 200, { stage: 'failed', error: 'no model', at: stage });
-    return send(res, 200, { stage: 'done', fig: await keep(owner, t, url) });
+    // a rig already found wanting (the same poll again): the answer it got then
+    const seen = await sbJson('/rest/v1/mall_fig_fails?select=next&task=eq.' + t); if (seen && seen[0] && seen[0].next) return send(res, 200, seen[0].next);
+    const kept = await keep(owner, t, url); if (kept.fig) return send(res, 200, { stage: 'done', fig: kept.fig });
+    const next = await again(owner, t);
+    await sbJson('/rest/v1/mall_fig_fails?task=eq.' + t, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ next }) }).catch(() => {});
+    return send(res, 200, next);
   } catch (e) {
     return send(res, e.code === 2010 ? 402 : 500, { error: e.code === 2010 ? 'credit' : String(e.message || e).slice(0, 200) });
   }
