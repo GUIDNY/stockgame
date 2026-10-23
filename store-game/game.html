@@ -3,7 +3,7 @@
 (function(){ if(/[?&]hero=old/.test(location.search)) return; var a={}; try{ a=JSON.parse(localStorage.getItem('bt-avatar')||'{}')||{}; }catch(e){}
   var B=location.hostname==='play.buytoday.co.il'?'':'https://play.buytoday.co.il/', g=a.girl?'F1':'1', O=a.girl?['teal','pink','yellow','purple','tee','leather']:['orange','red','tee','navy','sweater','leather'];
   var o=O.indexOf(a.outfit)>=0?a.outfit:O[0], small=matchMedia('(max-width:700px)').matches||matchMedia('(pointer:coarse)').matches;
-  [[B+'people/MESHY-'+g+'.glb?v=y4','fetch'],[B+'people/anims.glb?v=p5','fetch'],[B+'gltf-loader.js','script'],[B+'meshopt_decoder.js?v=1','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t2','image']].forEach(function(x){
+  [[B+'people/MESHY-'+g+'.glb?v=y4','fetch'],[B+'people/anims.glb?v=p5','fetch'],[B+'gltf-loader.js','script'],[B+'meshopt_decoder.js?v=1','script'],[B+'people/tex/'+g+'-'+o+(small?'-m':'')+'.jpg?v=t3','image']].forEach(function(x){
     var l=document.createElement('link'); l.rel='preload'; l.href=x[0]; l.as=x[1]; if(x[1]!=='script') l.crossOrigin='anonymous'; document.head.appendChild(l); }); })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2754,7 +2754,7 @@ function heroDress(model,o){
 /* the Meshy figure: one baked texture, so nothing to swap or tint; it only needs its shadows */
 const MESHY_TEX={}, MESHY_SMALL=PHONE.matches||matchMedia('(pointer:coarse)').matches;
 function meshyTex(name){ if(MESHY_TEX[name]) return MESHY_TEX[name];
-  const t=new THREE.TextureLoader().load(ASSET+'people/tex/'+name+(MESHY_SMALL?'-m':'')+'.jpg?v=t2',tx=>{ tx.needsUpdate=true; tx.btOk=true; (tx.btWait||[]).forEach(f=>f()); tx.btWait=[]; });
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/'+name+(MESHY_SMALL?'-m':'')+'.jpg?v=t3',tx=>{ tx.needsUpdate=true; tx.btOk=true; (tx.btWait||[]).forEach(f=>f()); tx.btWait=[]; });
   t.flipY=false; t.encoding=THREE.sRGBEncoding; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return MESHY_TEX[name]=t; }
 // resolves once the outfit's picture is in (a texture shown before that can stay black)
 const meshyTexReady=name=>new Promise(res=>{ const t=meshyTex(name); if(t.btOk) res(t); else (t.btWait=t.btWait||[]).push(()=>res(t)); });
@@ -2769,7 +2769,9 @@ const M_HAT=[['none','בלי'],['cap','כובע BuyToday'],['beanie','כובע �
 const MESHY_REF={'1':{hair:.049,skin:[.958,.42,.243]},'F1':{hair:.0176,skin:[.936,.392,.211]}};   // skin: the median of the painted face, linear, over every outfit
 const MESHY_MASK={};
 function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
-  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=3'); t.flipY=false; return MESHY_MASK[name]=t; }
+  // no mipmaps: the atlas is hundreds of small islands, and a smaller copy of the mask averages each one with the
+  // black round it, so a figure further off had half-coloured hands and neck
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=4'); t.flipY=false; t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; return MESHY_MASK[name]=t; }
 function meshyLook(model,o,body,outfit){
   const ref=MESHY_REF[body]; if(!ref) return;
   const hc=(M_HAIR.find(x=>x[0]===o.mHair)||M_HAIR[0])[2], sc=(M_SKIN.find(x=>x[0]===o.mSkin)||M_SKIN[0])[2];
