@@ -1413,6 +1413,9 @@ Object.assign(M,{
   column: mat(0xf4f2ee,{roughness:.3}), rail: mat(0xe9ebee,{roughness:.25,metalness:.55}), fascia: mat(0xf7f6f3,{roughness:.4})
 });
 const overlay = o => Object.assign({polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-4},o||{});
+// a flat thing lying on such a floor (grass, a painted marking, a dance tile): pulled further still. The floor's own
+// pull grows at a glancing angle, and from across the roof it came up through things lying a centimetre or two above it
+const decal = o => Object.assign({polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-8},o||{});
 
 /* ---------- lights ----------
    One warm key light, the only one casting shadows (its map is shared by the whole floor), a soft
@@ -3756,7 +3759,7 @@ function buildRoof(){
   floorPlane(-BX+.3,-8.8,-BZ+.3,-9.2,Y+.012,mat(0x12132a,overlay({roughness:.6})));
   for(let x=-23;x<=-9.5;x+=2) box(.05,.02,22.4,M.ledPink,x,Y+.03,-20.6,null,false);
   for(let z=-31;z<=-10;z+=2) box(14.6,.02,.05,M.ledCyan,-16.2,Y+.03,z,null,false);
-  const dance=[0xff3fb4,0x2fe6ff,0xffd166,0x7bff9b].map(c=>new THREE.MeshBasicMaterial({color:c}));
+  const dance=[0xff3fb4,0x2fe6ff,0xffd166,0x7bff9b].map(c=>new THREE.MeshBasicMaterial(decal({color:c})));
   for(let i=0;i<4;i++) for(let j=0;j<4;j++){ const t=new THREE.Mesh(new THREE.PlaneGeometry(1.05,1.05),dance[(i+j*2)%4]); t.rotation.x=-Math.PI/2; t.position.set(-17.2+i*1.15,Y+.02,-22.7+j*1.15); SG.add(t); }
   [-19.3,-12.7].forEach(x=>{ box(.12,3.4,.12,M.dark,x,Y+1.7,-9.5); solid(f,x,-9.5,.3,.3); });
   neon('ארקייד',-16,Y+3.9,-9.5,0,5.6,true,'שתי מכונות · זוכים במטבעות',true);
@@ -3804,7 +3807,7 @@ function buildRoof(){
   // --- the pet corner, beside the outfit shop: grass, a picket fence open to the walkway, a kennel, bowls and cushions ---
   { const x0=PET_ZONE.x0, x1=PET_ZONE.x1, z0=PET_ZONE.z0, z1=PET_ZONE.z1, cz=PET_ZONE.cz;
     const grass=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0),new THREE.MeshStandardMaterial({map:canvasTex(256,256,(g,W,H)=>{ g.fillStyle='#5fae45'; g.fillRect(0,0,W,H);
-      for(let i=0;i<1400;i++){ g.fillStyle=['#4f9a3a','#6cbf52','#79c95c','#579f3f'][i%4]; g.fillRect((i*73)%W,(i*151)%H,2,5); } }),roughness:1}));
+      for(let i=0;i<1400;i++){ g.fillStyle=['#4f9a3a','#6cbf52','#79c95c','#579f3f'][i%4]; g.fillRect((i*73)%W,(i*151)%H,2,5); } }),roughness:1,...decal()}));
     grass.rotation.x=-Math.PI/2; grass.position.set((x0+x1)/2,Y+.025,(z0+z1)/2); grass.receiveShadow=true; SG.add(grass);
     const white=mat(0xfafafa,{roughness:.7}), fence=(ax,az,bx,bz)=>{ const L=Math.hypot(bx-ax,bz-az), r=Math.atan2(bx-ax,bz-az)-Math.PI/2;
       [.22,.48].forEach(h=>{ const b=box(L,.05,.04,white,(ax+bx)/2,Y+h,(az+bz)/2,null,false); b.rotation.y=r; });
@@ -3829,9 +3832,10 @@ function buildRoof(){
     place(g,gs.mx,Y,gs.mz,-Math.PI/2,0,scene); roofLive.push(g); solid(f,gs.mx,gs.mz,1.3,1.7); gs.cab={g,body,scr,panel,marq}; });   // kept out of the roof's baked mesh: the Meshy cabinet replaces its boxes later
 
   // --- helipad behind the elevator ---
+  const HMARK=new THREE.MeshBasicMaterial(decal({color:0xffffff}));
   const pad=new THREE.Mesh(new THREE.CircleGeometry(4.6,48),mat(0x2b2f3d,overlay({roughness:.8}))); pad.rotation.x=-Math.PI/2; pad.position.set(0,Y+.014,-21); SG.add(pad);
-  const ring=new THREE.Mesh(new THREE.RingGeometry(4,4.3,48),new THREE.MeshBasicMaterial({color:0xfee440})); ring.rotation.x=-Math.PI/2; ring.position.set(0,Y+.02,-21); SG.add(ring);
-  [[-1.1,0,.4,3.2],[1.1,0,.4,3.2],[0,0,1.8,.4]].forEach(([x,z,w,d])=>{ const h=new THREE.Mesh(new THREE.PlaneGeometry(w,d),M.glowWhite); h.rotation.x=-Math.PI/2; h.position.set(x,Y+.022,-21+z); SG.add(h); });
+  const ring=new THREE.Mesh(new THREE.RingGeometry(4,4.3,48),new THREE.MeshBasicMaterial(decal({color:0xfee440}))); ring.rotation.x=-Math.PI/2; ring.position.set(0,Y+.02,-21); SG.add(ring);
+  [[-1.1,0,.4,3.2],[1.1,0,.4,3.2],[0,0,1.8,.4]].forEach(([x,z,w,d])=>{ const h=new THREE.Mesh(new THREE.PlaneGeometry(w,d),HMARK); h.rotation.x=-Math.PI/2; h.position.set(x,Y+.022,-21+z); SG.add(h); });
   for(let k=0;k<12;k++){ const a=k*Math.PI/6; box(.16,.08,.16,M.glowGreen,Math.sin(a)*4.9,Y+.04,-21+Math.cos(a)*4.9,null,false); }
   SG=STATIC[0];
 }
@@ -5898,34 +5902,41 @@ function petTpl(id){ if(PET_TPL[id]) return PET_TPL[id]; const P=PETS.find(x=>x.
 const PET_BLOB=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.22,depthWrite:false});
 function petSpawn(id){ const root=new THREE.Group(), bob=new THREE.Group(); root.add(bob);
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(.24,18),PET_BLOB); shadow.rotation.x=-Math.PI/2; shadow.position.y=.03; root.add(shadow);
-  const p={id,root,bob,shadow,phase:Math.random()*6,yaw:0,speed:0,nextTrick:2+Math.random()*4,trick:0,spin:0};
+  const p={id,root,bob,shadow,phase:Math.random()*6,yaw:0,speed:0,nextTrick:2+Math.random()*4,trick:0,spin:0,L:(PETS.find(x=>x.id===id)||{h:.5}).h*.3};   // L: hip to paw
   petTpl(id).then(t=>{ if(p.dead) return; const c=t.clone(true); if(PET_GAIT[id]==='trot') petLegs(c,p); bob.add(c); }).catch(e=>console.warn('pet '+id,e));
   scene.add(root); return p; }
 /* How each one moves: on four legs at a trot, a rabbit hops, a penguin waddles. */
 const PET_GAIT={dog:'trot',cat:'trot',panda:'trot',dragon:'trot',bunny:'hop',penguin:'waddle'};
 /* Legs without a skeleton: the models are one piece each, so the vertex shader finds the legs itself (everything
    below the hips, split left/right and front/back about the body's middle) and swings each about its hip, the
-   diagonal pairs together as in a real trot. The swing grows with the distance from the hip, so the body stays put. */
-function petLegs(model,p){ p.u={uPhase:{value:0},uAmp:{value:0},uGait:{value:0}};
+   diagonal pairs together as in a real trot. The swing grows with the distance from the hip, so the body stays put.
+   Each step is a stance and a swing: on the ground the paw goes back at an even pace, exactly as fast as the pet goes
+   forward (petAnim sets the step rate from its speed and leg length), so it stays where it was put down; then it
+   lifts and swings forward to the next step. */
+function petLegs(model,p){ p.u={uPhase:{value:0},uAmp:{value:0},uGait:{value:0},uStance:{value:.5}};
   model.traverse(o=>{ if(!o.isMesh) return; const b=o.geometry.boundingBox||(o.geometry.computeBoundingBox(),o.geometry.boundingBox), H=b.max.y-b.min.y;
     const leg=new THREE.Vector4(b.min.y+H*.3,b.min.y,(b.min.x+b.max.x)/2,(b.min.z+b.max.z)/2);
     o.material=(Array.isArray(o.material)?o.material[0]:o.material).clone();
-    o.material.onBeforeCompile=sh=>{ sh.uniforms.uPhase=p.u.uPhase; sh.uniforms.uAmp=p.u.uAmp; sh.uniforms.uGait=p.u.uGait; sh.uniforms.uLeg={value:leg};
-      sh.vertexShader='uniform float uPhase; uniform float uAmp; uniform float uGait; uniform vec4 uLeg;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+    o.material.onBeforeCompile=sh=>{ sh.uniforms.uPhase=p.u.uPhase; sh.uniforms.uAmp=p.u.uAmp; sh.uniforms.uGait=p.u.uGait; sh.uniforms.uStance=p.u.uStance; sh.uniforms.uLeg={value:leg};
+      sh.vertexShader='uniform float uPhase; uniform float uAmp; uniform float uGait; uniform float uStance; uniform vec4 uLeg;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
         if(transformed.y<uLeg.x){ float dy=uLeg.x-transformed.y;
           float trot=(transformed.x-uLeg.z)*(transformed.z-uLeg.w)>0.?0.:3.14159, bound=transformed.z>uLeg.w?0.:2.4;
           float pair=mix(trot,bound,uGait);   // a trot (diagonal pairs) walking, a bound (front pair, back pair) running
-          float a=sin(uPhase+pair)*uAmp, lift=max(0.,cos(uPhase+pair))*uAmp*.35;
-          transformed.z+=dy*sin(a); transformed.y+=dy*(1.-cos(a))+lift*dy; }`); };
+          float ph=(uPhase+pair)/6.28318; ph-=floor(ph); float sa, lift=0.;
+          if(ph<uStance) sa=uAmp*(1.-2.*ph/uStance);   // planted: from forward to back at an even pace
+          else { float t=(ph-uStance)/(1.-uStance); sa=uAmp*(2.*smoothstep(0.,1.,t)-1.); lift=sin(3.14159*t)*uAmp*.35; }
+          transformed.z+=dy*sa; transformed.y+=dy*(1.-sqrt(1.-sa*sa))+lift*dy; }`); };
     o.material.customProgramCacheKey=()=>'petlegs'; }); }
 function petKill(p){ if(!p) return; p.dead=true; if(p.root.parent) p.root.parent.remove(p.root); }
 function petAnim(p,dt){
   const gait=PET_GAIT[p.id]||'trot';
-  // the legs reach further the faster it goes, and the step rate follows the ground speed (a stride that grows with
-  // speed), so the paws stay planted instead of sliding; past a jog it changes from a trot to a bound
+  // the legs reach further the faster it goes (from nothing, standing), and past a jog it changes from a trot to a
+  // bound, with the paws on the ground for less of each step. The step rate then follows from the reach: a paw on
+  // the ground sweeps 2·L·reach back in stance·T, which must be the ground covered, speed·stance·T
   const run=Math.min(1,Math.max(0,(p.speed-2.6)/1.4));
-  if(p.u){ p.u.uAmp.value+=((p.speed>.3?Math.min(.9,.3+p.speed*.11):0)-p.u.uAmp.value)*(1-Math.exp(-dt*8)); p.u.uGait.value+=(run-p.u.uGait.value)*(1-Math.exp(-dt*5)); }
-  if(p.speed>.3&&gait==='trot'){ p.phase+=dt*Math.PI*2*p.speed/(.32+p.speed*.12); if(p.u) p.u.uPhase.value=p.phase;
+  if(p.u){ p.u.uAmp.value=Math.min(1,p.speed/.5)*Math.min(.85,.3+p.speed*.12); p.u.uGait.value+=(run-p.u.uGait.value)*(1-Math.exp(-dt*5)); p.u.uStance.value=.5-.12*p.u.uGait.value; }
+  if(p.speed>.05&&gait==='trot'){ const reach=p.u?Math.max(.05,p.u.uAmp.value):.3, stance=p.u?p.u.uStance.value:.5;
+    p.phase+=dt*Math.PI*p.speed*stance/(p.L*reach); if(p.u) p.u.uPhase.value=p.phase;
     // the body rides a little over each step with a slight roll; running, it rocks nose-down, nose-up with the bound
     const g=p.u?p.u.uGait.value:0, ride=Math.abs(Math.sin(p.phase))*.016*(1-g)+Math.max(0,Math.sin(p.phase+1))*.045*g;
     p.bob.position.y+=(ride-p.bob.position.y)*(1-Math.exp(-dt*30)); p.bob.rotation.z=Math.sin(p.phase)*.03*(1-g); p.bob.rotation.x=Math.cos(p.phase*2)*.02*(1-g)+Math.sin(p.phase)*.09*g;
