@@ -113,6 +113,11 @@
   .mgover p{margin:0;color:#c9cfe6;font-size:15px;line-height:1.5;max-width:30ch;}
   .mgover .big{font-size:44px;font-weight:900;color:#ffd166;}
   .mgover .row{display:flex;gap:10px;margin-top:6px;}
+  .mglegend{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:440px;margin:2px auto 0;}
+  .mglegend figure{margin:0;width:64px;display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:800;color:#fff;}
+  .mglegend img{width:52px;height:52px;}
+  .mglegend figure.bad figcaption{color:#ff8a8a;} .mglegend figure.pw figcaption{color:#9fe3ff;}
+  .mgnext{color:#ffd166!important;font-weight:800;}
   .mgover .row button{height:48px;padding:0 20px;border-radius:14px;font-weight:800;font-size:16px;}
   .mgover .go1{background:var(--brand);color:#fff;box-shadow:0 4px 0 var(--brand-deep);}
   .mgover .go2{background:rgba(255,255,255,.12);color:#fff;}
@@ -1523,37 +1528,47 @@ function worldTexPatch(sh,kind){ sh.uniforms.uWT={value:1/WALL_T[kind]};
     vec3 an=abs(vWN); vec2 wuv=an.y>max(an.x,an.z)?vWP.xz:(an.x>an.z?vWP.zy:vWP.xy);
     vec4 texelColor=mapTexelToLinear(texture2D(map,wuv*uWT)); diffuseColor*=texelColor;
   #endif`); }
-/* The world outside (review notes 04 and 14). The ground is real material at its real size (ambientCG, CC0: grass,
-   asphalt, hexagonal paving), and all round there is a photographed modern city under a real sky (Poly Haven's
-   Canary Wharf, CC0) in place of the drawn skyline. The panorama rides with the camera, so it always sits on the
-   horizon; it is seen from the street and through the ground floor's glass, and is hidden on the night roof. */
+/* The world outside, drawn in the mall's own style (review 23.10, items 3 and 6: a photographed city and photographed
+   grass round cartoon figures and a cartoon car read as a game from the nineties). The ground is painted: a mown
+   lawn, smooth asphalt, light paving; all round stands a town of simple buildings in the family's colours, with
+   trees, lamps and a painted sky (TOWN). On the roof, at night, the same town lights its windows. */
 const OUT_MATS=[];
-const OUT_FLAT={grass:0x86b86a,asph:0x3b3f48,pave:0xd9d6cf};   // until the textures are in
+const OUT_FLAT={grass:0x7cc96b,asph:0x5b6372,pave:0xe9e3d8};
 function outMat(kind,tint,rough){ const m=new THREE.MeshStandardMaterial({color:OUT_FLAT[kind],roughness:rough}); m.userData.out={kind,tint}; OUT_MATS.push(m); return m; }
-function loadOutTex(){ const L=new THREE.TextureLoader(), ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v=1',res,undefined,rej));
-  // on a phone, colour only: the ground is a lot of screen, and its normal map and full anisotropy cost more than they show
-  const lite=PHONE.matches||matchMedia('(pointer:coarse)').matches;
-  ['grass','asph','pave'].forEach(k=>Promise.all([ld('out-'+k+'-c.jpg'),lite?null:ld('out-'+k+'-n.jpg')]).then(([c,n])=>{ c.encoding=THREE.sRGBEncoding;
-    [c,n].forEach(t=>{ if(!t) return; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=lite?4:renderer.capabilities.getMaxAnisotropy(); });
+const OUT_TEX={
+  // a lawn mown in stripes, with a little speckle so it does not look like plastic
+  grass:(g,W,H)=>{ g.fillStyle='#7cc96b'; g.fillRect(0,0,W,H); g.fillStyle='#86d273'; g.fillRect(0,0,W/2,H);
+    for(let i=0;i<900;i++){ g.fillStyle=['#6fbf5f','#8fd97c','#76c465'][i%3]; g.fillRect((i*73)%W,(i*151)%H,2,3); } },
+  asph:(g,W,H)=>{ g.fillStyle='#5b6372'; g.fillRect(0,0,W,H); for(let i=0;i<700;i++){ g.fillStyle=i%2?'#626a79':'#545c6a'; g.fillRect((i*97)%W,(i*53)%H,2,2); } },
+  // square slabs with a soft joint
+  pave:(g,W,H)=>{ g.fillStyle='#e9e3d8'; g.fillRect(0,0,W,H); const n=4, c=W/n;
+    for(let i=0;i<n;i++) for(let j=0;j<n;j++){ g.fillStyle=(i+j)%2?'#ece6dc':'#e4ddd1'; g.fillRect(i*c+2,j*c+2,c-4,c-4); }
+    g.fillStyle='#d3cbbd'; for(let i=0;i<=n;i++){ g.fillRect(i*c-2,0,4,H); g.fillRect(0,i*c-2,W,4); } } };
+function loadOutTex(){ ['grass','asph','pave'].forEach(k=>{ const t=canvasTex(256,256,OUT_TEX[k]); t.wrapS=t.wrapT=THREE.RepeatWrapping;
     const mats=new Set(OUT_MATS); scene.traverse(o=>{ if(o.isMesh&&o.material&&o.material.userData&&o.material.userData.out) mats.add(o.material); });
-    mats.forEach(m=>{ if(m.userData.out.kind!==k) return; m.map=c; m.normalMap=n||null; m.color.setHex(m.userData.out.tint); m.needsUpdate=true; }); }).catch(e=>console.warn('outside '+k,e))); }
-const CITY={mesh:null, tex:null, night:null};
-function cityPano(){ const t=new THREE.TextureLoader().load(ASSET+'tex/city'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=2',t=>{
-    // the first floor's windows: a strip of the same city, the towers just above its horizon
-    if(!OUT.winMat) return; const w=t.clone(); w.needsUpdate=true; w.repeat.set(.16,.293); w.offset.set(.62,.086);   /* the panorama is cropped to its top 58%: the same strip as before */ OUT.winMat.map=w; OUT.winMat.needsUpdate=true; });
-  t.encoding=THREE.sRGBEncoding; t.anisotropy=4; CITY.tex=t;
-  const m=new THREE.Mesh(new THREE.SphereGeometry(165,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
-  m.rotation.y=CITY_YAW; m.renderOrder=10; /* after the opaque scene, so the depth test skips every pixel the mall covers (first, it painted the whole screen) */ m.frustumCulled=false; scene.add(m); CITY.mesh=m; return t; }
-const CITY_YAW=Math.PI*.5;   // the towers ahead as you come out of the doors
-function cityTick(){ if(!CITY.mesh) return; CITY.mesh.visible=player.floor===0; if(CITY.mesh.visible) CITY.mesh.position.copy(camera.position);
-  if(CITY.night){ CITY.night.visible=player.floor===TOP; if(CITY.night.visible) CITY.night.position.copy(camera.position); } }
-/* the roof at night: a lit skyline across a river (Poly Haven's Shanghai Bund, CC0) in place of the drawn dome and
-   skyline, which stay until it has loaded */
-function cityNight(){ const t=new THREE.TextureLoader().load(ASSET+'tex/city-night'+(PHONE.matches||matchMedia('(pointer:coarse)').matches?'-m':'')+'.jpg?v=2',()=>{
-    STATIC[TOP].children.forEach(m=>{ if((OUT.roofSky||[]).includes(m.material)) m.visible=false; }); });
-  t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
-  const m=new THREE.Mesh(new THREE.SphereGeometry(160,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
-  m.rotation.y=Math.PI*1.15; m.renderOrder=10; m.frustumCulled=false; m.visible=false; scene.add(m); CITY.night=m; }
+    mats.forEach(m=>{ if(m.userData.out.kind!==k) return; m.map=t; m.normalMap=null; m.color.setHex(m.userData.out.tint); m.userData.day=m.color.clone(); if(TOWN.night) m.color.multiplyScalar(.2); m.needsUpdate=true; }); }); }
+const CITY={mesh:null, night:false};
+const TOWN={g:null, trees:null, mats:[], street:null, night:null};
+const TOWN_COL=['#ffd6a5','#cde7f0','#ffc8dd','#d8f3dc','#fdffb6','#e0c3fc','#bde0fe','#f1e3d3'];
+// the sky over the street: a painted dome (light blue overhead to a pale horizon, soft clouds), riding with the camera
+function cityPano(){ const t=canvasTex(1024,512,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#5cb8f2'); gr.addColorStop(.5,'#a9dcfa'); gr.addColorStop(.62,'#e6f5fd'); gr.addColorStop(1,'#e6f5fd');
+    g.fillStyle=gr; g.fillRect(0,0,W,H);
+    for(let i=0;i<14;i++){ const x=(i*151)%W, y=60+(i*67)%150, r=26+(i*17)%30; g.fillStyle='rgba(255,255,255,.9)';
+      for(let k=0;k<5;k++){ g.beginPath(); g.ellipse(x+k*r*.7,y-(k%2)*r*.35,r*(k%2?.8:1),r*.55,0,0,7); g.fill(); } } });
+  const m=new THREE.Mesh(new THREE.SphereGeometry(420,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
+  m.renderOrder=10; /* after the opaque scene, so the depth test skips every pixel the mall covers */ m.frustumCulled=false; scene.add(m); CITY.mesh=m; }
+// the roof keeps its own drawn night sky (stars, the moon); the flat skyline cut-outs round it give way to the town
+function cityNight(){ STATIC[TOP].children.forEach(m=>{ if((OUT.roofSky||[]).includes(m.material)&&m.material!==(OUT.roofSky||[])[0]) m.visible=false; }); }
+const FOG_IN={};
+function cityTick(){ const inTown=outsideNow||player.floor===TOP;
+  // the roof at night: a dark, far haze (the mall's light grey one turned the sky and the town white)
+  const roof=player.floor===TOP; if(FOG_IN.c===undefined){ FOG_IN.c=scene.fog.color.getHex(); }
+  if(roof!==FOG_IN.roof){ FOG_IN.roof=roof; if(roof){ FOG_IN.c=scene.fog.color.getHex(); FOG_IN.n=scene.fog.near; FOG_IN.f=scene.fog.far; scene.fog.color.setHex(0x1a1f4d); scene.fog.near=80; scene.fog.far=420; }
+    else { scene.fog.color.setHex(FOG_IN.c); scene.fog.near=FOG_IN.n; scene.fog.far=FOG_IN.f; } }
+  if(CITY.mesh){ CITY.mesh.visible=player.floor===0; if(CITY.mesh.visible) CITY.mesh.position.copy(camera.position); }
+  if(TOWN.g){ TOWN.g.visible=inTown; if(inTown) townNight(player.floor===TOP); } if(TOWN.trees) TOWN.trees.visible=inTown;
+  // the town is far: the camera sees to 450 m out there, 180 inside (the mall itself never needs more)
+  const far=inTown?450:180; if(camera.far!==far){ camera.far=far; camera.updateProjectionMatrix(); } }
 function loadSurfaces(){
   const L=new THREE.TextureLoader(); L.setCrossOrigin('anonymous');
   const ld=u=>new Promise((res,rej)=>L.load(ASSET+'tex/'+u+'?v='+FLOOR_TEX_V,res,undefined,rej));
@@ -1668,7 +1683,8 @@ function buildShell(){
   plane(6,1.5,lg,0,4.6,BZ-.25,Math.PI);                                                                 // logo above the entrance, inside
   // outside street
   const outTex=canvasTex(1024,300,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#a9cbe9'); gr.addColorStop(.7,'#e7eef5'); gr.addColorStop(1,'#f3ece2'); g.fillStyle=gr; g.fillRect(0,0,W,H);
-    for(let i=0;i<17;i++){ const x=i*62-10, h=90+Math.random()*120; g.fillStyle=i%2?'#a7b6c8':'#b9c5d3'; g.fillRect(x,H-60-h,54,h); for(let k=0;k<14;k++){ g.fillStyle=Math.random()<.5?'#e3ebf3':'#93a4b8'; g.fillRect(x+6+(k%3)*16,H-52-h+12+((k/3)|0)*20,8,10);} }
+    // the town as it stands outside (TOWN_COL), painted: soft-coloured blocks with blue windows
+    for(let i=0;i<17;i++){ const x=i*62-10, h=90+Math.random()*120; g.fillStyle=['#ffd6a5','#cde7f0','#ffc8dd','#d8f3dc','#fdffb6','#e0c3fc','#bde0fe','#f1e3d3'][i%8]; g.fillRect(x,H-60-h,54,h); for(let k=0;k<14;k++){ g.fillStyle=k%4?'#6fa9d9':'#9fd0f2'; g.fillRect(x+6+(k%3)*16,H-52-h+12+((k/3)|0)*20,8,10);} }
     g.fillStyle='#8f949e'; g.fillRect(0,H-60,W,60); g.fillStyle='#f1f2f4'; for(let i=0;i<20;i++) g.fillRect(20+i*52,H-32,26,4); });
   OUT_BACKDROP=new THREE.MeshBasicMaterial({map:outTex}); plane(70,16,OUT_BACKDROP,0,6,BZ+9,Math.PI);   // seen through the glass; hidden when you are really outside
   box(.3,2.2,.8,M.steel,-2.4,1.1,BZ-1.6); box(.3,2.2,.8,M.steel,2.4,1.1,BZ-1.6);
@@ -1677,8 +1693,8 @@ function buildShell(){
   // floor 1 windows onto the night city
   const nightTex=canvasTex(1024,256,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#9fc4e6'); gr.addColorStop(1,'#eaf1f7'); g.fillStyle=gr; g.fillRect(0,0,W,H);
     for(let i=0;i<9;i++){ g.fillStyle='rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(Math.random()*W,20+Math.random()*60,60+Math.random()*60,12,0,0,7); g.fill(); }
-    for(let i=0;i<22;i++){ const x=i*48, h=60+Math.random()*120; g.fillStyle=i%3?'#aab9cb':'#bcc8d6'; g.fillRect(x,H-h,42,h); for(let k=0;k<10;k++){ if(Math.random()<.6){ g.fillStyle='#e6edf4'; g.fillRect(x+5+(k%3)*12,H-h+10+((k/3)|0)*18,6,8);} } } });
-  const nm=new THREE.MeshBasicMaterial({map:nightTex}); OUT.winMat=nm;   // the drawn city until the photographed one is in (cityPano)
+    for(let i=0;i<22;i++){ const x=i*48, h=60+Math.random()*120; g.fillStyle=['#ffd6a5','#cde7f0','#ffc8dd','#d8f3dc','#fdffb6','#e0c3fc','#bde0fe','#f1e3d3'][(i*3)%8]; g.fillRect(x,H-h,42,h); for(let k=0;k<10;k++){ if(Math.random()<.7){ g.fillStyle='#6fa9d9'; g.fillRect(x+5+(k%3)*12,H-h+10+((k/3)|0)*18,6,8);} } } });
+  const nm=new THREE.MeshBasicMaterial({map:nightTex}); OUT.winMat=nm;   // the town, painted, through the first floor's windows
   [-21,-7,7,21].forEach(z=>{ plane(12,3.2,nm,-BX+.05,9,z,Math.PI/2); plane(12,3.2,nm,BX-.05,9,z,-Math.PI/2);  });
   [-BX+.12,BX-.12].forEach(x=>[-21,-7,7,21].forEach(z=>{ for(let k=-6;k<=6;k+=3) box(.1,3.3,.1,M.navyDeep,x,9,z+k,null,false); box(.1,.1,12,M.navyDeep,x,10.6,z,null,false); box(.1,.1,12,M.navyDeep,x,7.4,z,null,false); }));
   // ceilings and light panels
@@ -3719,7 +3735,7 @@ function buildRoof(){
   const skyTex=canvasTex(1024,512,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H*.5); gr.addColorStop(0,'#060920'); gr.addColorStop(.7,'#1a1f4d'); gr.addColorStop(1,'#5a3f82'); g.fillStyle=gr; g.fillRect(0,0,W,H);
     for(let i=0;i<520;i++){ g.fillStyle=`rgba(255,255,255,${(.2+((i*37)%80)/100).toFixed(2)})`; const sz=i%11===0?2:1; g.fillRect((i*197)%W,((i*89)%(H*.46)),sz,sz); }
     g.fillStyle='rgba(255,247,218,.25)'; g.beginPath(); g.arc(W*.7,H*.2,26,0,7); g.fill(); g.fillStyle='#fff7da'; g.beginPath(); g.arc(W*.7,H*.2,15,0,7); g.fill(); });
-  const dome=new THREE.Mesh(new THREE.SphereGeometry(130,32,16),new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide,depthWrite:false})); dome.position.set(0,Y,0); SG.add(dome); OUT.roofSky=[dome.material];
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(400,32,16),new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide,depthWrite:false,fog:false})); dome.renderOrder=10;   /* past the town, drawn after it */ dome.position.set(0,Y,0); SG.add(dome); OUT.roofSky=[dome.material];
   const cityTex=canvasTex(2048,512,(g,W,H)=>{ for(let i=0;i<64;i++){ const x=i*32+((i*13)%9), w=24+((i*7)%26), h=70+((i*53)%280);
     g.fillStyle=['#0a0e29','#0f1437','#141a42'][i%3]; g.fillRect(x,H-h,w,h);
     for(let r=0;r<h/14-1;r++) for(let c=0;c<w/8-1;c++) if(((i*31+r*17+c*7)%10)<4){ g.fillStyle=((r+c+i)%9)?'#ffcf7a':'#7fd0ff'; g.fillRect(x+4+c*8,H-h+6+r*14,4,6); } } });
@@ -4058,8 +4074,6 @@ function buildOutside(){
   for(let z=BZ+14;z<OUT.front-9;z+=4) floorPlane(5.5,5.7,z,z+2,.009,line,null,1);
   floorPlane(-22,22,OUT.front-8,OUT.front,.007,outMat('pave',0xfff4e8,.8),null,2.4);   // the plaza
   [[-12,'#ffb800'],[-4,'#2fb592'],[4,'#3f8fd0'],[12,'#e63946']].forEach(([x,c])=>{ const d=new THREE.Mesh(new THREE.CircleGeometry(1.6,32),mat(new THREE.Color(c).getHex(),overlay({roughness:.7}))); d.rotation.x=-Math.PI/2; d.position.set(x,.012,OUT.front-4); SG.add(d); });
-  // street lamps up the road
-  for(let z=BZ+16;z<OUT.front-8;z+=12) [0,11.2].forEach(x=>{ cyl(.07,.09,4.4,M.dark,x,2.2,z,null,8); box(.9,.08,.18,M.dark,x+(x?-.4:.4),4.38,z,null,false); box(.4,.05,.16,M.ledWarm,x+(x?-.7:.7),4.33,z,null,false); solid(0,x,z,.3,.3); });
   // BuyToday Kids: playful blocks in the family colours, the logo, and "opening soon" over closed doors
   const F=OUT.front, kb=[[0,0xfff4e6,40,9,26],[-13,0xffd166,12,12,20],[13,0x8ecae6,12,11,20]];
   kb.forEach(([x,c,w,h,d])=>box(w,h,d,surfMat('wall','#'+c.toString(16),new THREE.MeshStandardMaterial({color:c,roughness:.8})),x,h/2,F+d/2+.01));   // painted plaster, like the mall's walls
@@ -4084,7 +4098,8 @@ function buildOutside(){
     mergeParts(fac); floorRoot(0).add(fac); }
   // where the walk stops: the end of the grass
   solidR(0,-41,-40,BZ,191); solidR(0,40,41,BZ,191); solidR(0,-41,41,190,191);
-  SG=keep;
+  buildStreetLife();
+  SG=keep; buildTown();
   const car=mkCar(); car.g.position.set(OUT.home.x,0,OUT.home.z); scene.add(car.g); OUT.car=car.g; OUT.wheels=car.wheels;
   // the Meshy car takes the place of the boxes once it has loaded (its wheels are part of it and do not turn)
   whenInMall(()=>loadGLTF(ASSET+'deco/car.glb?v=1').then(gl=>{ const m=fitModel(gl.scene,{len:4.3,maxW:2.1,h:1.8}); car.g.children.forEach(o=>o.visible=false);
@@ -4092,6 +4107,77 @@ function buildOutside(){
     .catch(e=>console.warn('car 3D: keeping the boxes',e)));
   OUT.solid=solid(0,OUT.home.x,OUT.home.z,2.1,4.4,'car');
 }
+/* The town round the mall: blocks of simple buildings in soft colours with rows of windows, a parapet in a
+   darker shade and a few things on the roofs, taller further off. Built once, merged by material (a dozen draw
+   calls), seen from the street and from the roof; at night (the roof) the walls go dark and the windows light up. */
+function townFacade(wall,lit){ return canvasTex(512,512,(g,W,H)=>{
+    // four windows across, four storeys up: one tile is 12 m by 14 m of wall
+    g.fillStyle=lit?'#000':wall; g.fillRect(0,0,W,H); const cw=W/4, ch=H/4;
+    for(let i=0;i<4;i++) for(let j=0;j<4;j++){ const x=i*cw+cw*.2, y=j*ch+ch*.22, w=cw*.6, h=ch*.56, k=(i*7+j*13+(wall.length*3))%10;
+      if(lit){ if(k<5){ g.fillStyle=k%3?'#ffd68a':'#ffe9b8'; g.fillRect(x,y,w,h); } continue; }
+      g.fillStyle='rgba(0,0,0,.08)'; g.fillRect(x-4,y-4,w+8,h+10);
+      const gr=g.createLinearGradient(x,y,x+w,y+h); gr.addColorStop(0,'#9fd0f2'); gr.addColorStop(.55,'#6fa9d9'); gr.addColorStop(1,'#5b93c8'); g.fillStyle=gr; g.fillRect(x,y,w,h);
+      g.fillStyle='rgba(255,255,255,.55)'; g.beginPath(); g.moveTo(x+w*.15,y+h); g.lineTo(x+w*.55,y); g.lineTo(x+w*.7,y); g.lineTo(x+w*.3,y+h); g.fill();
+      g.fillStyle='#fff'; g.fillRect(x+w/2-2,y,4,h); g.fillRect(x-3,y+h,w+6,6); } }); }
+// a box whose sides carry the facade at true size (one tile: 12 m by 14 m), its top a plain bit of wall
+function townBox(w,h,d){ const g=new THREE.BoxGeometry(w,h,d), uv=g.attributes.uv, sz=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
+  for(let f=0;f<6;f++) for(let k=0;k<4;k++){ const i=f*4+k; if(f===2||f===3) uv.setXY(i,.02,.02); else uv.setXY(i,uv.getX(i)*sz[f][0]/12,uv.getY(i)*sz[f][1]/14); }
+  return g; }
+function buildTown(){
+  const G=new THREE.Group(); G.name='town'; let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  const lit=townFacade('#000',true);
+  const walls=TOWN_COL.map(c=>{ const t=townFacade(c,false); t.wrapS=t.wrapT=THREE.RepeatWrapping; const l=lit.clone(); l.wrapS=l.wrapT=THREE.RepeatWrapping; l.needsUpdate=true;
+    const m=new THREE.MeshStandardMaterial({map:t,emissiveMap:l,emissive:0xffcf80,emissiveIntensity:0,roughness:.85}); TOWN.mats.push(m); return m; });
+  const caps=TOWN_COL.map(c=>{ const m=new THREE.MeshStandardMaterial({color:new THREE.Color(c).multiplyScalar(.78),roughness:.8}); TOWN.mats.push(m); return m; });
+  const top=new THREE.MeshStandardMaterial({color:0x9aa3b5,roughness:.9}); TOWN.mats.push(top);
+  // the ground the town stands on, beyond the lawn
+  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(420,460),new THREE.MeshStandardMaterial({color:0xd9d4ca,roughness:1})); gnd.rotation.x=-Math.PI/2; gnd.position.set(0,-.06,40); G.add(gnd); TOWN.mats.push(gnd.material);
+  // blocks on a grid, kept off the mall, the lawn and the road (the walk ends at x ±40, z 190), thinning out far away
+  const parts=new THREE.Group();
+  for(let x=-150;x<=150;x+=24) for(let z=-120;z<=250;z+=24){
+    const jx=x+(rnd()-.5)*8, jz=z+(rnd()-.5)*8;
+    if(jx>-82&&jx<82&&jz>-58&&jz<205) continue;            // the mall, its street and the lawn
+    const r=Math.hypot(jx,jz-50); if(r>175) continue;
+    const near=Math.min(Math.abs(jx)-82,jz<-58?-58-jz:jz>205?jz-205:99), far=Math.max(0,near)/60;
+    const w=10+rnd()*8, d=10+rnd()*8, h=Math.round((10+rnd()*16+far*30)/3.5)*3.5, c=(rnd()*TOWN_COL.length)|0;
+    const b=new THREE.Mesh(townBox(w,h,d),walls[c]); b.position.set(jx,h/2,jz); parts.add(b);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(w+.5,.6,d+.5),caps[c]); cap.position.set(jx,h+.3,jz); parts.add(cap);
+    if(rnd()<.45){ const w2=w*.55, d2=d*.55, h2=Math.round((5+rnd()*10)/3.5)*3.5;   // a setback storey
+      const b2=new THREE.Mesh(townBox(w2,h2,d2),walls[c]); b2.position.set(jx,h+.6+h2/2,jz); parts.add(b2);
+      const c2=new THREE.Mesh(new THREE.BoxGeometry(w2+.4,.5,d2+.4),caps[c]); c2.position.set(jx,h+.6+h2+.25,jz); parts.add(c2); }
+    else if(rnd()<.6){ const u=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.4,2),top); u.position.set(jx+(rnd()-.5)*w*.5,h+1.3,jz+(rnd()-.5)*d*.5); parts.add(u); }
+  }
+  parts.children.forEach(o=>{ o.castShadow=false; }); mergeParts(parts); parts.children.forEach(o=>{ o.receiveShadow=false; o.frustumCulled=false; }); G.add(parts);
+  G.visible=false; scene.add(G); TOWN.g=G; }
+// day or night for the whole town: by day the walls in their colours; at night dark, with half the windows lit
+function townNight(on){ if(TOWN.night===on) return; TOWN.night=on;
+  // and no fog at night: the day's pale haze turned the far blocks into glowing ghosts against the dark sky
+  // the street's ground and trees too, seen from the roof (they stay lit by the mall's day lights otherwise)
+  TOWN.mats.concat(OUT_MATS,TOWN.street||[]).forEach(m=>{ if(!m.userData.day) m.userData.day=m.color.clone(); m.color.copy(m.userData.day).multiplyScalar(on?.2:1); if(m.emissiveMap) m.emissiveIntensity=on?1.15:0;
+    m.fog=!on; m.needsUpdate=true; }); }
+/* The street's own life: rounded trees on the lawns and along the road to Kids, and street lamps with a lantern
+   that glows (the thin black posts before). On floor 0's static group, like the street. */
+function buildStreetLife(){
+  let seed=11; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  const spots=[];
+  for(let z=BZ+18;z<OUT.front-10;z+=12){ spots.push([-1.6,z+6]); spots.push([12.8,z+6]); }            // along the road
+  for(let i=0;i<70;i++){ const x=(rnd()<.5?-1:1)*(14+rnd()*52), z=BZ+16+rnd()*(OUT.front-BZ-26); if(Math.abs(x)<23&&z>OUT.front-12) continue; spots.push([x,z]); }
+  const leaf=[0x5fb84a,0x4fa63e,0x74c75a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.9,flatShading:true})), bark=new THREE.MeshStandardMaterial({color:0x8a5a3b,roughness:.9}); TOWN.street=leaf.concat(bark);
+  const crown=new THREE.IcosahedronGeometry(1,1), trunk=new THREE.CylinderGeometry(.16,.22,1,7);
+  const T=new THREE.InstancedMesh(trunk,bark,spots.length), C=leaf.map(m=>new THREE.InstancedMesh(crown,m,spots.length)), n=[0,0,0], mx=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3();
+  spots.forEach(([x,z],i)=>{ const s=.85+rnd()*.5, th=1.6*s; mx.compose(v.set(x,th/2,z),q.identity(),sc.set(s,th,s)); T.setMatrixAt(i,mx);
+    const k=i%3, r=1.35*s; mx.compose(v.set(x,th+r*.8,z),q.setFromAxisAngle(sc.set(0,1,0),rnd()*6),sc.set(r,r*1.1,r)); C[k].setMatrixAt(n[k]++,mx);
+    if(Math.abs(x)<40) solid(0,x,z,.5,.5); });
+  // an instanced mesh is culled by its one tree's bounds at the origin: all of them, or none
+  const TG=new THREE.Group(); TG.name='trees'; scene.add(TG); TOWN.trees=TG;   // not on the floor's static group: that is merged and baked later, which an instanced mesh does not survive
+  C.forEach((c,k)=>{ c.count=n[k]; c.castShadow=true; c.frustumCulled=false; TG.add(c); }); T.castShadow=true; T.frustumCulled=false; TG.add(T);
+  // lamps: a rounded post, an arm and a lantern that glows
+  const post=new THREE.MeshStandardMaterial({color:0x2b3350,roughness:.5,metalness:.4}), glow=new THREE.MeshBasicMaterial({color:0xfff1c9});
+  for(let z=BZ+16;z<OUT.front-8;z+=12) [0,11.2].forEach(x=>{ const s=x?-1:1;
+    cyl(.08,.11,4.6,post,x,2.3,z,null,10); cyl(.16,.16,.3,post,x,.15,z,null,10);
+    const arm=box(.8,.08,.08,post,x+s*.4,4.55,z,null,false);
+    const lan=new THREE.Mesh(new THREE.SphereGeometry(.24,14,10),glow); lan.position.set(x+s*.8,4.35,z); SG.add(lan);
+    cyl(.2,.06,.14,post,x+s*.8,4.56,z,null,10); solid(0,x,z,.3,.3); }); }
 function carSolid(){ const p=OUT.car.position, s=OUT.solid, along=Math.abs(Math.cos(OUT.car.rotation.y))>.5; const w=along?2.1:4.4, d=along?4.4:2.1;
   s.minX=p.x-w/2; s.maxX=p.x+w/2; s.minZ=p.z-d/2; s.maxZ=p.z+d/2; }
 /* inside ⇄ outside through the front doors, with the same flash as a jump to a department */
@@ -4101,7 +4187,7 @@ function outWarp(out){ const w=$('#warp'); w.classList.add('on'); buzz(12);
 let outsideNow=false;
 function setOutside(on){ if(outsideNow===on) return; outsideNow=on;
   if(OUT.backdrop) OUT.backdrop.visible=false;   // the real street and the photographed city show through the glass now
-  scene.background.setHex(on?0xbfdcf2:0xe4e7ed); scene.fog.color.setHex(on?0xd4e6f4:0xe9ebf0); scene.fog.far=on?160:140; }
+  scene.background.setHex(on?0xbfdcf2:0xe4e7ed); scene.fog.color.setHex(on?0xdcefff:0xe9ebf0); scene.fog.near=on?140:60; scene.fog.far=on?700:140; }   // outside: only a light haze far off, the town keeps its colours
 /* the drive: in, up the road (or back down it), out by the car */
 function startDrive(){ if(OUT.drive) return; const toKids=OUT.parked==='home', a=toKids?OUT.home:OUT.kids, b=toKids?OUT.kids:OUT.home;
   stopAuto(); OUT.drive={a,b,t:-.6,dur:6.5,toKids}; hero.g.visible=false; OUT.car.rotation.y=toKids?0:Math.PI; OUT.solid.off=true;
@@ -5510,7 +5596,7 @@ $('#shopClose').addEventListener('click',closeShop);
    'צייד ההנחות': products pop up on the shelves; tap the ones with a sale sticker, never the full-price ones.
    Both have a 3-2-1 start, combos, particles and a star rating, and pay out coins at the end. */
 const MG={on:false,phase:'',game:null,t:0,dur:30,score:0,raf:0,last:0,items:[],cells:[],fx:[],pops:[],cartX:.5,cartV:0,spawn:0,W:0,H:0,dpr:1,imgs:[],lives:3,combo:0,best:0,shake:0,count:0};
-const mgEl=$('#mg'), mgC=$('#mgCanvas'), mgX=mgC.getContext('2d'), mgOver=$('#mgOver');
+const mgEl=$('#mg'), mgC=$('#mgCanvas'), mgOver=$('#mgOver'); let mgX=mgC.getContext('2d');   // let: the legend's icons are drawn by the same hands on a little canvas of their own
 const MG_COIN=new Image(); MG_COIN.src=COIN_URI;
 const MG_LOGO=new Image(); MG_LOGO.src=ASSET+'merch/logo-tile.png';
 (function(){ CATALOG.filter(i=>i.img).slice(0,24).forEach(i=>{ const im=new Image(); im.src=i.img; MG.imgs.push(im); }); })();
@@ -5643,18 +5729,37 @@ function claw3Result(){ const c=CLAW3, b=c.result, box=$('#claw3Res');
 function claw3End(){ const c=CLAW3; c.on=false; c.shown=false; c.phase=''; $('#claw3').hidden=true; $('#claw3Res').hidden=true; ui.hud.hidden=false; hero.g.visible=true; G.paused=false; last=performance.now(); camYawSm=null; }
 // what a game is for, under every game's rules (review note 09): the goal, what you win, and where it is spent
 const MG_WHY='<div class="mgwhy"><b>על מה משחקים?</b>כל סיבוב שווה מטבעות משחק 🪙 לפי הנקודות. את המטבעות מבזבזים ב<b>חנות BuyToday כאן בגג, ליד האאוטלט</b>: תלבושות, כובעים וחיות מחמד לדמות שלכם. מטבעות המשחק משמשים בתוך הקניון בלבד.</div>';
-function mgIntro(){ const gs=MG.game; MG.on=false; cancelAnimationFrame(MG.raf); mgDrawBg(0); let best=0; try{ best=+localStorage.getItem('bt-best-'+gs.id)||0; }catch(e){}
+/* what is what, drawn exactly as it falls or pops up in the game (the same drawing code, on a small canvas) */
+function mgIcon(draw){ const c=document.createElement('canvas'); c.width=c.height=104; const keep=mgX; mgX=c.getContext('2d'); mgX.scale(2,2);
+  try{ mgX.textAlign='center'; mgX.textBaseline='middle'; draw(); }catch(e){} mgX=keep; return c.toDataURL(); }
+function mgBadge(x,y,s,emoji,col){ const X=mgX; X.save(); X.shadowColor=col; X.shadowBlur=16; X.fillStyle=col; X.beginPath(); X.arc(x,y,s/2,0,7); X.fill(); X.shadowColor='transparent';
+  X.strokeStyle='#fff'; X.lineWidth=3; X.stroke(); X.textAlign='center'; X.textBaseline='middle'; mgText(emoji,x,y+1,s*.5,'#fff','ltr',400); X.restore(); }
+function mgLegend(id){ const im=MG.imgs.find(i=>i.complete&&i.naturalWidth)||null, L=id==='catch'
+    ?[['+1','',()=>drawProduct(im,26,26,40,0)],['+3','',()=>drawTag(24,26,34,'-30%',true,0)],['+5','',()=>drawCoin(26,26,36,0)],['❤️-1','bad',()=>drawTag(24,26,34,'',false,0)],
+      ['+5 שניות','pw',()=>mgBadge(26,26,40,'⏱️','#3a86ff')],['מגנט','pw',()=>mgBadge(26,26,40,'🧲','#9b5de5')]]
+    :[['+1','',()=>{ drawProduct(im,26,28,38,0); mgSticker(36,14,38,'-30%'); }],['-2','bad',()=>{ drawProduct(im,26,24,38,0); mgFull(26,40,38); }],['+3','',()=>drawCoin(26,26,36,0)],
+      ['×5 זהב','pw',()=>mgGold(im,26,26,40)],['עוצר זמן','pw',()=>mgBadge(26,26,40,'❄️','#4cc9f0')]];
+  return '<div class="mglegend">'+L.map(([t,k,d])=>`<figure class="${k}"><img alt="" src="${mgIcon(d)}"><figcaption dir="auto">${t}</figcaption></figure>`).join('')+'</div>'; }
+// the sale sticker and the full-price band on a product (the hunt), a gold product
+function mgSticker(x,y,s,label){ const X=mgX; X.save(); X.translate(x,y); X.rotate(-.2); X.fillStyle='#e63946'; X.beginPath(); for(let i=0;i<16;i++){ const a=i/16*Math.PI*2, r2=i%2?s*.2:s*.26; X.lineTo(Math.cos(a)*r2,Math.sin(a)*r2); } X.closePath(); X.fill(); X.textAlign='center'; X.textBaseline='middle'; mgText(label,0,1,s*.13,'#fff','ltr',900); X.restore(); }
+function mgFull(x,y,s){ const X=mgX; X.save(); X.translate(x,y); X.fillStyle='rgba(60,64,80,.92)'; rr(-s*.46,-s*.11,s*.92,s*.22,6); X.fill(); X.textAlign='center'; X.textBaseline='middle'; mgText('מחיר מלא',0,1,s*.13,'#fff','rtl',800); X.restore(); }
+function mgGold(im,x,y,s){ const X=mgX; X.save(); X.shadowColor='#ffd166'; X.shadowBlur=22; X.fillStyle='#ffd166'; rr(x-s/2-4,y-s/2-4,s+8,s+8,s*.2); X.fill(); X.restore(); drawProduct(im,x,y,s,0);
+  X.save(); X.textAlign='center'; X.textBaseline='middle'; X.fillStyle='#f2a900'; X.beginPath(); X.arc(x+s*.36,y-s*.36,s*.2,0,7); X.fill(); mgText('×5',x+s*.36,y-s*.35,s*.18,'#fff','ltr',900); X.restore(); }
+// a big word across the screen: ×2 at five in a row, ×3 and the frenzy at ten
+function mgCombo(){ if(MG.combo===5) MG.banner={t:'×2!',c:'#ffd166',age:0}; else if(MG.combo===10){ MG.banner={t:'🔥 ×3 טירוף!',c:'#ff6b6b',age:0}; buzz([20,30,20]); } }
+function mgIntro(){ const gs=MG.game; MG.on=false; cancelAnimationFrame(MG.raf); mgDrawBg(0); $('#mgScore').textContent='0 נק׳'; $('#mgTime').textContent=(gs.id==='catch'?30:25)+'s'; let best=0; try{ best=+localStorage.getItem('bt-best-'+gs.id)||0; }catch(e){}
   mgOver.hidden=false; mgOver.innerHTML=(gs.id==='catch'
-    ?'<h3>🛒 תפוס את המבצע</h3><p>גררו את העגלה ותפסו מה שנופל: מוצר = 1, תגית מבצע = 3, מטבע = 5.<br>תגית "מחיר מלא" לוקחת לב, ושלושה לבבות וזה נגמר. רצף תפיסות מכפיל נקודות!</p>'
-    :'<h3>🏷️ צייד ההנחות</h3><p>מוצרים קופצים על המדפים. לחצו על אלה עם מדבקת הנחה אדומה, ולא על "מחיר מלא".<br>מטבע זהב = 3 נקודות. רצף לחיצות נכונות מכפיל נקודות!</p>')+MG_WHY
+    ?'<h3>🛒 תפוס את המבצע</h3><p>גוררים את העגלה עם האצבע (או החיצים) ותופסים מה שנופל. "מחיר מלא" לוקח לב, ושלושה לבבות וזה נגמר.</p>'
+    :'<h3>🏷️ צייד ההנחות</h3><p>מוצרים קופצים על המדפים. לוחצים רק על אלה עם מדבקת הנחה אדומה, לא על "מחיר מלא".</p>')+mgLegend(gs.id)
+    +'<p>רצף בלי טעות מכפיל: 5 ברצף ×2, עשרה ברצף ×3 🔥</p>'+MG_WHY
     +(best?`<p>השיא שלכם: <b style="color:#ffd166">${best}</b></p>`:'')+'<div class="row"><button class="go1">התחלה</button><button class="go2">יציאה</button></div>';
   mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
-function mgStart(){ mgOver.hidden=true; MG.on=true; MG.phase='count'; MG.count=3.2; MG.dur=MG.game.id==='catch'?30:25; MG.t=MG.dur; MG.score=0; MG.items=[]; MG.fx=[]; MG.pops=[]; MG.cells=[]; MG.spawn=.4; MG.cartX=.5; MG.cartV=0; MG.cartPx=null; MG.lives=3; MG.combo=0; MG.shake=0; MG.last=performance.now(); buzz(15); MG.raf=requestAnimationFrame(mgLoop); }
+function mgStart(){ mgOver.hidden=true; MG.on=true; MG.phase='count'; MG.count=3.2; MG.dur=MG.game.id==='catch'?30:25; MG.t=MG.dur; MG.score=0; MG.items=[]; MG.fx=[]; MG.pops=[]; MG.cells=[]; MG.spawn=.4; MG.cartX=.5; MG.cartV=0; MG.cartPx=null; MG.lives=3; MG.combo=0; MG.shake=0; MG.magnet=0; MG.freeze=0; MG.banner=null; MG.last=performance.now(); buzz(15); MG.raf=requestAnimationFrame(mgLoop); }
 function mgStars(){ const s=MG.score, g=MG.game.id==='catch'?[20,45,75]:[15,30,45]; return s>=g[2]?3:s>=g[1]?2:s>=g[0]?1:0; }
 function mgEnd(){ MG.on=false; cancelAnimationFrame(MG.raf); const coins=Math.max(0,MG.game.id==='catch'?Math.floor(MG.score/2):MG.score); addCoins(coins); if(coins) Sound.cash();
   let best=0; try{ best=+localStorage.getItem('bt-best-'+MG.game.id)||0; if(MG.score>best) localStorage.setItem('bt-best-'+MG.game.id,String(MG.score)); }catch(e){}
   const st=mgStars(), stars='<div style="font-size:40px;letter-spacing:6px">'+[0,1,2].map(i=>`<span style="opacity:${i<st?1:.2};filter:${i<st?'none':'grayscale(1)'}">⭐</span>`).join('')+'</div>';
-  mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':MG.lives<=0?'אוי, נגמרו הלבבות':'נגמר הזמן'}</h3>${stars}<p>${MG.score} נקודות · צברתם</p><div class="big">+${coins} ${COIN}</div><p>יש לכם ${Coins.n} מטבעות. מבזבזים אותם בחנות BuyToday כאן בגג, ליד האאוטלט: תלבושות, כובעים וחיות מחמד.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
+  mgOver.hidden=false; mgOver.innerHTML=`<h3>${MG.score>best&&MG.score>0?'שיא חדש! 🎉':MG.lives<=0?'אוי, נגמרו הלבבות':'נגמר הזמן'}</h3>${stars}<p>${MG.score} נקודות · צברתם</p>${(()=>{ const g=MG.game.id==='catch'?[20,45,75]:[15,30,45]; return st<3?`<p class="mgnext">עוד ${g[st]-MG.score} נקודות ${st?'לכוכב ה-'+(st+1):'לכוכב הראשון'}</p>`:'<p class="mgnext">שלושה כוכבים. מושלם!</p>'; })()}<div class="big">+${coins} ${COIN}</div><p>יש לכם ${Coins.n} מטבעות. מבזבזים אותם בחנות BuyToday כאן בגג, ליד האאוטלט: תלבושות, כובעים וחיות מחמד.</p><div class="row"><button class="go1">עוד סיבוב</button><button class="go2">חזרה לקניון</button></div>`;
   mgOver.querySelector('.go1').onclick=mgStart; mgOver.querySelector('.go2').onclick=closeGame; }
 function closeGame(){ MG.on=false; cancelAnimationFrame(MG.raf); mgEl.hidden=true; G.paused=false; last=performance.now(); }
 $('#mgClose').addEventListener('click',()=>{ if(MG.game&&MG.game.id==='claw') return closeGame(); if(MG.on&&MG.phase==='play') mgEnd(); else closeGame(); });
@@ -5705,7 +5810,12 @@ function mgHud(){ const X=mgX, W=MG.W; const p=Math.max(0,MG.t/MG.dur);
   X.fillStyle='rgba(255,255,255,.1)'; rr(12,10,W-24,8,4); X.fill(); const g=X.createLinearGradient(12,0,W-12,0); g.addColorStop(0,p<.25?'#e63946':'#ffd166'); g.addColorStop(1,p<.25?'#ff8a8a':'#f55304'); X.fillStyle=g; rr(12,10,(W-24)*p,8,4); X.fill();
   X.textAlign='left'; X.textBaseline='middle';
   if(MG.game.id==='catch') for(let i=0;i<3;i++) mgText(i<MG.lives?'❤️':'🖤',16+i*26,38,20,'#fff','ltr',400);
-  if(MG.combo>=3){ X.textAlign='right'; mgText('x'+(MG.combo>=10?3:MG.combo>=5?2:1)+' · רצף '+MG.combo,W-14,38,15,'#ffd166','rtl',800); } }
+  if(MG.combo>=3){ X.textAlign='right'; mgText('x'+(MG.combo>=10?3:MG.combo>=5?2:1)+' · רצף '+MG.combo,W-14,38,15,'#ffd166','rtl',800); }
+  // how far to the next star: a thin bar with the three stars on it, lit as they are reached
+  const gs=MG.game.id==='catch'?[20,45,75]:[15,30,45], bx=W*.3, bw=W*.4, by=58, f=Math.min(1,MG.score/gs[2]);
+  X.fillStyle='rgba(255,255,255,.12)'; rr(bx,by-3,bw,6,3); X.fill(); X.fillStyle='#ffd166'; rr(bx,by-3,Math.max(6,bw*f),6,3); X.fill();
+  X.textAlign='center'; gs.forEach(v=>{ const on=MG.score>=v; X.globalAlpha=on?1:.45; mgText('⭐',bx+bw*v/gs[2],by,on?17:13,'#fff','ltr',400); }); X.globalAlpha=1;
+  let px=16; if(MG.magnet>0){ mgText('🧲 '+Math.ceil(MG.magnet),px+18,64,14,'#c8a2ff','ltr',800); px+=60; } if(MG.freeze>0) mgText('❄️ '+Math.ceil(MG.freeze),px+18,64,14,'#9fe3ff','ltr',800); }
 function mult(){ return MG.combo>=10?3:MG.combo>=5?2:1; }
 function mgPointer(e){ const r=mgC.getBoundingClientRect(), x=(e.clientX-r.left), y=(e.clientY-r.top);
   if(!MG.on||MG.phase!=='play') return;
@@ -5714,7 +5824,7 @@ function mgPointer(e){ const r=mgC.getBoundingClientRect(), x=(e.clientX-r.left)
     if(!c){ return; }
     c.state='hit'; c.anim=0;
     if(c.kind==='bad'){ MG.combo=0; MG.score=Math.max(0,MG.score-2); MG.shake=.3; buzz(50); Sound.bad(); popText(c.cx,c.cy-c.h*.4,'-2','#ff6b6b'); burst(c.cx,c.cy,['#8a90a3','#ff6b6b'],10); }
-    else { MG.combo++; const v=(c.kind==='coin'?3:1)*mult(); MG.score+=v; buzz(10); Sound.pickup(); popText(c.cx,c.cy-c.h*.4,'+'+v,c.kind==='coin'?'#ffd166':'#7bff9b'); burst(c.cx,c.cy,c.kind==='coin'?['#ffd166','#fff2a8','#f2a900']:['#e63946','#ffd166','#fff','#7bff9b']); } } }
+    else { MG.combo++; mgCombo(); const v=(c.kind==='gold'?5:c.kind==='coin'?3:1)*mult(); MG.score+=v; if(c.kind==='freeze'){ MG.freeze=3; Sound.tone(880,.12,'triangle',.08); } buzz(10); Sound.pickup(); popText(c.cx,c.cy-c.h*.4,'+'+v,c.kind==='coin'?'#ffd166':'#7bff9b'); burst(c.cx,c.cy,c.kind==='coin'?['#ffd166','#fff2a8','#f2a900']:['#e63946','#ffd166','#fff','#7bff9b']); } } }
 mgC.addEventListener('pointerdown',e=>{ mgC.setPointerCapture&&mgC.setPointerCapture(e.pointerId); mgPointer(e); });
 addEventListener('keydown',e=>{ if(CLAW3.on&&(e.code==='Space'||e.code==='Enter')){ e.preventDefault(); claw3Drop(); } });
 document.querySelectorAll('#claw3 .c3pad button').forEach(b=>{ const k=b.dataset.k, on=v=>{ CLAW3.keys[k]=v; b.classList.toggle('on',!!v); };
@@ -5728,21 +5838,26 @@ function mgLoop(now){
   X.save(); if(MG.shake>0){ MG.shake-=dt; X.translate(rand(-6,6)*MG.shake*3,rand(-6,6)*MG.shake*3); }
   mgDrawBg(now/1000,MG.game.id==='tap');
   if(MG.phase==='count'){ MG.count-=dt; if(MG.count<=0){ MG.phase='play'; buzz(20); } }
-  else MG.t-=dt;
+  else if(MG.freeze>0) MG.freeze-=dt; else MG.t-=dt;   // frozen: the clock waits
   if(keys.ArrowLeft||keys.KeyA) MG.cartX=clamp(MG.cartX-dt*1.5,.1,.9); if(keys.ArrowRight||keys.KeyD) MG.cartX=clamp(MG.cartX+dt*1.5,.1,.9);
   X.textAlign='center'; X.textBaseline='middle';
   if(MG.game.id==='catch'){
     const cw=Math.min(150,W*.34), cy=H-Math.min(110,H*.14), prevX=MG.cartPx==null?MG.cartX*W:MG.cartPx; const tx=MG.cartX*W, cx=prevX+(tx-prevX)*(1-Math.exp(-dt*18)); MG.cartPx=cx; const tilt=clamp((tx-cx)/120,-.18,.18);
     if(MG.phase==='play'){ const speedUp=1+(MG.dur-MG.t)/MG.dur*.9; MG.spawn-=dt; if(MG.spawn<=0){ MG.spawn=.5/speedUp; const r=Math.random();
-      MG.items.push({x:rand(.1,.9),y:-.06,v:rand(.26,.38)*speedUp,kind:r<.2?'bad':r<.47?'deal':r<.57?'coin':'prod',img:pick(MG.imgs),rot:rand(-.4,.4),vr:rand(-1.2,1.2),spin:0,label:'-'+pick([15,20,25,30,35,40,50])+'%'}); } }
+      MG.items.push({x:rand(.1,.9),y:-.06,v:rand(.26,.38)*speedUp,kind:r<.2?'bad':r<.47?'deal':r<.57?'coin':r<.6?'clock':r<.635?'magnet':'prod',img:pick(MG.imgs),rot:rand(-.4,.4),vr:rand(-1.2,1.2),spin:0,label:'-'+pick([15,20,25,30,35,40,50])+'%'}); } }
     const s=Math.min(70,W*.16);
-    for(let i=MG.items.length-1;i>=0;i--){ const it=MG.items[i]; if(MG.phase==='play'){ it.y+=it.v*dt; it.rot+=it.vr*dt; it.spin+=dt*6; } const x=it.x*W, y=it.y*H;
+    if(MG.magnet>0) MG.magnet-=dt;
+    for(let i=MG.items.length-1;i>=0;i--){ const it=MG.items[i]; if(MG.phase==='play'){ it.y+=it.v*dt; it.rot+=it.vr*dt; it.spin+=dt*6;
+        if(MG.magnet>0&&it.kind!=='bad'&&it.y>.2) it.x+=(cx/W-it.x)*Math.min(1,dt*3.2); }   // the magnet: everything worth having drifts to the trolley
+      const x=it.x*W, y=it.y*H;
       if(MG.phase==='play'&&y>cy-cw*.55&&y<cy-cw*.1&&Math.abs(x-cx)<cw*.52){ MG.items.splice(i,1);
         if(it.kind==='bad'){ MG.lives--; MG.combo=0; MG.shake=.35; buzz(80); Sound.bad(); popText(x,cy-cw*.6,'💔','#ff6b6b'); burst(x,cy-cw*.4,['#8a90a3','#ff6b6b'],12); if(MG.lives<=0){ X.restore(); mgEnd(); return; } }
-        else { MG.combo++; const v=(it.kind==='deal'?3:it.kind==='coin'?5:1)*mult(); MG.score+=v; buzz(10); Sound.pickup(); popText(x,cy-cw*.6,'+'+v,it.kind==='coin'?'#ffd166':it.kind==='deal'?'#ff8a8a':'#7bff9b'); burst(x,cy-cw*.4,it.kind==='coin'?['#ffd166','#fff2a8']:['#f55304','#ffd166','#fff']); }
+        else if(it.kind==='clock'){ MG.t=Math.min(MG.dur+10,MG.t+5); popText(x,cy-cw*.6,'+5s','#9fe3ff'); burst(x,cy-cw*.4,['#3a86ff','#9fe3ff','#fff']); Sound.tone(880,.12,'triangle',.08); buzz(15); continue; }
+        else if(it.kind==='magnet'){ MG.magnet=6; popText(x,cy-cw*.6,'🧲','#c8a2ff'); burst(x,cy-cw*.4,['#9b5de5','#c8a2ff','#fff']); Sound.tone(660,.15,'triangle',.08); buzz(15); continue; }
+        else { MG.combo++; mgCombo(); const v=(it.kind==='deal'?3:it.kind==='coin'?5:1)*mult(); MG.score+=v; buzz(10); Sound.pickup(); popText(x,cy-cw*.6,'+'+v,it.kind==='coin'?'#ffd166':it.kind==='deal'?'#ff8a8a':'#7bff9b'); burst(x,cy-cw*.4,it.kind==='coin'?['#ffd166','#fff2a8']:['#f55304','#ffd166','#fff']); }
         continue; }
       if(it.y>1.08){ if(it.kind!=='bad'&&it.kind!=='prod') MG.combo=0; MG.items.splice(i,1); continue; }
-      if(it.kind==='bad') drawTag(x,y,s,'',false,it.rot*.5); else if(it.kind==='deal') drawTag(x,y,s,it.label,true,it.rot*.5); else if(it.kind==='coin') drawCoin(x,y,s*.8,it.spin); else drawProduct(it.img,x,y,s,it.rot*.4); }
+      if(it.kind==='clock') mgBadge(x,y,s*.85,'⏱️','#3a86ff'); else if(it.kind==='magnet') mgBadge(x,y,s*.85,'🧲','#9b5de5'); else if(it.kind==='bad') drawTag(x,y,s,'',false,it.rot*.5); else if(it.kind==='deal') drawTag(x,y,s,it.label,true,it.rot*.5); else if(it.kind==='coin') drawCoin(x,y,s*.8,it.spin); else drawProduct(it.img,x,y,s,it.rot*.4); }
     drawCart(cx,cy,cw,tilt);
   } else {
     const cols=3, rows=4, gw=Math.min(W-20,460), cellW=gw/cols, top=56, cellH=Math.min((H-top-30)/rows,cellW*1.1), ox=(W-gw)/2, oy=top+((H-top-20)-cellH*rows)/2;
@@ -5750,7 +5865,7 @@ function mgLoop(now){
     // shelves
     for(let r=0;r<rows;r++){ const y=oy+cellH*(r+1)-cellH*.08; X.fillStyle='rgba(0,0,0,.35)'; X.fillRect(ox-6,y+6,gw+12,6); const sg=X.createLinearGradient(0,y-6,0,y+6); sg.addColorStop(0,'#c98a55'); sg.addColorStop(1,'#8a5a33'); X.fillStyle=sg; rr(ox-8,y-6,gw+16,12,4); X.fill(); }
     if(MG.phase==='play'){ const pace=1+(MG.dur-MG.t)/MG.dur; MG.spawn-=dt;
-      if(MG.spawn<=0){ MG.spawn=rand(.32,.55)/pace; const free=MG.cells.filter(c=>c.state==='idle'); if(free.length){ const c=pick(free), r=Math.random(); c.state='up'; c.anim=0; c.life=rand(.8,1.25)/pace; c.kind=r<.1?'coin':r<.7?'good':'bad'; c.img=pick(MG.imgs); c.label='-'+pick([15,20,25,30,40,50])+'%'; } } }
+      if(MG.spawn<=0){ MG.spawn=rand(.32,.55)/pace; const free=MG.cells.filter(c=>c.state==='idle'); if(free.length){ const c=pick(free), r=Math.random(); c.state='up'; c.anim=0; c.life=rand(.8,1.25)/pace; c.kind=r<.08?'coin':r<.12?'gold':r<.16?'freeze':r<.7?'good':'bad'; c.img=pick(MG.imgs); c.label='-'+pick([15,20,25,30,40,50])+'%'; } } }
     MG.cells.forEach(c=>{
       if(c.state==='idle') return;
       c.anim+=dt; let k=1;
@@ -5759,7 +5874,7 @@ function mgLoop(now){
       else if(c.state==='hit'){ k=1+Math.min(1,c.anim/.18)*.25; X.globalAlpha=Math.max(0,1-c.anim/.22); if(c.anim>.22){ c.state='idle'; X.globalAlpha=1; return; } }
       const s=Math.min(c.w,c.h)*.8*(c.state==='hit'?k:1), y=c.cy-(c.state==='hit'?0:(1-k)*-c.h*.35);
       X.save(); X.beginPath(); X.rect(c.cx-c.w,c.cy-c.h*1.2,c.w*2,c.h*1.2+s*.5); X.clip();
-      if(c.kind==='coin') drawCoin(c.cx,y-s*.1,s*.8,now/180);
+      if(c.kind==='coin') drawCoin(c.cx,y-s*.1,s*.8,now/180); else if(c.kind==='freeze') mgBadge(c.cx,y-s*.1,s*.8,'❄️','#4cc9f0'); else if(c.kind==='gold') mgGold(c.img,c.cx,y-s*.1,s*.9);
       else { drawProduct(c.img,c.cx,y-s*.1,s,0); if(c.kind==='good'){ // sale burst sticker
           X.save(); X.translate(c.cx+s*.32,y-s*.48); X.rotate(-.2); X.fillStyle='#e63946'; X.beginPath(); for(let i=0;i<16;i++){ const a=i/16*Math.PI*2, rr2=i%2?s*.2:s*.26; X.lineTo(Math.cos(a)*rr2,Math.sin(a)*rr2); } X.closePath(); X.fill(); mgText(c.label,0,1,s*.13,'#fff','ltr',900); X.restore(); }
         else { X.save(); X.translate(c.cx,y+s*.28); X.fillStyle='rgba(60,64,80,.92)'; rr(-s*.46,-s*.11,s*.92,s*.22,6); X.fill(); mgText('מחיר מלא',0,1,s*.13,'#fff','rtl',800); X.restore(); } }
@@ -5770,6 +5885,12 @@ function mgLoop(now){
   X.globalAlpha=1;
   for(let i=MG.pops.length-1;i>=0;i--){ const q=MG.pops[i]; q.age+=dt; if(q.age>q.life){ MG.pops.splice(i,1); continue; } X.globalAlpha=1-q.age/q.life; X.textAlign='center'; mgText(q.t,q.x,q.y-q.age*60,26+q.age*8,q.c,'ltr',900); }
   X.globalAlpha=1;
+  // the frenzy: a warm glow round the edges while ten or more in a row; frozen time: a cold one
+  if(MG.combo>=10||MG.freeze>0){ const p=.5+.5*Math.sin(now/140), eg=X.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);
+    eg.addColorStop(0,'rgba(0,0,0,0)'); eg.addColorStop(1,MG.freeze>0?'rgba(76,201,240,.35)':`rgba(255,90,60,${.22+.18*p})`); X.fillStyle=eg; X.fillRect(0,0,W,H); }
+  if(MG.banner){ const b=MG.banner; b.age+=dt; const k=Math.min(1,b.age/.18), a=b.age<.7?1:Math.max(0,1-(b.age-.7)/.4);
+    const fs=(44+30*(1-k))*Math.min(1,W/380); X.globalAlpha=a; X.textAlign='center'; X.textBaseline='middle'; X.direction='rtl'; X.font=`900 ${fs}px Rubik,system-ui,sans-serif`;
+    X.lineWidth=fs*.14; X.lineJoin='round'; X.strokeStyle='rgba(10,12,36,.85)'; X.strokeText(b.t,W/2,H*.38); X.fillStyle=b.c; X.fillText(b.t,W/2,H*.38); X.globalAlpha=1; if(b.age>1.1) MG.banner=null; }   // outlined: it reads over anything
   mgHud();
   if(MG.phase==='count'){ X.fillStyle='rgba(8,11,28,.45)'; X.fillRect(0,0,W,H); const n=Math.ceil(MG.count-.2); const f=MG.count-Math.floor(MG.count); X.textAlign='center'; X.textBaseline='middle'; mgText(n>0?String(n):'צא!',W/2,H*.45,90+f*40,'#fff',n>0?'ltr':'rtl',900); }
   X.restore();
