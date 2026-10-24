@@ -3702,7 +3702,7 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
    the city, a cinema screen playing the deals, and the outlet corner with the deals kiosk.
    Everything is baked into STATIC[2], which is only drawn while somebody is on the roof. */
 const roofLive=[];
-const GAME_SPOTS=[{id:'catch',title:'תפוס את המבצע',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',title:'צייד ההנחות',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4},{id:'claw',title:'מכונת המתנות',mx:-9.4,mz:-18.6,x:-10.9,z:-18.6}];
+const GAME_SPOTS=[{id:'catch',arc:'smash',title:'מבצע הריסה',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',arc:'merge',title:'מיזוג הדילים',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4},{id:'claw',title:'מכונת המתנות',mx:-9.4,mz:-18.6,x:-10.9,z:-18.6}];
 const SHOP_SPOT={x:0,z:0}, SELLER={stand:null,real:null};
 // the pet corner on the roof, east of the outfit shop: one of each pet on a cushion (see PETS)
 const PET_ZONE={x0:19.4,x1:23.5,z0:-3.1,z1:4.7,cz:.8,spot:{x:0,z:0},spots:[[20.3,-2.2],[21.6,-2.2],[22.9,-2.2],[20.3,3.7],[21.5,3.7],[22.8,1.2]],list:[],made:false};
@@ -3842,7 +3842,7 @@ function buildRoof(){
   // --- two prize machines: play, win coins ---
   GAME_SPOTS.forEach((gs,i)=>{ if(gs.id==='claw') return buildClawCabinet(gs,Y,f); const g=new THREE.Group(), col=[0xf72585,0x4cc9f0][i];
     const body=box(1.5,2.3,1.1,mat(col,{roughness:.35}),0,1.15,0,g), scr=box(1.3,.9,.06,new THREE.MeshBasicMaterial({map:canvasTex(256,180,(c,W,H)=>{ const gr=c.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#1b1f4a'); gr.addColorStop(1,'#0b0e26'); c.fillStyle=gr; c.fillRect(0,0,W,H);
-      c.font='56px sans-serif'; c.textAlign='center'; c.fillText(i?'🏷️':'🛒',W/2,86); c.fillStyle='#ffd166'; c.font='800 26px Rubik,sans-serif'; c.direction='rtl'; c.fillText('מטבעות!',W/2,140); })}),0,1.55,.56,g,false);
+      c.font='56px sans-serif'; c.textAlign='center'; c.fillText(i?'🎁':'💥',W/2,86); c.fillStyle='#ffd166'; c.font='800 26px Rubik,sans-serif'; c.direction='rtl'; c.fillText('מטבעות!',W/2,140); })}),0,1.55,.56,g,false);
     const panel=[box(1.5,.14,.6,M.dark,0,1,.7,g),box(.12,.12,.12,M.red,-.3,1.12,.75,g,false),box(.12,.12,.12,M.ledCyan,.3,1.12,.75,g,false)];
     const marq=box(1.55,.4,.5,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=i?'#4cc9f0':'#f72585'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='800 30px Rubik,sans-serif'; c.textAlign='center'; c.direction='rtl'; c.fillText(gs.title,W/2,43); })}),0,2.5,.3,g,false);
     place(g,gs.mx,Y,gs.mz,-Math.PI/2,0,scene); roofLive.push(g); solid(f,gs.mx,gs.mz,1.3,1.7); gs.cab={g,body,scr,panel,marq}; });   // kept out of the roof's baked mesh: the Meshy cabinet replaces its boxes later
@@ -5601,7 +5601,15 @@ const MG_COIN=new Image(); MG_COIN.src=COIN_URI;
 const MG_LOGO=new Image(); MG_LOGO.src=ASSET+'merch/logo-tile.png';
 (function(){ CATALOG.filter(i=>i.img).slice(0,24).forEach(i=>{ const im=new Image(); im.src=i.img; MG.imgs.push(im); }); })();
 function mgResize(){ const r=mgC.getBoundingClientRect(); MG.dpr=Math.min(2,devicePixelRatio||1); MG.W=r.width; MG.H=r.height; mgC.width=Math.round(r.width*MG.dpr); mgC.height=Math.round(r.height*MG.dpr); mgX.setTransform(MG.dpr,0,0,MG.dpr,0,0); MG.cells=[]; }
-function openGame(gs){ if(G.state!=='play') return; stopAuto(); G.paused=true; MG.game=gs; $('#mgTitle').textContent=gs.title; mgEl.hidden=false; mgResize(); if(gs.id==='claw') clawIntro(); else mgIntro(); }
+/* the two physics games (arcade/: a slingshot against towers, and the merge box) live in their own files,
+   loaded the first time somebody plays; the mall waits, its music turned down, until they come back */
+const ARC_V=1;
+function loadArcade(){ return window.BTArcade&&window.BTArcade.open?Promise.resolve(window.BTArcade):new Promise((res,rej)=>{ window.BTArcade=window.BTArcade||{games:{},v:ARC_V};
+  const s=document.createElement('script'); s.src='arcade/arcade.js?v='+ARC_V; s.onload=()=>res(window.BTArcade); s.onerror=()=>rej(new Error('arcade')); document.head.appendChild(s); }); }
+function openArcade(gs){ G.paused=true; const vol=Sound.music?Sound.music.volume:null; if(Sound.music) Sound.music.volume=Math.min(vol,.12);
+  const back=()=>{ if(Sound.music&&vol!=null) Sound.music.volume=vol; G.paused=false; last=performance.now(); };
+  loadArcade().then(A=>A.open(gs.arc,{coins:n=>addCoins(n),closed:back,buzz:p=>buzz(p),audio:Sound.ctx||null})).catch(e=>{ console.warn('arcade',e); back(); toast&&toast('המשחק לא נטען, נסו שוב'); }); }
+function openGame(gs){ if(G.state!=='play') return; stopAuto(); if(gs.arc) return openArcade(gs); G.paused=true; MG.game=gs; $('#mgTitle').textContent=gs.title; mgEl.hidden=false; mgResize(); if(gs.id==='claw') clawIntro(); else mgIntro(); }
 
 /* ---------- the prize machine (claw) ----------
    One free play a day. Aim the claw, drop it: it holds a capsule when it closes over its middle, slips
