@@ -1559,7 +1559,7 @@ function cityPano(){ const t=canvasTex(1024,512,(g,W,H)=>{ const gr=g.createLine
   m.renderOrder=10; /* after the opaque scene, so the depth test skips every pixel the mall covers */ m.frustumCulled=false; scene.add(m); CITY.mesh=m; }
 // the roof keeps its own drawn night sky (stars, the moon); the flat skyline cut-outs round it give way to the town
 function cityNight(){ STATIC[TOP].children.forEach(m=>{ if((OUT.roofSky||[]).includes(m.material)&&m.material!==(OUT.roofSky||[])[0]) m.visible=false; }); }
-const FOG_IN={};
+const FOG_IN={roof:false};   // starts indoors: the first tick must not "restore" a near/far it never saved (undefined fog washed the whole mall white)
 function cityTick(){ const inTown=outsideNow||player.floor===TOP;
   // the roof at night: a dark, far haze (the mall's light grey one turned the sky and the town white)
   const roof=player.floor===TOP; if(FOG_IN.c===undefined){ FOG_IN.c=scene.fog.color.getHex(); }
