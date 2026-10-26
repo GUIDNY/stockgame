@@ -4,6 +4,7 @@ from PIL import Image, ImageFilter
 T='/home/user/stockgame/public/store-game/people/tex/'; OUT=T+'mask/'; os.makedirs(OUT,exist_ok=True)
 for body in ('1','F1'):
     head=np.asarray(Image.open(f'meshy/mask-{body}.png').resize((1024,1024)),dtype=np.float32)/255
+    eyes=np.asarray(Image.open(f'meshy-tex/eyes-{body}.png'),dtype=np.float32)/255
     for f in sorted(glob.glob(T+body+'-*.jpg')):
         if f.endswith('-m.jpg'): continue
         name=os.path.basename(f)[:-4]
@@ -25,4 +26,5 @@ for body in ('1','F1'):
         for _ in range(8): skin=skin|(ar(im(skin).filter(ImageFilter.MaxFilter(3)))&room)
         def soft(m,er=True): i=im(m); i=i.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3)) if er else i; return np.asarray(i.filter(ImageFilter.GaussianBlur(.6)))
         out=np.zeros((1024,1024,3),np.uint8); out[...,0]=soft(hair); out[...,1]=soft(skin,False)
+        out[...,0]=(out[...,0]*(1-eyes)).astype(np.uint8)   # never the eyes (meshy-tex/eyemask.py): dark paint, but not hair
         Image.fromarray(out).save(OUT+name+'.png',optimize=True); print(name,os.path.getsize(OUT+name+'.png')//1024,'KB hair',round(hair.mean(),3),'skin',round(skin.mean(),3))

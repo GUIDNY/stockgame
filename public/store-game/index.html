@@ -2790,7 +2790,7 @@ const MESHY_MASK={};
 function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
   // no mipmaps: the atlas is hundreds of small islands, and a smaller copy of the mask averages each one with the
   // black round it, so a figure further off had half-coloured hands and neck
-  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=4'); t.flipY=false; t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; return MESHY_MASK[name]=t; }
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=5'); t.flipY=false; t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; return MESHY_MASK[name]=t; }
 function meshyLook(model,o,body,outfit){
   const ref=MESHY_REF[body]; if(!ref) return;
   const hc=(M_HAIR.find(x=>x[0]===o.mHair)||M_HAIR[0])[2], sc=(M_SKIN.find(x=>x[0]===o.mSkin)||M_SKIN[0])[2];
