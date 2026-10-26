@@ -3891,7 +3891,7 @@ function buildKiosks(){
     place(g,x,y,z,ry,1.95,P);
     const ring=new THREE.Mesh(new THREE.RingGeometry(1.25,1.55,40),new THREE.MeshBasicMaterial({color:new THREE.Color(d.color),transparent:true,opacity:.55,depthWrite:false}));
     ring.rotation.x=-Math.PI/2; ring.position.set(x,y+.03,z); scene.add(ring); KIOSK_GLOW.push(ring);
-    solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
+    solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f,c:new THREE.Vector3(x,y+1.62*1.95,z)};   // c: the screen's middle, for a tap on it (the group itself is baked away)
   });
 }
 /* what follows the catalogue (plinths, kiosks, the fronts' columns, signs and bins placed round them) moves
@@ -4974,13 +4974,15 @@ canvas.addEventListener('pointermove',e=>{ if(e.pointerId!==drag.id) return; dra
   if(G.state==='menu'||G.state==='edit'){ menuOrbit-=(e.clientX-drag.x)*.012; drag.x=e.clientX; return; }
   camYaw-=(e.clientX-drag.x)*.0075; drag.x=e.clientX; dragT=1.4; });
 const endDrag=e=>{ if(e.pointerId!==drag.id) return; drag.id=null; // tap-to-walk on a computer only: on a phone a tap meant to look around or to reach a button sent the shopper off somewhere
-  if(e.type==='pointerup'&&e.pointerType==='mouse'&&drag.moved<8&&performance.now()-drag.t0<400) tapWorld(e.clientX,e.clientY); };
+  if(e.type==='pointerup'&&drag.moved<8&&performance.now()-drag.t0<400){ if(e.pointerType==='mouse') tapWorld(e.clientX,e.clientY); else tapScreenOnly(e.clientX,e.clientY); } };
+function tapScreenOnly(cx,cy){ if(G.state!=='play'||G.paused) return; const r=canvas.getBoundingClientRect(); tapV.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1); tapRay.setFromCamera(tapV,camera); tapKiosk(); }
 /* One hand: a tap on the floor walks there, a tap on a product walks up to it. */
 const tapRay=new THREE.Raycaster(), tapV=new THREE.Vector2();
 let tapMark=null;
 function tapWorld(cx,cy){ if(G.state!=='play'||G.paused) return;
   const r=canvas.getBoundingClientRect(); tapV.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1); tapRay.setFromCamera(tapV,camera);
   const f=player.floor, mine=CATALOG.filter(i=>i.f===f&&!i.taken&&i.model.visible);
+  if(tapKiosk()) return;
   const hit=tapRay.intersectObjects(mine.map(i=>i.model),true)[0];
   if(hit){ let o=hit.object; const it=mine.find(i=>{ let q=o; while(q){ if(q===i.model) return true; q=q.parent; } return false; }); if(it&&Math.hypot(it.x-player.pos.x,it.z-player.pos.z)<40){ walkTo(itemGoal(it)); markTap(it.x,it.z,f); joyLearned(); return; } }
   const y=f*FH, dy=tapRay.ray.direction.y; if(dy>-.02) return;
@@ -4988,6 +4990,12 @@ function tapWorld(cx,cy){ if(G.state!=='play'||G.paused) return;
   if(Math.abs(x)>BX||Math.abs(z)>BZ||Math.hypot(x-player.pos.x,z-player.pos.z)>45) return;
   const sp=freeSpot(f,x,z); if(!sp) return;
   walkTo({f,x:sp.x,z:sp.z,label:''}); markTap(sp.x,sp.z,f); joyLearned(); }
+/* the screen says "tap to open": a tap on it opens that department's catalogue (from up to 9 m away) */
+function tapKiosk(){ let d=null, bt=1e9;
+  DEPTS.forEach(k=>{ const K=k.kiosk; if(!K||K.f!==player.floor||Math.hypot(K.x-player.pos.x,K.z-player.pos.z)>9) return;
+    const t=tapRay.ray.direction.dot(tmpK.copy(K.c).sub(tapRay.ray.origin)); if(t<=0||tapRay.ray.distanceToPoint(K.c)>1.05) return; if(t<bt){ bt=t; d=k; } });   // the screen is about 2 x 2.6 m
+  if(!d) return false; stopAuto(); openCatalog(d); joyLearned(); return true; }
+const tmpK=new THREE.Vector3();
 function markTap(x,z,f){ if(!tapMark){ tapMark=new THREE.Mesh(new THREE.RingGeometry(.35,.5,28),new THREE.MeshBasicMaterial({color:0x44e092,transparent:true,depthWrite:false})); tapMark.rotation.x=-Math.PI/2; scene.add(tapMark); }
   tapMark.position.set(x,f*FH+.05,z); tapMark.visible=true; tapMark.material.opacity=1; tapMark.userData.t=performance.now(); }
 canvas.addEventListener('pointerup',endDrag); canvas.addEventListener('pointercancel',endDrag);
@@ -6559,8 +6567,11 @@ function updateNear(){ syncMini();
   if(inCabin()) near={type:'ride',to:elev.floor===TOP?0:elev.floor+1};
   else if(!elev.moving && elev.floor!==f && atCall(f)) near={type:'call'};
   if(!near){ let best=1; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
+    /* standing at a catalogue screen, the screen wins: the products shown beside it used to take the button,
+       so walking up to the screen offered "to the cart" and the catalogue never opened */
+    for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.1||Math.hypot(k.x-cx,k.z-cz)<1.5)){ near={type:'kiosk',d}; best=0; break; } }
     // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
-    CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
+    if(!near) CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
     if(!near&&f===TOP){ for(const gs of GAME_SPOTS){ if(Math.hypot(gs.x-p.x,gs.z-p.z)<2.1||Math.hypot(gs.x-cx,gs.z-cz)<1.6){ near={type:'game',gs}; break; } }
       if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'};
       if(!near&&(Math.hypot(PET_ZONE.spot.x-p.x,PET_ZONE.spot.z-p.z)<2.4||(p.x>PET_ZONE.x0&&p.x<PET_ZONE.x1&&p.z>PET_ZONE.z0&&p.z<PET_ZONE.z1))) near={type:'pets'}; }
@@ -6591,8 +6602,8 @@ function updateNear(){ syncMini();
   else if(near.type==='pets') setHint('פינת החיות','חבר שהולך איתכם · יש לכם '+Coins.n+' מטבעות',false,'לבחור');
   else if(near.type==='shop') setHint('חנות BuyToday',(MESHY_HERO?'תלבושות חדשות למטבעות':'חולצות וכובעים למטבעות')+' · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
-  else if(near.type==='kiosk'&&near.store){ ui.hint.hidden=true; ui.actLabel.textContent='לקטלוג'; ui.act.classList.remove('off'); }   // quietly: just the button
-  else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
+  else if(near.type==='kiosk'&&near.store){ const n=catTotal(near.d); setHint('קטלוג המחלקה · '+near.d.name,n?`כל ${n} המוצרים, לא רק מה שעל המדפים`:'כל המוצרים במחלקה',false,'לקטלוג'); }   // in a shop away from any product: the button says what it opens
+  else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג המחלקה · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'לקטלוג'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
 function updateArrow(t){ arrow.visible=false; return;
