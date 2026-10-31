@@ -3693,7 +3693,7 @@ const DEPTS=[
   {id:'laundry',f:1,name:'כביסה, ייבוש ומדיחים',sub:'כביסה · מייבשים · מדיחים',rect:[-24,-8.5,-9,13],to:[-16.2,-1],color:'#5b6fe0',cat:'laundry',icon:'laundry'},
   {id:'home',f:1,name:'מוצרי חשמל לבית',sub:'שואבים · מגהצים',rect:[8.5,24,-32,-1],to:[14,-15],color:'#2fb592',cat:'home-appliances',icon:'clean'},
   {id:'ac',f:1,name:'מיזוג אוויר',sub:'מזגנים עיליים',rect:[8.5,24,-1,13],to:[14.5,4.5],color:'#2aa7c9',cat:'air-conditioning',icon:'ac'},
-  {id:'arcade',f:2,name:'ארקייד',sub:'משחקים על מטבעות',rect:[-24,-8.5,-32,-9],to:[-15,-14],color:'#9b5de5',icon:'gaming'},
+  {id:'arcade',f:2,name:'ארקייד',sub:'משחקים על מטבעות',rect:[-24,-8.5,-32,-9],to:[-7,-22.4],color:'#9b5de5',icon:'gaming'},
   {id:'terrace',f:2,name:'טרסת העיר',sub:'ספות · תצפית על העיר',rect:[8.5,24,-32,-9],to:[15,-12],color:'#2ec4b6',icon:'view'},
   {id:'cinema',f:2,name:'קולנוע גג',sub:'המבצעים על מסך ענק',rect:[-24,-8.5,-9,9],to:[-10.5,0],color:'#e63946',icon:'screens'},
   {id:'outlet',f:2,name:'אאוטלט מבצעים',sub:'ההנחות הגדולות',rect:[8.5,24,-9,9],to:[13.5,0],color:'#d6336c',icon:'deal',url:'/deals',ck:'deals'},
@@ -3717,7 +3717,9 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
    the city, a cinema screen playing the deals, and the outlet corner with the deals kiosk.
    Everything is baked into STATIC[2], which is only drawn while somebody is on the roof. */
 const roofLive=[];
-const GAME_SPOTS=[{id:'catch',arc:'smash',title:'מבצע הריסה',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',arc:'merge',title:'מיזוג הדילים',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4},{id:'claw',title:'מכונת המתנות',mx:-9.4,mz:-18.6,x:-10.9,z:-18.6}];
+/* the machines face the walk by the skylight, where people come from (review 26.10 item 1: they faced the roof's edge,
+   so all anyone saw coming up was their backs); x, z: where you stand to play; how: what the game is, in one line */
+const GAME_SPOTS=[{id:'catch',arc:'smash',title:'מבצע הריסה',how:'יורים בקלע ומפילים מגדלים של מוצרים',mx:-9.4,mz:-26,x:-7.9,z:-26},{id:'tap',arc:'merge',title:'מיזוג הדילים',how:'מאחדים שני מוצרים זהים למוצר גדול יותר',mx:-9.4,mz:-22.4,x:-7.9,z:-22.4},{id:'claw',title:'מכונת המתנות',how:'תופסים קפסולה עם הזרוע',mx:-9.4,mz:-18.6,x:-7.9,z:-18.6}];
 const SHOP_SPOT={x:0,z:0}, SELLER={stand:null,real:null};
 // the pet corner on the roof, east of the outfit shop: one of each pet on a cushion (see PETS)
 const PET_ZONE={x0:19.4,x1:23.5,z0:-3.1,z1:4.7,cz:.8,spot:{x:0,z:0},spots:[[20.3,-2.2],[21.6,-2.2],[22.9,-2.2],[20.3,3.7],[21.5,3.7],[22.8,1.2]],list:[],made:false};
@@ -3860,7 +3862,7 @@ function buildRoof(){
       c.font='56px sans-serif'; c.textAlign='center'; c.fillText(i?'🎁':'💥',W/2,86); c.fillStyle='#ffd166'; c.font='800 26px Rubik,sans-serif'; c.direction='rtl'; c.fillText('מטבעות!',W/2,140); })}),0,1.55,.56,g,false);
     const panel=[box(1.5,.14,.6,M.dark,0,1,.7,g),box(.12,.12,.12,M.red,-.3,1.12,.75,g,false),box(.12,.12,.12,M.ledCyan,.3,1.12,.75,g,false)];
     const marq=box(1.55,.4,.5,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=i?'#4cc9f0':'#f72585'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='800 30px Rubik,sans-serif'; c.textAlign='center'; c.direction='rtl'; c.fillText(gs.title,W/2,43); })}),0,2.5,.3,g,false);
-    place(g,gs.mx,Y,gs.mz,-Math.PI/2,0,scene); roofLive.push(g); solid(f,gs.mx,gs.mz,1.3,1.7); gs.cab={g,body,scr,panel,marq}; });   // kept out of the roof's baked mesh: the Meshy cabinet replaces its boxes later
+    place(g,gs.mx,Y,gs.mz,Math.PI/2,0,scene); roofLive.push(g); solid(f,gs.mx,gs.mz,1.3,1.7); gs.cab={g,body,scr,panel,marq}; });   // kept out of the roof's baked mesh: the Meshy cabinet replaces its boxes later
 
   // --- helipad behind the elevator ---
   const HMARK=new THREE.MeshBasicMaterial(decal({color:0xffffff}));
@@ -5692,9 +5694,9 @@ function buildClawCabinet(gs,Y,f){ const g=new THREE.Group(), body=mat(0xf55304,
   box(C.r*2,.012,C.r*2,M.black,C.x,.972,C.z,g,false);
   box(1.6,.12,.5,M.dark,0,.98,.92,g); box(.1,.18,.1,M.red,-.3,1.12,.95,g,false); box(.16,.06,.16,M.ledCyan,.3,1.06,.95,g,false);
   box(.36,.22,.06,M.black,-.5,.55,.71,g,false);   // the prize door
-  place(g,gs.mx,Y,gs.mz,-Math.PI/2); solid(f,gs.mx,gs.mz,1.5,1.7);
+  place(g,gs.mx,Y,gs.mz,Math.PI/2); solid(f,gs.mx,gs.mz,1.5,1.7);
   // the moving parts live in the scene (not merged with the building): a group in the cabinet's own space
-  const r=new THREE.Group(); r.position.set(gs.mx,Y,gs.mz); r.rotation.y=-Math.PI/2; scene.add(r); CLAW3.root=r;
+  const r=new THREE.Group(); r.position.set(gs.mx,Y,gs.mz); r.rotation.y=Math.PI/2; scene.add(r); CLAW3.root=r;
   const steel=mat(0xd5d9e0,{metalness:.7,roughness:.25}), dark=mat(0x2b2f3d,{metalness:.4,roughness:.4});
   [-.6,.6].forEach(z=>{ const rail=new THREE.Mesh(new THREE.BoxGeometry(1.42,.03,.04),steel); rail.position.set(0,2.26,z); r.add(rail); });
   const bridge=new THREE.Mesh(new THREE.BoxGeometry(.05,.04,1.24),dark); bridge.position.y=2.24; r.add(bridge); CLAW3.bridge=bridge;
@@ -6624,7 +6626,7 @@ function updateNear(){ syncMini();
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית','בחרו קומה, או '+(near.to>elev.floor?'למעלה':'למטה')+' ל'+FLOOR_SHORT[near.to],false,near.to>elev.floor?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
-  else if(near.type==='game') setHint(near.gs.title,near.gs.id==='claw'?(clawPlayedToday()?'שיחקתם היום · משחק חינם הבא מחר':'משחק חינם אחד ביום · תופסים כדור ומקבלים מטבעות'):'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
+  else if(near.type==='game') setHint('🎮 '+near.gs.title,near.gs.id==='claw'?(clawPlayedToday()?'שיחקתם היום · משחק חינם הבא מחר':near.gs.how+' · חינם פעם ביום'):near.gs.how+' · מרוויחים מטבעות',false,'שחק');
   else if(near.type==='exit') setHint('יציאה לרחוב','הרכב של BuyToday מחכה בחוץ · נסיעה ל־BuyToday Kids',false,'יציאה');
   else if(near.type==='enter') setHint('קניון BuyToday','חזרה פנימה, לכל המחלקות',false,'כניסה');
   else if(near.type==='car') setHint(OUT.parked==='home'?'נסיעה ל־BuyToday Kids 🚗':'חזרה לקניון BuyToday 🚗',OUT.parked==='home'?'הקניון החדש לילדים, ממש בהמשך הרחוב':'נוסעים בחזרה לכניסה',false,'נסיעה');
