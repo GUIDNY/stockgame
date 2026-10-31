@@ -537,6 +537,8 @@
   #depts{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;}
   .mapcard,.dept{min-width:0;}
   .mapcard{border-radius:18px;background:#fff;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .mapgo{display:flex;width:100%;max-width:360px;margin:10px auto 0;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:14px;background:var(--brand);color:#fff;font-weight:900;font-size:16.5px;box-shadow:0 3px 0 var(--brand-deep),0 8px 22px rgba(0,0,0,.25);}
+  .mapgo svg{width:18px;height:18px;flex:none;} .mapgo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #bigmap{display:block;width:100%;max-width:360px;margin:0 auto;aspect-ratio:3/4;touch-action:manipulation;cursor:pointer;}
   .legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:8px;font-size:12px;color:#5a6178;}
   .legend span{display:inline-flex;align-items:center;gap:5px;}
@@ -1015,8 +1017,8 @@
     </div>
     <div class="dscroll" id="dscroll">
       <button class="floorgo" id="floorGo" hidden></button>
-      <p class="dirhint">בחרו מחלקה במפה או ברשימה, ואז ״קח אותי לשם״</p>
-      <div class="mapcard"><canvas id="bigmap" width="720" height="960" aria-label="מפת הקומה"></canvas>
+      <p class="dirhint">לחצו על מקום במפה, ואז ״שיגור״: מגיעים אליו מיד</p>
+      <div class="mapcard"><canvas id="bigmap" width="720" height="960" aria-label="מפת הקומה"></canvas><button class="mapgo" id="mapGo" hidden></button>
         <div class="legend"><span><i style="background:#2f7de1"></i>אתם כאן</span><span><i style="background:#f55304"></i>ברשימה שלי</span><span><i style="background:#161a2b"></i>מעלית</span></div></div>
       <div id="depts"></div>
     </div>
@@ -5134,6 +5136,11 @@ function drawBig(){
     const w=Math.min(room,g.measureText(d.name).width+30); cx=clamp(cx,bx(x0)+w/2+12,bx(x1)-w/2-12);
     g.fillStyle='#fff'; rrect(g,cx-w/2,cz-19,w,38,19); g.fill(); g.fillStyle=d.color; g.beginPath(); g.arc(cx+w/2-13,cz,5,0,7); g.fill();
     g.fillStyle='#161a2b'; g.fillText(d.name,cx-5,cz+1); g.globalAlpha=1; });
+  if(f===2) roofPins().forEach(p=>{ const X=bx(p.x), Z=bz(p.z), on=dirPin&&dirPin.label===p.label; g.globalAlpha=(dirSel||dirPin)&&!on?.5:1;
+    g.font='700 18px Rubik, sans-serif'; const w=g.measureText(p.label).width+52;
+    g.fillStyle=on?p.c:'#fff'; rrect(g,X-w/2,Z-20,w,40,20); g.fill(); g.strokeStyle=p.c; g.lineWidth=on?0:3; if(!on) g.stroke();
+    g.fillStyle=on?'#fff':'#161a2b'; g.fillText(p.label,X-12,Z+1); g.font='20px sans-serif'; g.fillText(p.ico,X+w/2-20,Z+1); g.globalAlpha=1; });
+  syncMapGo();
   // you are here
   if(player.floor===f){ const X=bx(player.pos.x), Z=bz(player.pos.z), a=Math.atan2(Math.sin(player.yaw),Math.cos(player.yaw));
     g.fillStyle='rgba(47,125,225,.18)'; g.beginPath(); g.arc(X,Z,38,0,7); g.fill();
@@ -5142,6 +5149,15 @@ function drawBig(){
     g.font='700 20px Rubik, sans-serif'; const w=g.measureText('אתם כאן').width+20; g.fillStyle='#2f7de1'; rrect(g,X-w/2,Z-58,w,32,16); g.fill(); g.fillStyle='#fff'; g.fillText('אתם כאן',X,Z-41); }
   else { const t='אתם ב'+FLOOR_NAME[player.floor]; g.font='700 19px Rubik, sans-serif'; const w=g.measureText(t).width+28; g.fillStyle='#2f7de1'; rrect(g,BW/2-w/2,4,w,34,17); g.fill(); g.fillStyle='#fff'; g.fillText(t,BW/2,22); }
 }
+/* on the roof, the places that are not departments, so the map shows them and they can be picked: the pet corner
+   (review 26.10 item 2: it was nowhere on the map), the outfit shop, the games */
+const roofPins=()=>[{x:PET_ZONE.spot.x,z:PET_ZONE.spot.z,label:'פינת החיות',ico:'🐾',c:'#2bb673'},{x:SHOP_SPOT.x,z:SHOP_SPOT.z,label:'חנות BuyToday',ico:'👕',c:'#f55304'}]
+  .concat(GAME_SPOTS.map(gs=>({x:gs.x,z:gs.z,label:gs.title,ico:'🎮',c:'#7a4fd6'})));
+let dirPin=null;   // a roof place picked on the map
+function syncMapGo(){ const b=$('#mapGo'), t=dirPin?dirPin.label:dirSel&&dirSel.f===dirFloor?dirSel.name:null; b.hidden=!t||!!dirQuery.trim();
+  if(t){ b.innerHTML=svgI(ARROW,2.6)+'<span></span>'; b.querySelector('span').textContent='שיגור ל'+t; } }
+$('#mapGo').addEventListener('click',()=>{ const pin=dirPin, d=dirSel; closeDir();
+  if(pin) driveTo({f:2,x:pin.x,z:pin.z,label:pin.label}); else if(d) driveTo(deptGoal(d)); });
 const deptAt0=(it,d)=>it.f===d.f&&it.x>=d.rect[0]&&it.x<=d.rect[1]&&it.z>=d.rect[2]&&it.z<=d.rect[3];
 function prodCard(it){
   const b=document.createElement('button'); b.className='prod'+(it.taken?' got':''); const n=pinNo(it);
@@ -5158,7 +5174,7 @@ function deptCard(d,its,full){
   const wantHere=its.filter(i=>pinNo(i)).length;
   el.querySelector('small').textContent=d.sub+(its.length?` · ${its.length} מוצרים`:'')+(wantHere?` · ${wantHere} ברשימה`:'');
   // a row picks the department (map and list show it); the picked one has the one button that goes there
-  el.querySelector('.drow').addEventListener('click',()=>{ if(full) return; dirSel=d; drawBig(); renderDepts(); $('#dscroll').scrollTop=0; });
+  el.querySelector('.drow').addEventListener('click',()=>{ if(full) return; dirSel=d; dirPin=null; drawBig(); renderDepts(); $('#dscroll').scrollTop=0; });
   if(!full) return el;
   const go=document.createElement('button'); go.className='takeme'; go.innerHTML=svgI(ARROW,2.6)+'קח אותי לשם'; go.addEventListener('click',()=>{ closeDir(); driveTo(deptGoal(d)); }); el.appendChild(go);
   if(its.length){ const row=document.createElement('div'); row.className='prods'; its.forEach(it=>row.appendChild(prodCard(it))); el.appendChild(row); }
@@ -5177,27 +5193,28 @@ function renderDepts(){
     if(hitD.length){ const h=document.createElement('div'); h.className='sect'; h.textContent='מחלקות'; box.appendChild(h); hitD.forEach(d=>box.appendChild(deptCard(d,deptItems(d),true))); }
     return;
   }
-  if(dirSel&&dirSel.f===dirFloor){ const back=document.createElement('button'); back.className='sect back'; back.textContent='› כל המחלקות ב'+FLOOR_NAME[dirFloor]; back.addEventListener('click',()=>{ dirSel=null; drawBig(); renderDepts(); }); box.appendChild(back);
+  if(dirSel&&dirSel.f===dirFloor){ const back=document.createElement('button'); back.className='sect back'; back.textContent='› כל המחלקות ב'+FLOOR_NAME[dirFloor]; back.addEventListener('click',()=>{ dirSel=null; dirPin=null; drawBig(); renderDepts(); }); box.appendChild(back);
     box.appendChild(deptCard(dirSel,deptItems(dirSel),true)); return; }
   const h=document.createElement('div'); h.className='sect'; h.textContent='המחלקות ב'+FLOOR_NAME[dirFloor]+' · בחרו אחת'; box.appendChild(h);
   DEPTS.filter(d=>d.f===dirFloor).forEach(d=>box.appendChild(deptCard(d,deptItems(d))));
 }
-function setDirFloor(f){ dirFloor=f; if(dirSel&&dirSel.f!==f) dirSel=null;
+function setDirFloor(f){ dirFloor=f; if(dirSel&&dirSel.f!==f) dirSel=null; if(f!==2) dirPin=null;
   const fg=$('#floorGo'); fg.hidden=f===player.floor; fg.textContent=(f>player.floor?'⬆ ':'⬇ ')+'קפיצה ל'+['קומת הקרקע','קומה 1','גג'][f]; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.f===f)); drawBig(); renderDepts(); }
-function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirQuery=''; $('#dirSearch').value=''; dirSel=null;
+function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirQuery=''; $('#dirSearch').value=''; dirSel=null; dirPin=null;
   [0,1,2].forEach(f=>{ $('#tab'+f).textContent=''; });
   setDirFloor(player.floor); $('#dscroll').scrollTop=0; }
 function closeDir(){ G.paused=false; dirEl.hidden=true; last=performance.now(); try{ document.activeElement.blur(); }catch(e){} }
 ui.mapBtn.addEventListener('click',openDir);
 $('#dirClose').addEventListener('click',closeDir);
 dirEl.addEventListener('click',e=>{ if(e.target===dirEl) closeDir(); });
-$('#dirSearch').addEventListener('input',e=>{ dirQuery=e.target.value; renderDepts(); });
+$('#dirSearch').addEventListener('input',e=>{ dirQuery=e.target.value; renderDepts(); syncMapGo(); });
 document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setDirFloor(+b.dataset.f)));
 big.addEventListener('click',e=>{ const r=big.getBoundingClientRect(); const px=(e.clientX-r.left)/r.width*BW, pz=(e.clientY-r.top)/r.height*BH;
   const x=(px-PAD)/(BW-2*PAD)*2*BX-BX, z=(pz-PAD)/(BH-2*PAD)*2*BZ-BZ;
   const it=CATALOG.find(i=>i.f===dirFloor&&!i.taken&&(pinNo(i)||(dirSel&&deptAt0(i,dirSel)))&&Math.hypot(i.x-x,i.z-z)<2); if(it){ closeDir(); driveTo(itemGoal(it)); return; }
+  if(dirFloor===2){ const pin=roofPins().find(p=>Math.abs(p.x-x)<4.5&&Math.abs(p.z-z)<1.6); if(pin){ dirPin=dirPin&&dirPin.label===pin.label?null:pin; dirSel=null; drawBig(); renderDepts(); return; } }
   if(Math.abs(x)<2.5&&z>SH.z0-2&&z<SH.z1+2&&dirFloor!==player.floor){ closeDir(); driveTo({f:dirFloor,x:0,z:dirFloor?SH.z0-2.6:SH.z1+2.6,label:FLOOR_NAME[dirFloor]}); return; }
-  const d=DEPTS.find(d=>d.f===dirFloor&&x>=d.rect[0]&&x<=d.rect[1]&&z>=d.rect[2]&&z<=d.rect[3]); if(d){ dirSel=dirSel===d?null:d; drawBig(); renderDepts(); } });
+  const d=DEPTS.find(d=>d.f===dirFloor&&x>=d.rect[0]&&x<=d.rect[1]&&z>=d.rect[2]&&z<=d.rect[3]); if(d){ dirSel=dirSel===d?null:d; dirPin=null; drawBig(); renderDepts(); } });
 
 /* ---------- my cart ---------- */
 
