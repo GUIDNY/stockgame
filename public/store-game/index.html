@@ -1539,25 +1539,36 @@ const OUT_FLAT={grass:0x7cc96b,asph:0x5b6372,pave:0xe9e3d8};
 function outMat(kind,tint,rough){ const m=new THREE.MeshStandardMaterial({color:OUT_FLAT[kind],roughness:rough}); m.userData.out={kind,tint}; OUT_MATS.push(m); return m; }
 const OUT_TEX={
   // a lawn mown in stripes, with a little speckle so it does not look like plastic
-  grass:(g,W,H)=>{ g.fillStyle='#7cc96b'; g.fillRect(0,0,W,H); g.fillStyle='#86d273'; g.fillRect(0,0,W/2,H);
-    for(let i=0;i<900;i++){ g.fillStyle=['#6fbf5f','#8fd97c','#76c465'][i%3]; g.fillRect((i*73)%W,(i*151)%H,2,3); } },
+  grass:(g,W,H)=>{ g.fillStyle='#62b04f'; g.fillRect(0,0,W,H); g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(0,0,W/2,H);   // the mowing stripes, gentler
+    let seed=3; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+    for(let i=0;i<40;i++){ const x=rnd()*W, y=rnd()*H, r=20+rnd()*50; g.fillStyle=rnd()<.5?'rgba(40,110,40,.07)':'rgba(190,230,120,.07)'; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }   // patches
+    g.lineCap='round'; for(let i=0;i<5200;i++){ const x=rnd()*W, y=rnd()*H, l=3+rnd()*6, a=-Math.PI/2+(rnd()-.5)*.9, k=rnd();   // blades
+      g.strokeStyle=k<.4?'#5aa94a':k<.75?'#7fcb69':k<.93?'#94d97c':'#4b9640'; g.lineWidth=1+rnd()*.8; g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l); g.stroke(); } },
   asph:(g,W,H)=>{ g.fillStyle='#5b6372'; g.fillRect(0,0,W,H); for(let i=0;i<700;i++){ g.fillStyle=i%2?'#626a79':'#545c6a'; g.fillRect((i*97)%W,(i*53)%H,2,2); } },
   // square slabs with a soft joint
   pave:(g,W,H)=>{ g.fillStyle='#e9e3d8'; g.fillRect(0,0,W,H); const n=4, c=W/n;
     for(let i=0;i<n;i++) for(let j=0;j<n;j++){ g.fillStyle=(i+j)%2?'#ece6dc':'#e4ddd1'; g.fillRect(i*c+2,j*c+2,c-4,c-4); }
     g.fillStyle='#d3cbbd'; for(let i=0;i<=n;i++){ g.fillRect(i*c-2,0,4,H); g.fillRect(0,i*c-2,W,4); } } };
-function loadOutTex(){ ['grass','asph','pave'].forEach(k=>{ const t=canvasTex(256,256,OUT_TEX[k]); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+function loadOutTex(){ ['grass','asph','pave'].forEach(k=>{ const t=canvasTex(512,512,OUT_TEX[k]); t.wrapS=t.wrapT=THREE.RepeatWrapping;
     const mats=new Set(OUT_MATS); scene.traverse(o=>{ if(o.isMesh&&o.material&&o.material.userData&&o.material.userData.out) mats.add(o.material); });
     mats.forEach(m=>{ if(m.userData.out.kind!==k) return; m.map=t; m.normalMap=null; m.color.setHex(m.userData.out.tint); m.userData.day=m.color.clone(); if(TOWN.night) m.color.multiplyScalar(.2); m.needsUpdate=true; }); }); }
 const CITY={mesh:null, night:false};
 const TOWN={g:null, trees:null, mats:[], street:null, night:null};
 const TOWN_COL=['#ffd6a5','#cde7f0','#ffc8dd','#d8f3dc','#fdffb6','#e0c3fc','#bde0fe','#f1e3d3'];
 // the sky over the street: a painted dome (light blue overhead to a pale horizon, soft clouds), riding with the camera
-function cityPano(){ const t=canvasTex(1024,512,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#5cb8f2'); gr.addColorStop(.5,'#a9dcfa'); gr.addColorStop(.62,'#e6f5fd'); gr.addColorStop(1,'#e6f5fd');
+/* The texture runs from overhead (top) to a little under the horizon (bottom, 86% down is the horizon). In play the camera
+   sees the horizon and some 35 degrees above it: that band (55-86%) is where the blue and the clouds have to be, or the
+   sky reads flat white-grey (review 26.10 item 1: "still pixelated", the street seen under a blank sky). */
+function cityPano(){ const t=canvasTex(2048,1024,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#2f8fe0'); gr.addColorStop(.5,'#4fa9ee'); gr.addColorStop(.72,'#86c8f5'); gr.addColorStop(.84,'#cfe9fb'); gr.addColorStop(.87,'#e8f4fb'); gr.addColorStop(1,'#e8f4fb');
     g.fillStyle=gr; g.fillRect(0,0,W,H);
-    for(let i=0;i<14;i++){ const x=(i*151)%W, y=60+(i*67)%150, r=26+(i*17)%30; g.fillStyle='rgba(255,255,255,.9)';
-      for(let k=0;k<5;k++){ g.beginPath(); g.ellipse(x+k*r*.7,y-(k%2)*r*.35,r*(k%2?.8:1),r*.55,0,0,7); g.fill(); } } });
-  const m=new THREE.Mesh(new THREE.SphereGeometry(420,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
+    // soft cumulus: a flat base, puffs piled on it, lit from above, shaded underneath
+    let seed=5; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+    for(let i=0;i<22;i++){ const y=H*(.5+rnd()*.3), sc=.45+(y/H-.5)*1.4, x=rnd()*W, w=(90+rnd()*130)*sc*2, h=w*.32;   // lower = further off = flatter and smaller
+      for(let k=0;k<9;k++){ const px=x+(rnd()-.5)*w, py=y-rnd()*h*.7, r=h*(.35+rnd()*.45);
+        const cg=g.createRadialGradient(px,py-r*.3,r*.1,px,py,r); cg.addColorStop(0,'rgba(255,255,255,.97)'); cg.addColorStop(.7,'rgba(246,250,255,.9)'); cg.addColorStop(1,'rgba(225,236,248,0)');
+        g.fillStyle=cg; g.beginPath(); g.arc(px,py,r,0,7); g.fill(); }
+      g.fillStyle='rgba(205,222,240,.55)'; g.beginPath(); g.ellipse(x,y+h*.05,w*.55,h*.16,0,0,7); g.fill(); } });
+  const m=new THREE.Mesh(new THREE.SphereGeometry(420,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false,toneMapped:false}));   // painted: shown as painted (the tone mapping turned its blue to a pale grey)
   m.renderOrder=10; /* after the opaque scene, so the depth test skips every pixel the mall covers */ m.frustumCulled=false; scene.add(m); CITY.mesh=m; }
 // the roof keeps its own drawn night sky (stars, the moon); the flat skyline cut-outs round it give way to the town
 function cityNight(){ STATIC[TOP].children.forEach(m=>{ if((OUT.roofSky||[]).includes(m.material)&&m.material!==(OUT.roofSky||[])[0]) m.visible=false; }); }
@@ -4179,8 +4190,12 @@ function buildStreetLife(){
   const spots=[];
   for(let z=BZ+18;z<OUT.front-10;z+=12){ spots.push([-1.6,z+6]); spots.push([12.8,z+6]); }            // along the road
   for(let i=0;i<70;i++){ const x=(rnd()<.5?-1:1)*(14+rnd()*52), z=BZ+16+rnd()*(OUT.front-BZ-26); if(Math.abs(x)<23&&z>OUT.front-12) continue; spots.push([x,z]); }
-  const leaf=[0x5fb84a,0x4fa63e,0x74c75a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.9,flatShading:true})), bark=new THREE.MeshStandardMaterial({color:0x8a5a3b,roughness:.9}); TOWN.street=leaf.concat(bark);
-  const crown=new THREE.IcosahedronGeometry(1,1), trunk=new THREE.CylinderGeometry(.16,.22,1,7);
+  const leaf=[0x438f35,0x3a822f,0x52a03f].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85})), bark=new THREE.MeshStandardMaterial({color:0x8a5a3b,roughness:.9}); TOWN.street=leaf.concat(bark);
+  /* a crown of a few soft lumps, smoothly shaded: the faceted ball read as low-poly, "pixelated" (review 26.10 item 1) */
+  const crown=(()=>{ const parts=[[0,0,0,1],[.55,.15,.2,.68],[-.5,.2,-.15,.7],[.05,.5,-.45,.62],[-.1,.35,.5,.6]].map(([x,y,z,r])=>{ const g=new THREE.IcosahedronGeometry(r,3);
+      const p=g.attributes.position; for(let i=0;i<p.count;i++){ const vx=p.getX(i), vy=p.getY(i), vz=p.getZ(i), k=1+.07*Math.sin(vx*7.1+vz*3.3)*Math.cos(vy*6.7);
+        p.setXYZ(i,vx*k+x,vy*k+y,vz*k+z); } return g; });   // the normals stay the sphere's own: smooth (this geometry is not indexed, recomputing them would make it faceted again)
+    const m=mergeGeos(parts); m.scale(.82,.82,.82); return m; })(), trunk=new THREE.CylinderGeometry(.16,.22,1,9);
   const T=new THREE.InstancedMesh(trunk,bark,spots.length), C=leaf.map(m=>new THREE.InstancedMesh(crown,m,spots.length)), n=[0,0,0], mx=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3();
   spots.forEach(([x,z],i)=>{ const s=.85+rnd()*.5, th=1.6*s; mx.compose(v.set(x,th/2,z),q.identity(),sc.set(s,th,s)); T.setMatrixAt(i,mx);
     const k=i%3, r=1.35*s; mx.compose(v.set(x,th+r*.8,z),q.setFromAxisAngle(sc.set(0,1,0),rnd()*6),sc.set(r,r*1.1,r)); C[k].setMatrixAt(n[k]++,mx);
