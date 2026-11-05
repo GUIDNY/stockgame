@@ -3925,7 +3925,84 @@ function buildKiosks(){
 /* what follows the catalogue (plinths, kiosks, the fronts' columns, signs and bins placed round them) moves
    when the catalogue does: it is kept apart from the fixed building, which is all the baked lighting covers */
 function markDyn(fn){ const n=STATIC.map(g=>g.children.length); fn(); STATIC.forEach((g,i)=>{ for(let k=n[i];k<g.children.length;k++) g.children[k].userData.dyn=true; }); }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); if(MALL2) buildStores(); buildStalls(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard();
+/* ---------- seasons: the mall dressed for a shopping day ----------
+   11.11, Singles' Day: red paper lanterns along the walk on the ground floor, round the atrium on floor 1 and hanging
+   in long strings down the atrium (seen from both floors), lanterns under the roof's string lights, "11.11" banners
+   over the lobby, in the atrium and over the doors outside, and its own welcome. On by the date (Israel time) and off
+   again by itself; ?season=1111 shows it any day, ?season=off hides it. Nothing of it is built out of season. */
+const SEASON=(()=>{ const q=new URLSearchParams(location.search).get('season'), d=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date()), md=d.slice(5);
+  const on=q==='off'?false:q==='1111'?true:(md>='11-01'&&md<='11-12');
+  return {on,id:'1111',hi:'🏮 11.11 יום הרווקים בקניון · מבצעים בכל המחלקות',g:[],glow:[],lan:[]}; })();
+function seasonBanner(){ return canvasTex(1024,320,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#d7111f'); gr.addColorStop(1,'#9e0613'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+    g.strokeStyle='#ffd36b'; g.lineWidth=10; g.strokeRect(14,14,W-28,H-28); g.lineWidth=3; g.strokeRect(30,30,W-60,H-60);
+    // corner knots, a lattice feel
+    g.fillStyle='#ffd36b'; [[44,44],[W-44,44],[44,H-44],[W-44,H-44]].forEach(([x,y])=>{ g.save(); g.translate(x,y); g.rotate(Math.PI/4); g.fillRect(-12,-12,24,24); g.restore(); });
+    g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#ffd36b'; g.shadowColor='rgba(0,0,0,.35)'; g.shadowBlur=10;
+    g.font='900 150px Rubik,sans-serif'; g.fillText('11.11',W/2,H*.40);
+    g.direction='rtl'; g.font='800 54px Rubik,sans-serif'; g.fillStyle='#fff'; g.fillText('יום הרווקים · מבצעים בכל הקניון',W/2,H*.79); }); }
+function seasonLanternParts(){
+  const red=new THREE.MeshStandardMaterial({color:0xb0000e,emissive:0x8a0008,emissiveIntensity:.5,roughness:.6,envMapIntensity:.3}),   // a deep red: the mall's bright light and tone mapping turned a lighter one pink
+        gold=new THREE.MeshStandardMaterial({color:0xe9b23c,metalness:.6,roughness:.35}), cord=new THREE.MeshStandardMaterial({color:0x2a1a12,roughness:.8});
+  const body=new THREE.SphereGeometry(.5,20,14); body.scale(1,.82,1);
+  // the ribs of a paper lantern: shallow grooves, as light and shade
+  const p=body.attributes.position; for(let i=0;i<p.count;i++){ const x=p.getX(i), z=p.getZ(i), a=Math.atan2(z,x), k=1-.035*Math.pow(Math.abs(Math.cos(a*6)),6); p.setX(i,x*k); p.setZ(i,z*k); } body.computeVertexNormals();
+  const cap=new THREE.CylinderGeometry(.22,.26,.1,16), tas=new THREE.CylinderGeometry(.035,.075,.42,8), str=new THREE.CylinderGeometry(.012,.012,1,4);
+  SEASON.glow.push(red); return {red,gold,cord,body,cap,tas,str}; }
+/* lanterns as instanced meshes: each spot is {x,y,z,s,top} (y the lantern's middle, top where its cord is tied) */
+function seasonLanterns(spots,P,parent){ const n=spots.length; if(!n) return;
+  const I=(geo,m)=>{ const im=new THREE.InstancedMesh(geo,m,n); im.frustumCulled=false; im.castShadow=false; parent.add(im); return im; };
+  const body=I(P.body,P.red), capT=I(P.cap,P.gold), capB=I(P.cap,P.gold), tas=I(P.tas,P.red), str=I(P.str,P.cord);
+  const M4=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3();
+  spots.forEach((o,i)=>{ const s=o.s||1;
+    M4.compose(v.set(o.x,o.y,o.z),q.identity(),sc.set(s,s,s)); body.setMatrixAt(i,M4);
+    M4.compose(v.set(o.x,o.y+.43*s,o.z),q,sc.set(s,s,s)); capT.setMatrixAt(i,M4);
+    M4.compose(v.set(o.x,o.y-.43*s,o.z),q,sc.set(s,s,s)); capB.setMatrixAt(i,M4);
+    M4.compose(v.set(o.x,o.y-.68*s,o.z),q,sc.set(s,s,s)); tas.setMatrixAt(i,M4);
+    const L=Math.max(.05,o.top-(o.y+.48*s)); M4.compose(v.set(o.x,o.y+.48*s+L/2,o.z),q,sc.set(1,L,1)); str.setMatrixAt(i,M4); });
+  [body,capT,capB,tas,str].forEach(m=>m.instanceMatrix.needsUpdate=true); }
+function seasonSign(w,h,x,y,z,ry,parent){ const m=new THREE.MeshBasicMaterial({map:seasonBanner(),toneMapped:false});
+  const g=new THREE.Group(); [0,Math.PI].forEach(a=>{ const pl=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m); pl.rotation.y=a; pl.position.z=a?-.02:.02; g.add(pl); });   // a face each way: never read backwards
+  const rod=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,w+.3,8),new THREE.MeshStandardMaterial({color:0xe9b23c,metalness:.6,roughness:.35})); rod.rotation.z=Math.PI/2; rod.position.y=h/2+.04; g.add(rod);
+  g.position.set(x,y,z); g.rotation.y=ry||0; parent.add(g); return g; }
+function buildSeason(){ if(!SEASON.on) return;
+  const P=seasonLanternParts(), G=[0,1,2].map(()=>{ const g=new THREE.Group(); g.name='season'; scene.add(g); return g; }); SEASON.g=G;
+  const atr=new THREE.Group(); atr.name='season-atrium'; scene.add(atr); SEASON.atr=atr;
+  // ground floor: two rows along the walk from the doors to the atrium, low enough for the follow camera to see
+  // (its view tops out a little over 4 m there), high over anyone's head
+  const L0=[]; for(let z=VOID.maxZ+3;z<=BZ-4;z+=4.5) [-2.6,2.6].forEach((x,k)=>L0.push({x,y:3.95+((z/4.5+k)%2?.25:0),z,s:.85,top:FH-.3}));
+  for(let z=VOID.minZ-3;z>=-BZ+5;z-=4.5) [-2.6,2.6].forEach((x,k)=>L0.push({x,y:3.95+((z/4.5+k)%2?.25:0),z,s:.85,top:FH-.3}));
+  seasonLanterns(L0,P,G[0]);
+  // floor 1: round the atrium's rail, under its ceiling
+  const L1=[]; for(let z=VOID.minZ;z<=VOID.maxZ;z+=3.5) [VOID.minX-1.4,VOID.maxX+1.4].forEach(x=>L1.push({x,y:FH+4.6,z,s:.8,top:2*FH-.05}));
+  for(let x=VOID.minX+1;x<=VOID.maxX-1;x+=3.5) [VOID.minZ-1.4,VOID.maxZ+1.4].forEach(z=>{ if(x>SH.x0-1&&x<SH.x1+1&&z<0) return; L1.push({x,y:FH+4.6,z,s:.8,top:2*FH-.05}); });
+  seasonLanterns(L1,P,G[1]);
+  // the atrium: long strings from the skylight, a lantern at several heights on each
+  const LA=[]; [[-3,-4.5],[3,-4.5],[-3,4.5],[3,4.5],[0,5.6]]   /* clear of the giant screen (x ±2.2, z .2 to 4.6) and the lift */.forEach(([x,z],i)=>{ if(x>SH.x0-.6&&x<SH.x1+.6&&z>SH.z0-.6&&z<SH.z1+.6) return;
+    [10.6,8.9,7.2].forEach((y,k)=>{ if(k===2&&i%2) return; LA.push({x,y:y-(i%3)*.35,z,s:1.15-k*.12,top:k?y+1.3:2*FH-.1}); }); });
+  seasonLanterns(LA,P,atr);
+  // the roof: one under every few bulbs of the court's string lights (Y+4.1, sagging by .9 in the middle)
+  const Y=2*FH, LR=[]; for(const z of [11.5,16.5,21.5,26.5]) for(let k=3;k<46;k+=5){ const t=k/46, x=-22.7+t*45.4, y=Y+4.1-Math.sin(t*Math.PI)*.9; LR.push({x,y:y-.85,z,s:.62,top:y}); }
+  seasonLanterns(LR,P,G[2]);
+  // banners: over the lobby, facing the doors; in the atrium, high, across it; over the doors outside
+  seasonSign(5.2,1.62,0,4.15,BZ-13,0,G[0]);   // in from the doors, where it is seen from the way in; right by them it filled the top of the view
+  [-1,1].forEach(s=>seasonSign(4.4,1.38,s*(VOID.maxX-.45),FH+3.4,0,Math.PI/2,atr));   // on each side of the atrium, facing across it: the screen hangs in its middle
+  seasonSign(5.6,1.75,0,6.6,BZ+.35,0,G[0]);
+  // the lobby: piles of red gift boxes with gold ribbons on either side of the welcome desk, in view from the doors
+  const boxM=[new THREE.MeshStandardMaterial({color:0xc4101c,roughness:.5}),new THREE.MeshStandardMaterial({color:0xf3ece0,roughness:.55}),new THREE.MeshStandardMaterial({color:0x9e0613,roughness:.5})], rib=P.gold;
+  const gift=(x,z,w,h,ry,m,y0)=>{ const g=new THREE.Group(); g.position.set(x,y0||0,z); g.rotation.y=ry;
+    const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),m); b.position.y=h/2; b.castShadow=true; g.add(b);
+    [[w+.02,.06,.12],[.12,.06,w+.02]].forEach(([a,c,d])=>{ const r=new THREE.Mesh(new THREE.BoxGeometry(a,h+.02,d),rib); r.position.y=h/2; g.add(r); });
+    const bow=new THREE.Mesh(new THREE.TorusGeometry(w*.13,w*.045,8,16),rib); bow.position.y=h+w*.1; g.add(bow); const bow2=bow.clone(); bow2.rotation.y=Math.PI/2; g.add(bow2);
+    G[0].add(g); };
+  [[-1,24.5],[1,24.5],[-1,17.5],[1,17.5]].forEach(([s,z],i)=>{ const x=s*5.4;
+    gift(x,z,1.1,.9,.3*i,boxM[i%3]); gift(x+s*.15,z+.1,.8,.62,.5+i,boxM[(i+1)%3],.9); gift(x+s*.95,z-.55,.6,.48,-.4,boxM[(i+2)%3]); gift(x-s*.7,z+.7,.5,.4,.9,boxM[i%3]);
+    solid(0,x,z,2.4,2.4); });
+  SEASON.lan=[...G[0].children,...G[1].children,...G[2].children,...atr.children];
+}
+function seasonTick(t){ if(!SEASON.on||!SEASON.g.length) return; const f=player.floor;
+  SEASON.g.forEach((g,i)=>{ g.visible=i===f; }); SEASON.atr.visible=f<2;
+  SEASON.glow.forEach(m=>{ m.emissiveIntensity=(TOWN.night&&f===2?1.1:.5)+.08*Math.sin(t*1.7); }); }   // a slow breath of light; brighter in the roof's night
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); if(MALL2) buildStores(); buildStalls(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard(); buildSeason();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -4647,7 +4724,7 @@ function enterMall(){
     CATALOG.forEach(it=>{ if((rs.cart||[]).includes(it.slug)){ it.taken=true; it.model.visible=false; it.tag.visible=false; it.ring.visible=false; } });
     rebuildCart(); renderMoney(); updateCartBadge(); renderList(); }
   if(!Bots.started){ Bots.started=true; const n=Math.max(0,Bots.target-1); for(let i=0;i<n;i++) botSpawn(); }
-  mallIn.msg=rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה';
+  mallIn.msg=rs?'חזרתם לקניון, בדיוק איפה שהייתם':SEASON.on?SEASON.hi:'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה';
   netStart();
 }
 // the loading screen is gone: the welcome, the tour, and from now the frame rate counts
@@ -6967,7 +7044,7 @@ function qTick(raw,now){
   Q.steady+=2; if(Q.steady>=20){ Q.steady=-1e9; try{ localStorage.setItem('bt-q4',String(Q.lv)); }catch(e){} }   // this level holds here: start at it next time
 }
 function fadeTapMark(){ if(!tapMark||!tapMark.visible) return; const a=1-(performance.now()-tapMark.userData.t)/900; if(a<=0||!auto.on) tapMark.visible=false; else { tapMark.material.opacity=a; tapMark.scale.setScalar(1+(1-a)*.4); } }
-function loop(now){ fadeTapMark(); kioskGlow(now/1000);
+function loop(now){ fadeTapMark(); kioskGlow(now/1000); seasonTick(now/1000);
   const raw=(now-last)/1000, dt=Math.min(.05,raw); last=now; const t=now/1000; frame++;
   if(G.state==='play'&&!G.paused) qTick(raw,now);
   // a mini-game covers the whole screen: don't spend the phone's GPU on the mall behind it
