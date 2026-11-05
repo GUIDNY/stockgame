@@ -314,6 +314,7 @@
   #act:active{transform:translateY(3px);box-shadow:0 2px 0 var(--sh);}
   /* the button says what it will do: its colour and icon change with the action, not only the word */
   #act[data-k="kiosk"]{--bg:#2f7de1;--sh:#1a4f99;}
+  #act[data-k="season"]{--bg:#d7111f;--sh:#8a0610;}
   #act[data-k="game"]{--bg:#b5179e;--sh:#7a0f6a;}
   #act[data-k="shop"]{--bg:#d4a017;--sh:#8d6a0c;}
   #act[data-k="up"],#act[data-k="down"],#act[data-k="call"]{--bg:#3949ab;--sh:#232e75;}
@@ -537,6 +538,8 @@
   #depts{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;}
   .mapcard,.dept{min-width:0;}
   .mapcard{border-radius:18px;background:#fff;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .mapgo{display:flex;width:100%;max-width:360px;margin:10px auto 0;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:14px;background:var(--brand);color:#fff;font-weight:900;font-size:16.5px;box-shadow:0 3px 0 var(--brand-deep),0 8px 22px rgba(0,0,0,.25);}
+  .mapgo svg{width:18px;height:18px;flex:none;} .mapgo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #bigmap{display:block;width:100%;max-width:360px;margin:0 auto;aspect-ratio:3/4;touch-action:manipulation;cursor:pointer;}
   .legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:8px;font-size:12px;color:#5a6178;}
   .legend span{display:inline-flex;align-items:center;gap:5px;}
@@ -1015,8 +1018,8 @@
     </div>
     <div class="dscroll" id="dscroll">
       <button class="floorgo" id="floorGo" hidden></button>
-      <p class="dirhint">בחרו מחלקה במפה או ברשימה, ואז ״קח אותי לשם״</p>
-      <div class="mapcard"><canvas id="bigmap" width="720" height="960" aria-label="מפת הקומה"></canvas>
+      <p class="dirhint">לחצו על מקום במפה, ואז ״שיגור״: מגיעים אליו מיד</p>
+      <div class="mapcard"><canvas id="bigmap" width="720" height="960" aria-label="מפת הקומה"></canvas><button class="mapgo" id="mapGo" hidden></button>
         <div class="legend"><span><i style="background:#2f7de1"></i>אתם כאן</span><span><i style="background:#f55304"></i>ברשימה שלי</span><span><i style="background:#161a2b"></i>מעלית</span></div></div>
       <div id="depts"></div>
     </div>
@@ -1537,29 +1540,40 @@ const OUT_FLAT={grass:0x7cc96b,asph:0x5b6372,pave:0xe9e3d8};
 function outMat(kind,tint,rough){ const m=new THREE.MeshStandardMaterial({color:OUT_FLAT[kind],roughness:rough}); m.userData.out={kind,tint}; OUT_MATS.push(m); return m; }
 const OUT_TEX={
   // a lawn mown in stripes, with a little speckle so it does not look like plastic
-  grass:(g,W,H)=>{ g.fillStyle='#7cc96b'; g.fillRect(0,0,W,H); g.fillStyle='#86d273'; g.fillRect(0,0,W/2,H);
-    for(let i=0;i<900;i++){ g.fillStyle=['#6fbf5f','#8fd97c','#76c465'][i%3]; g.fillRect((i*73)%W,(i*151)%H,2,3); } },
+  grass:(g,W,H)=>{ g.fillStyle='#62b04f'; g.fillRect(0,0,W,H); g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(0,0,W/2,H);   // the mowing stripes, gentler
+    let seed=3; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+    for(let i=0;i<40;i++){ const x=rnd()*W, y=rnd()*H, r=20+rnd()*50; g.fillStyle=rnd()<.5?'rgba(40,110,40,.07)':'rgba(190,230,120,.07)'; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }   // patches
+    g.lineCap='round'; for(let i=0;i<5200;i++){ const x=rnd()*W, y=rnd()*H, l=3+rnd()*6, a=-Math.PI/2+(rnd()-.5)*.9, k=rnd();   // blades
+      g.strokeStyle=k<.4?'#5aa94a':k<.75?'#7fcb69':k<.93?'#94d97c':'#4b9640'; g.lineWidth=1+rnd()*.8; g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l); g.stroke(); } },
   asph:(g,W,H)=>{ g.fillStyle='#5b6372'; g.fillRect(0,0,W,H); for(let i=0;i<700;i++){ g.fillStyle=i%2?'#626a79':'#545c6a'; g.fillRect((i*97)%W,(i*53)%H,2,2); } },
   // square slabs with a soft joint
   pave:(g,W,H)=>{ g.fillStyle='#e9e3d8'; g.fillRect(0,0,W,H); const n=4, c=W/n;
     for(let i=0;i<n;i++) for(let j=0;j<n;j++){ g.fillStyle=(i+j)%2?'#ece6dc':'#e4ddd1'; g.fillRect(i*c+2,j*c+2,c-4,c-4); }
     g.fillStyle='#d3cbbd'; for(let i=0;i<=n;i++){ g.fillRect(i*c-2,0,4,H); g.fillRect(0,i*c-2,W,4); } } };
-function loadOutTex(){ ['grass','asph','pave'].forEach(k=>{ const t=canvasTex(256,256,OUT_TEX[k]); t.wrapS=t.wrapT=THREE.RepeatWrapping;
+function loadOutTex(){ ['grass','asph','pave'].forEach(k=>{ const t=canvasTex(512,512,OUT_TEX[k]); t.wrapS=t.wrapT=THREE.RepeatWrapping;
     const mats=new Set(OUT_MATS); scene.traverse(o=>{ if(o.isMesh&&o.material&&o.material.userData&&o.material.userData.out) mats.add(o.material); });
     mats.forEach(m=>{ if(m.userData.out.kind!==k) return; m.map=t; m.normalMap=null; m.color.setHex(m.userData.out.tint); m.userData.day=m.color.clone(); if(TOWN.night) m.color.multiplyScalar(.2); m.needsUpdate=true; }); }); }
 const CITY={mesh:null, night:false};
 const TOWN={g:null, trees:null, mats:[], street:null, night:null};
 const TOWN_COL=['#ffd6a5','#cde7f0','#ffc8dd','#d8f3dc','#fdffb6','#e0c3fc','#bde0fe','#f1e3d3'];
 // the sky over the street: a painted dome (light blue overhead to a pale horizon, soft clouds), riding with the camera
-function cityPano(){ const t=canvasTex(1024,512,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#5cb8f2'); gr.addColorStop(.5,'#a9dcfa'); gr.addColorStop(.62,'#e6f5fd'); gr.addColorStop(1,'#e6f5fd');
+/* The texture runs from overhead (top) to a little under the horizon (bottom, 86% down is the horizon). In play the camera
+   sees the horizon and some 35 degrees above it: that band (55-86%) is where the blue and the clouds have to be, or the
+   sky reads flat white-grey (review 26.10 item 1: "still pixelated", the street seen under a blank sky). */
+function cityPano(){ const t=canvasTex(2048,1024,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#2f8fe0'); gr.addColorStop(.5,'#4fa9ee'); gr.addColorStop(.72,'#86c8f5'); gr.addColorStop(.84,'#cfe9fb'); gr.addColorStop(.87,'#e8f4fb'); gr.addColorStop(1,'#e8f4fb');
     g.fillStyle=gr; g.fillRect(0,0,W,H);
-    for(let i=0;i<14;i++){ const x=(i*151)%W, y=60+(i*67)%150, r=26+(i*17)%30; g.fillStyle='rgba(255,255,255,.9)';
-      for(let k=0;k<5;k++){ g.beginPath(); g.ellipse(x+k*r*.7,y-(k%2)*r*.35,r*(k%2?.8:1),r*.55,0,0,7); g.fill(); } } });
-  const m=new THREE.Mesh(new THREE.SphereGeometry(420,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false}));
+    // soft cumulus: a flat base, puffs piled on it, lit from above, shaded underneath
+    let seed=5; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+    for(let i=0;i<22;i++){ const y=H*(.5+rnd()*.3), sc=.45+(y/H-.5)*1.4, x=rnd()*W, w=(90+rnd()*130)*sc*2, h=w*.32;   // lower = further off = flatter and smaller
+      for(let k=0;k<9;k++){ const px=x+(rnd()-.5)*w, py=y-rnd()*h*.7, r=h*(.35+rnd()*.45);
+        const cg=g.createRadialGradient(px,py-r*.3,r*.1,px,py,r); cg.addColorStop(0,'rgba(255,255,255,.97)'); cg.addColorStop(.7,'rgba(246,250,255,.9)'); cg.addColorStop(1,'rgba(225,236,248,0)');
+        g.fillStyle=cg; g.beginPath(); g.arc(px,py,r,0,7); g.fill(); }
+      g.fillStyle='rgba(205,222,240,.55)'; g.beginPath(); g.ellipse(x,y+h*.05,w*.55,h*.16,0,0,7); g.fill(); } });
+  const m=new THREE.Mesh(new THREE.SphereGeometry(420,48,14,0,Math.PI*2,0,Math.PI*.58),new THREE.MeshBasicMaterial({map:t,side:THREE.BackSide,fog:false,depthWrite:false,toneMapped:false}));   // painted: shown as painted (the tone mapping turned its blue to a pale grey)
   m.renderOrder=10; /* after the opaque scene, so the depth test skips every pixel the mall covers */ m.frustumCulled=false; scene.add(m); CITY.mesh=m; }
 // the roof keeps its own drawn night sky (stars, the moon); the flat skyline cut-outs round it give way to the town
 function cityNight(){ STATIC[TOP].children.forEach(m=>{ if((OUT.roofSky||[]).includes(m.material)&&m.material!==(OUT.roofSky||[])[0]) m.visible=false; }); }
-const FOG_IN={};
+const FOG_IN={roof:false};   // starts indoors: the first tick must not "restore" a near/far it never saved (undefined fog washed the whole mall white)
 function cityTick(){ const inTown=outsideNow||player.floor===TOP;
   // the roof at night: a dark, far haze (the mall's light grey one turned the sky and the town white)
   const roof=player.floor===TOP; if(FOG_IN.c===undefined){ FOG_IN.c=scene.fog.color.getHex(); }
@@ -2790,7 +2804,7 @@ const MESHY_MASK={};
 function meshyMask(name){ if(MESHY_MASK[name]) return MESHY_MASK[name];
   // no mipmaps: the atlas is hundreds of small islands, and a smaller copy of the mask averages each one with the
   // black round it, so a figure further off had half-coloured hands and neck
-  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=4'); t.flipY=false; t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; return MESHY_MASK[name]=t; }
+  const t=new THREE.TextureLoader().load(ASSET+'people/tex/mask/'+name+'.png?v=6'); t.flipY=false; t.generateMipmaps=false; t.minFilter=THREE.LinearFilter; return MESHY_MASK[name]=t; }
 function meshyLook(model,o,body,outfit){
   const ref=MESHY_REF[body]; if(!ref) return;
   const hc=(M_HAIR.find(x=>x[0]===o.mHair)||M_HAIR[0])[2], sc=(M_SKIN.find(x=>x[0]===o.mSkin)||M_SKIN[0])[2];
@@ -2830,38 +2844,46 @@ const accMat=(c,o)=>ACC_MAT[c+(o?JSON.stringify(o):'')]||(ACC_MAT[c+(o?JSON.stri
 function meshyAcc(model,o){
   (model.userData.acc||[]).forEach(a=>{ if(a.parent) a.parent.remove(a); }); model.userData.acc=[]; model.userData.accTok=(model.userData.accTok||0)+1;   // a hat still loading for an older look is dropped
   const glass=o.mGlass&&o.mGlass!=='none'?o.mGlass:null, hat=o.mHat&&o.mHat!=='none'&&M_HAT.some(x=>x[0]===o.mHat)?o.mHat:null;   // only what the list offers today if(!glass&&!hat) return;
-  const H=meshyHead(model); if(!H) return; const A=Object.assign({},ACC_FIT,o.girl?null:ACC_FIT.m);
+  const H=meshyHead(model); if(!H) return; const A=ACC_FIT[o.girl?'f':'m'];
   const b=H.box, Wd=b.max.x-b.min.x, Ht=b.max.y-b.min.y, Dp=b.max.z-b.min.z, cx=(b.min.x+b.max.x)/2, cz=(b.min.z+b.max.z)/2;
   // the skull, as an ellipsoid in the head's box (its hair taken out), and the line the hat's rim sits on
   const Q=HAT_FIT.sq[o.girl?'f':'m'], sk={c:new THREE.Vector3(b.min.x+Wd*Q.x,b.min.y+Ht*Q.y,b.min.z+Dp*Q.z),r:new THREE.Vector3(Wd*Q.rx,Ht*Q.ry,Dp*Q.rz),cut:b.min.y+Ht*Q.cut};
   if(hat==='beanie') sk.cut-=Ht*Q.bd;
+  if(hat==='cap'&&Q.capCut) sk.cut=b.min.y+Ht*Q.capCut;   // a cap's rim goes above the brows, or its peak covers the eyes
   const sq=hat==='cap'||hat==='beanie';
   model.traverse(x=>{ if(!x.isMesh||x.userData.acc) return; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ const U=mt.userData.look; if(!U) return;
-    U.uSqOn.value=sq?1:0; U.uSqC.value.copy(sk.c); U.uSqR.value.copy(sk.r); U.uSqY.value=sk.cut; U.uSqB.value=Ht*.03; }); });
+    U.uSqOn.value=sq?1:0; U.uSqC.value.copy(sk.c); U.uSqR.value.copy(sk.r); U.uSqY.value=sk.cut-(hat==='cap'?sk.r.y*HAT_FIT.cap.sides:0); U.uSqB.value=Ht*.03; }); });   // under a cap, pressed down to its rim at the sides
   // built in the mesh's own (bind-pose) space, then hung on the head bone: bone-local = boneInverse × bindMatrix × mesh space
   const add=g=>{ const wrap=new THREE.Group(); wrap.matrixAutoUpdate=false; wrap.matrix.copy(H.inv).multiply(H.sm.bindMatrix); wrap.add(g);
     wrap.traverse(x=>{ x.userData.acc=true; if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } }); H.bone.add(wrap); model.userData.acc.push(wrap); };   // marked: the outfit painter leaves it alone
   const u=Ht;   // the unit: the head's height
-  if(glass){ const g=new THREE.Group(), ey=b.min.y+Ht*A.eye, ez=b.max.z-Dp*A.front, sp=Wd*A.spread;
+  if(glass){ const g=new THREE.Group(), E=A.eyes.map(([x,y])=>[b.min.x+Wd*x,b.min.y+Ht*y]), sep=E[1][0]-E[0][0], mx=(E[0][0]+E[1][0])/2, ey=(E[0][1]+E[1][1])/2;
+    const ez=b.min.z+Dp*(A.eyeZ+.05), earZ=b.min.z+Dp*A.ear[1];   // just in front of the eyes; the arms reach back to the ears
     const frame=accMat(glass==='round'?0xc9a24a:0x1b1d24,{metalness:glass==='round'?.6:.2,roughness:.35});
     const lens=glass==='shades'?accMat(0x14161c,{roughness:.1,metalness:.3}):null;
-    [-1,1].forEach(s=>{ const r=glass==='round'?u*.085:u*.09;
-      const t=new THREE.Mesh(new THREE.TorusGeometry(r,u*.011,8,28),frame); if(glass!=='round') t.scale.set(1.18,.86,1); t.position.set(cx+s*sp,ey,ez); g.add(t);
-      if(lens){ const l=new THREE.Mesh(new THREE.CircleGeometry(r,24),lens); l.scale.copy(t.scale); l.position.set(cx+s*sp,ey,ez-.002*u); g.add(l); }
-      const arm=new THREE.Mesh(new THREE.BoxGeometry(u*.016,u*.016,Dp*.55),frame); arm.position.set(cx+s*(sp+r*1.15),ey+u*.01,ez-Dp*.27); g.add(arm); });
-    const br=new THREE.Mesh(new THREE.BoxGeometry(sp*2-u*.2,u*.014,u*.014),frame); br.position.set(cx,ey+u*.03,ez); g.add(br);
+    const r=sep*(glass==='round'?.33:.34), tube=sep*.035;
+    E.forEach(([x],i)=>{ const s=i?1:-1;
+      const t=new THREE.Mesh(new THREE.TorusGeometry(r,tube,8,28),frame); if(glass!=='round') t.scale.set(1.15,.85,1); t.position.set(x,ey,ez); g.add(t);
+      if(lens){ const l=new THREE.Mesh(new THREE.CircleGeometry(r,24),lens); l.scale.copy(t.scale); l.position.set(x,ey,ez-tube*.3); g.add(l); }
+      const ax=x+s*r*(glass==='round'?1:1.15), L=Math.max(ez-earZ,Dp*.2), arm=new THREE.Mesh(new THREE.BoxGeometry(tube*1.4,tube*1.4,L),frame);
+      arm.position.set(ax+s*tube,ey+r*.15,ez-L/2); g.add(arm); });
+    const br=new THREE.Mesh(new THREE.BoxGeometry(Math.max(sep-2*r*(glass==='round'?1:1.15),tube),tube*1.2,tube*1.2),frame); br.position.set(mx,ey+r*.25,ez); g.add(br);
     add(g); }
   if(hat==='cap') add(capHat(sk,hatCol(o)));
   if(hat==='beanie') add(knitBeanie(sk,Ht,hatCol(o)));
-  if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*A.ear, dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
-    const band=new THREE.Mesh(new THREE.TorusGeometry(.5,.045,8,40,Math.PI),dark); band.scale.set(Wd*1.08,(b.max.y-my)*2*1.02,Dp*.6); band.position.set(cx,my,cz); g.add(band);
-    [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(Ht*.12,Ht*.12,Wd*.12,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(cx+s*Wd*.54,my,cz); g.add(cup); });
+  if(hat==='phones'){ const g=new THREE.Group(), my=b.min.y+Ht*A.ear[0], mz=b.min.z+Dp*A.ear[1], dark=accMat(0x1b1d24,{roughness:.4}), acc=accMat(BRAND,{roughness:.4});
+    // the cups against the head at the ears, the band over its top, both touching it
+    const xL=b.min.x+Wd*A.side[0], xR=b.min.x+Wd*A.side[1], cw=Wd*.09, cr=Ht*.095, half=(xR-xL)/2+cw*.55, mxc=(xL+xR)/2, top=b.min.y+Ht*A.top+Ht*.015;
+    const arc=[]; for(let i=0;i<=24;i++){ const a=Math.PI*i/24; arc.push(new THREE.Vector3(mxc+Math.cos(a)*half,my+Math.sin(a)*(top-my),mz)); }   // from cup to cup over the top
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(arc),48,Ht*.022,8,false),dark));
+    [-1,1].forEach(s=>{ const cup=new THREE.Mesh(new THREE.CylinderGeometry(cr,cr,cw,22),acc); cup.rotation.z=Math.PI/2; cup.position.set(mxc+s*half,my,mz); g.add(cup);
+      const pad=new THREE.Mesh(new THREE.CylinderGeometry(cr*.82,cr*.82,cw*.35,22),dark); pad.rotation.z=Math.PI/2; pad.position.set(mxc+s*(half-cw*.6),my,mz); g.add(pad); });
     add(g); }
 }
 /* fitted by eye, front and three-quarter, on both figures. sq: the skull in the head's box (fractions of it): centre, radii,
    and the rim line; the boy's box takes in his tall hair, the girl's her long hair at the back */
-const HAT_FIT={cap:{k:1.05,brim:.62,droop:.24},beanie:{top:1.16,k:1.04},
-  sq:{m:{x:.5,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03}}};   // bd: how much lower the beanie's rim sits
+const HAT_FIT={cap:{k:1.09,brim:.66,droop:.2,sides:.26},beanie:{top:1.16,k:1.04},
+  sq:{m:{x:.53,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1,capCut:.555},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03,capCut:.68}}};   // capCut: her brows reach .66   // bd: how much lower the beanie's rim sits
 /* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
    taller than the head, a small pompom; BuyToday orange, the logo on the cuff */
 /* hat colours: the hat itself; its seams, cuff and brim are shades of it */
@@ -2895,25 +2917,45 @@ function capMat(col){ const key='c'+col; if(HAT_MAT[key]) return HAT_MAT[key];
   const c=document.createElement('canvas'); c.width=1024; c.height=256; const g=c.getContext('2d'), white=col===M_HAT_C[4][2];
   g.fillStyle=hatCss(col,1); g.fillRect(0,0,1024,256);
   const n=g.createLinearGradient(0,0,0,256); n.addColorStop(0,'rgba(255,255,255,.08)'); n.addColorStop(1,'rgba(0,0,0,.12)'); g.fillStyle=n; g.fillRect(0,0,1024,256);
-  for(let i=0;i<6;i++){ const x=(i+.5)*1024/6;   // the panel seams, either side of the front: a groove and the stitching beside it
-    g.strokeStyle='rgba(0,0,0,.45)'; g.lineWidth=4; g.beginPath(); g.moveTo(x,0); g.lineTo(x,256); g.stroke();
-    g.strokeStyle='rgba(255,255,255,.28)'; g.lineWidth=1.5; g.setLineDash([6,5]); [-7,7].forEach(d=>{ g.beginPath(); g.moveTo(x+d,8); g.lineTo(x+d,256); g.stroke(); }); g.setLineDash([]); }
+  for(let i=0;i<6;i++){ const x=i*1024/6;   // the panel seams, either side of the front (u .25, between two of them): a groove and the stitching beside it
+    g.strokeStyle='rgba(0,0,0,.16)'; g.lineWidth=2.5; g.beginPath(); g.moveTo(x,30); g.lineTo(x,256); g.stroke();   // faint, and not up to the top: six dark lines meeting there read as a basketball
+    g.strokeStyle='rgba(255,255,255,.2)'; g.lineWidth=1.2; g.setLineDash([5,5]); [-6,6].forEach(d=>{ g.beginPath(); g.moveTo(x+d,40); g.lineTo(x+d,250); g.stroke(); }); g.setLineDash([]); }
   g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=3; g.beginPath(); g.moveTo(0,244); g.lineTo(1024,244); g.stroke();
-  g.save(); g.translate(256,156); g.scale(.62,1); g.fillStyle=white||col===M_HAT_C[3][2]?'#f26a1b':'#fff'; g.font='900 70px Rubik,Arial,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',0,0); g.restore();   // u .25 is the front
+  g.save(); g.translate(256,166); g.scale(.6,1.15); g.fillStyle=white||col===M_HAT_C[3][2]?'#f26a1b':'#fff'; g.font='900 62px Rubik,Arial,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',0,0); g.restore();   // u .25 is the front: on the front panel, over the peak (higher up it sat on top of the head)
   const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
   return HAT_MAT[key]=new THREE.MeshStandardMaterial({map:t,roughness:.85,metalness:0}); }
 const brimMat=(col,f,side)=>{ const key='b'+col+f; return HAT_MAT[key]||(HAT_MAT[key]=new THREE.MeshStandardMaterial({color:new THREE.Color(hatCss(col,f)).convertSRGBToLinear(),roughness:.9,metalness:0,side})); };   // the colour as seen, not as light
 function capHat(sk,col){ const F=HAT_FIT.cap, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, k=F.k, th=Math.acos(Math.max(-1,Math.min(1,y0/k)));
   const S=m=>{ m.scale.copy(sk.r); m.position.copy(sk.c); return m; };
-  g.add(S(new THREE.Mesh(new THREE.SphereGeometry(k,40,14,0,Math.PI*2,0,th),capMat(col))));
-  const btn=new THREE.Mesh(new THREE.SphereGeometry(.07,12,6),brimMat(col,.9,THREE.FrontSide)); btn.scale.y=.45; btn.position.y=k-.01; g.add(S(new THREE.Group().add(btn)));
-  // the brim: from the rim round the front, longest at the middle, its sides curved down
-  const rin=k*Math.sin(th)-.01, N=24, pos=[], idx=[], A=1.15;
-  for(let i=0;i<=N;i++){ const a=-A+2*A*i/N, cs=Math.cos(a/A*Math.PI/2), L=F.brim*Math.pow(Math.max(cs,0),.8);
-    for(const t of [0,1]){ const r=rin+L*t, y=y0-.02-t*(.14+F.droop*(a/A)**2)-.06*t*t; pos.push(Math.sin(a)*r,y,Math.cos(a)*r); } }
-  for(let i=0;i<N;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
-  const bg=new THREE.BufferGeometry(); bg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); bg.setIndex(idx); bg.computeVertexNormals();
-  g.add(S(new THREE.Mesh(bg,brimMat(col,.82,THREE.FrontSide))), S(new THREE.Mesh(bg,brimMat(col,.5,THREE.BackSide))));   // top, and the darker underside
+  /* The crown, down to a rim that follows the head like a worn cap's: at the forehead in front, down over the ears at
+     the sides, lower again at the back (a level rim all round left the cap perched on top of the head, ending high over
+     the ears). Built as a grid round the skull: u round it (.25 the front, as the texture has it), v from the top to
+     that rim. The front is a little fuller, a cap's structured panels. */
+  const rimY=d=>y0-F.sides*(1-Math.cos(d))/2*1.6-F.sides*.2*(1-Math.cos(d))**2;   // d: the angle from the front; y0 there, about y0-sides at the sides, more at the back
+  const NU=56, NV=16, cpos=[], cuv=[], cidx=[];
+  for(let j=0;j<=NV;j++) for(let i=0;i<=NU;i++){ const u=i/NU, ph=u*Math.PI*2, d=Math.acos(Math.max(-1,Math.min(1,Math.sin(ph))));   // sin(ph) is z: 1 at the front
+    const t=Math.acos(Math.max(-1,Math.min(1,rimY(d)/k))), th2=t*j/NV, fr=Math.max(0,Math.sin(ph)*Math.sin(th2)), up=Math.cos(th2);
+    const r=k*(1+.055*fr*(1-Math.max(0,up)));
+    cpos.push(-Math.cos(ph)*Math.sin(th2)*r, k*up+.05*fr*Math.max(0,up), Math.sin(ph)*Math.sin(th2)*r); cuv.push(u,1-j/NV); }
+  for(let j=0;j<NV;j++) for(let i=0;i<NU;i++){ const a=j*(NU+1)+i, b=a+NU+1; cidx.push(a,b,a+1, b,b+1,a+1); }
+  const cg=new THREE.BufferGeometry(); cg.setAttribute('position',new THREE.Float32BufferAttribute(cpos,3)); cg.setAttribute('uv',new THREE.Float32BufferAttribute(cuv,2)); cg.setIndex(cidx); cg.computeVertexNormals();
+  g.add(S(new THREE.Mesh(cg,capMat(col))));
+  const btn=new THREE.Mesh(new THREE.SphereGeometry(.07,12,6),brimMat(col,.9,THREE.FrontSide)); btn.scale.y=.45; btn.position.y=k+.03; g.add(S(new THREE.Group().add(btn)));
+  /* the peak: a solid, curved bill (it was one bare sheet, paper-thin from the side): a top, a darker underside and an
+     edge all round, from the rim at the front, longest in the middle, its sides bent down */
+  const N=28, A=1.05, T=.045, top=[], bot=[];
+  for(let i=0;i<=N;i++){ const a=-A+2*A*i/N, cs=Math.cos(a/A*Math.PI/2), L=F.brim*Math.pow(Math.max(cs,0),.7), ry=rimY(Math.abs(a)), rin=k*Math.sin(Math.acos(Math.max(-1,Math.min(1,ry/k))))*(1+.055*Math.cos(a))-.02;   // from the crown's own edge, which falls away to the sides: no gap between them
+    for(const t of [0,1]){ const r=rin+L*t, y=ry+.004-t*(.1+F.droop*(a/A)**2)-.05*t*t; top.push([Math.sin(a)*r,y,Math.cos(a)*r]); bot.push([Math.sin(a)*r,y-T*(1-.4*t),Math.cos(a)*r]); } }
+  const pos=[], idx=[], quad=(a,b,c,d)=>{ const o=pos.length/3; [a,b,c,d].forEach(v=>pos.push(...v)); idx.push(o,o+1,o+2, o+1,o+3,o+2); };
+  for(let i=0;i<N;i++){ const j=i*2;
+    quad(top[j],top[j+1],top[j+2],top[j+3]);            // the top, facing up
+    quad(bot[j+1],bot[j],bot[j+3],bot[j+2]); }           // the underside, facing down
+  const edge=[], eidx=[]; for(let i=0;i<N;i++){ const j=i*2, o=edge.length/3; [top[j+1],bot[j+1],top[j+3],bot[j+3]].forEach(v=>edge.push(...v)); eidx.push(o,o+1,o+2, o+1,o+3,o+2); }   // the outer edge
+  const mk=(p,ix)=>{ const b=new THREE.BufferGeometry(); b.setAttribute('position',new THREE.Float32BufferAttribute(p,3)); b.setIndex(ix); b.computeVertexNormals(); return b; };
+  const bg=mk(pos,idx), eg=mk(edge,eidx);
+  g.add(S(new THREE.Mesh(bg,brimMat(col,.82,THREE.DoubleSide))), S(new THREE.Mesh(eg,brimMat(col,.6,THREE.DoubleSide))));
+  // the underside darker: a second copy just under the top, seen only from below
+  const ug=bg.clone(); ug.translate(0,-.002,0); g.add(S(new THREE.Mesh(ug,brimMat(col,.45,THREE.BackSide))));
   return g; }
 /* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
    taller than the head, a small pompom, the label on the cuff */
@@ -2930,7 +2972,12 @@ function knitBeanie(sk,Ht,col){ const F=HAT_FIT.beanie, g=new THREE.Group(), y0=
   const logo=new THREE.Mesh(new THREE.PlaneGeometry(sk.r.x*.5,sk.r.y*.19),hatLabel(col)), ly=y0+cuff/2;
   logo.position.set(sk.c.x,sk.c.y+sk.r.y*ly,sk.c.z+sk.r.z*(ell(ly,1.07)+.05)+Ht*.004); g.add(logo);
   return g; }
-const ACC_FIT={eye:.5,front:.04,spread:.2,hatW:1.16,hatD:1.16,hatDrop:.46,ear:.42,m:{eye:.4,ear:.36}};   // m: the boy's head box takes in his tall hair, so his eyes and ears sit lower in it
+/* where things sit on the two Meshy heads, measured on the models (fractions of the head's box, x from his/her right,
+   y up, z to the front): each eye's centre and the front of it, the ears, the outer surface (hair or ear) at the ears'
+   height and the top of the head over them. The box takes in the hair, so its middle is not the face's (review 26.10
+   item 6: glasses off the eyes and floating in front of the nose, headphones off the head with the band in the air). */
+const ACC_FIT={m:{eyes:[[.366,.405],[.725,.405]],eyeZ:.83,ear:[.40,.38],side:[.094,.967],top:.93},
+               f:{eyes:[[.363,.53],[.648,.53]],eyeZ:.90,ear:[.36,.60],side:[.008,.932],top:.99}};
 function meshyDress(model,o){ const an=renderer.capabilities.getMaxAnisotropy();
   // the player's own figure wears the chosen outfit: the same body painted another way (the face stays the same)
   const body=model.getObjectByName('char1')&&o!==ALF_LOOK&&MESHY_HERO?(o.girl?'F1':'1'):null, list=body&&MESHY_OUTFITS[o.girl?'f':'m'];
@@ -3678,7 +3725,7 @@ const DEPTS=[
   {id:'laundry',f:1,name:'כביסה, ייבוש ומדיחים',sub:'כביסה · מייבשים · מדיחים',rect:[-24,-8.5,-9,13],to:[-16.2,-1],color:'#5b6fe0',cat:'laundry',icon:'laundry'},
   {id:'home',f:1,name:'מוצרי חשמל לבית',sub:'שואבים · מגהצים',rect:[8.5,24,-32,-1],to:[14,-15],color:'#2fb592',cat:'home-appliances',icon:'clean'},
   {id:'ac',f:1,name:'מיזוג אוויר',sub:'מזגנים עיליים',rect:[8.5,24,-1,13],to:[14.5,4.5],color:'#2aa7c9',cat:'air-conditioning',icon:'ac'},
-  {id:'arcade',f:2,name:'ארקייד',sub:'משחקים על מטבעות',rect:[-24,-8.5,-32,-9],to:[-15,-14],color:'#9b5de5',icon:'gaming'},
+  {id:'arcade',f:2,name:'ארקייד',sub:'משחקים על מטבעות',rect:[-24,-8.5,-32,-9],to:[-7,-22.4],color:'#9b5de5',icon:'gaming'},
   {id:'terrace',f:2,name:'טרסת העיר',sub:'ספות · תצפית על העיר',rect:[8.5,24,-32,-9],to:[15,-12],color:'#2ec4b6',icon:'view'},
   {id:'cinema',f:2,name:'קולנוע גג',sub:'המבצעים על מסך ענק',rect:[-24,-8.5,-9,9],to:[-10.5,0],color:'#e63946',icon:'screens'},
   {id:'outlet',f:2,name:'אאוטלט מבצעים',sub:'ההנחות הגדולות',rect:[8.5,24,-9,9],to:[13.5,0],color:'#d6336c',icon:'deal',url:'/deals',ck:'deals'},
@@ -3702,7 +3749,9 @@ function kioskTex(d){ return canvasTex(256,352,(g,W,H)=>{
    the city, a cinema screen playing the deals, and the outlet corner with the deals kiosk.
    Everything is baked into STATIC[2], which is only drawn while somebody is on the roof. */
 const roofLive=[];
-const GAME_SPOTS=[{id:'catch',arc:'smash',title:'מבצע הריסה',mx:-9.4,mz:-26,x:-10.9,z:-26},{id:'tap',arc:'merge',title:'מיזוג הדילים',mx:-9.4,mz:-22.4,x:-10.9,z:-22.4},{id:'claw',title:'מכונת המתנות',mx:-9.4,mz:-18.6,x:-10.9,z:-18.6}];
+/* the machines face the walk by the skylight, where people come from (review 26.10 item 1: they faced the roof's edge,
+   so all anyone saw coming up was their backs); x, z: where you stand to play; how: what the game is, in one line */
+const GAME_SPOTS=[{id:'catch',arc:'smash',title:'מבצע הריסה',how:'יורים בקלע ומפילים מגדלים של מוצרים',mx:-9.4,mz:-26,x:-7.9,z:-26},{id:'tap',arc:'merge',title:'מיזוג הדילים',how:'מאחדים שני מוצרים זהים למוצר גדול יותר',mx:-9.4,mz:-22.4,x:-7.9,z:-22.4},{id:'claw',title:'מכונת המתנות',how:'תופסים קפסולה עם הזרוע',mx:-9.4,mz:-18.6,x:-7.9,z:-18.6}];
 const SHOP_SPOT={x:0,z:0}, SELLER={stand:null,real:null};
 // the pet corner on the roof, east of the outfit shop: one of each pet on a cushion (see PETS)
 const PET_ZONE={x0:19.4,x1:23.5,z0:-3.1,z1:4.7,cz:.8,spot:{x:0,z:0},spots:[[20.3,-2.2],[21.6,-2.2],[22.9,-2.2],[20.3,3.7],[21.5,3.7],[22.8,1.2]],list:[],made:false};
@@ -3845,7 +3894,7 @@ function buildRoof(){
       c.font='56px sans-serif'; c.textAlign='center'; c.fillText(i?'🎁':'💥',W/2,86); c.fillStyle='#ffd166'; c.font='800 26px Rubik,sans-serif'; c.direction='rtl'; c.fillText('מטבעות!',W/2,140); })}),0,1.55,.56,g,false);
     const panel=[box(1.5,.14,.6,M.dark,0,1,.7,g),box(.12,.12,.12,M.red,-.3,1.12,.75,g,false),box(.12,.12,.12,M.ledCyan,.3,1.12,.75,g,false)];
     const marq=box(1.55,.4,.5,new THREE.MeshBasicMaterial({map:canvasTex(256,64,(c,W,H)=>{ c.fillStyle=i?'#4cc9f0':'#f72585'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font='800 30px Rubik,sans-serif'; c.textAlign='center'; c.direction='rtl'; c.fillText(gs.title,W/2,43); })}),0,2.5,.3,g,false);
-    place(g,gs.mx,Y,gs.mz,-Math.PI/2,0,scene); roofLive.push(g); solid(f,gs.mx,gs.mz,1.3,1.7); gs.cab={g,body,scr,panel,marq}; });   // kept out of the roof's baked mesh: the Meshy cabinet replaces its boxes later
+    place(g,gs.mx,Y,gs.mz,Math.PI/2,0,scene); roofLive.push(g); solid(f,gs.mx,gs.mz,1.3,1.7); gs.cab={g,body,scr,panel,marq}; });   // kept out of the roof's baked mesh: the Meshy cabinet replaces its boxes later
 
   // --- helipad behind the elevator ---
   const HMARK=new THREE.MeshBasicMaterial(decal({color:0xffffff}));
@@ -3870,6 +3919,7 @@ function buildKiosks(){
     const S=MALL2&&STORE_DEFS.find(S=>S.id===d.id);
     if(S) best=S.at(S.D*.8,-S.L*.42);   // in a real shop the catalogue screen stands in the far corner, off the way in
     if(!best) return;
+    if(SEASON.on&&d.id==='deal'){ SEASON.dealSpot={x:best[0],z:best[1]}; return; }   // in season the 11.11 booth stands here instead, and opens the same catalogue
     const [x,z]=best, y=f*FH, P=STATIC[f], g=new THREE.Group();
     // turn the screen to where people walk: the longest clear run from the kiosk, nudged towards the department's centre
     const toA=Math.atan2(d.to[0]-x,d.to[1]-z); let ry=toA, bs2=-1e9;
@@ -3891,13 +3941,209 @@ function buildKiosks(){
     place(g,x,y,z,ry,1.95,P);
     const ring=new THREE.Mesh(new THREE.RingGeometry(1.25,1.55,40),new THREE.MeshBasicMaterial({color:new THREE.Color(d.color),transparent:true,opacity:.55,depthWrite:false}));
     ring.rotation.x=-Math.PI/2; ring.position.set(x,y+.03,z); scene.add(ring); KIOSK_GLOW.push(ring);
-    solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f};
+    solid(f,x,z,2,1.75,'kiosk'); d.kiosk={x,z,f,c:new THREE.Vector3(x,y+1.62*1.95,z)};   // c: the screen's middle, for a tap on it (the group itself is baked away)
   });
 }
 /* what follows the catalogue (plinths, kiosks, the fronts' columns, signs and bins placed round them) moves
    when the catalogue does: it is kept apart from the fixed building, which is all the baked lighting covers */
 function markDyn(fn){ const n=STATIC.map(g=>g.children.length); fn(); STATIC.forEach((g,i)=>{ for(let k=n[i];k<g.children.length;k++) g.children[k].userData.dyn=true; }); }
-buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); if(MALL2) buildStores(); buildStalls(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard();
+/* ---------- seasons: the mall dressed for a shopping day ----------
+   11.11, Singles' Day: red paper lanterns along the walk on the ground floor, round the atrium on floor 1 and hanging
+   in long strings down the atrium (seen from both floors), lanterns under the roof's string lights, "11.11" banners
+   over the lobby, in the atrium and over the doors outside, and its own welcome. On by the date (Israel time) and off
+   again by itself; ?season=1111 shows it any day, ?season=off hides it. Nothing of it is built out of season. */
+const SEASON=(()=>{ const q=new URLSearchParams(location.search).get('season'), d=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date()), md=d.slice(5);
+  const on=q==='off'?false:q==='1111'||q==='1111live'?true:(md>='11-01'&&md<='11-11');   // the site's sale (buytoday.co.il/singles-day) is the one day, 11.11, 00:00-23:59
+  const Y=+d.slice(0,4), test=q==='1111live'; return {start:test?0:Date.UTC(Y,10,10,22),end:test?Infinity:Date.UTC(Y,10,11,22),url:'/singles-day',on,id:'1111',hi:'🏮 11.11 יום הרווקים בקניון · מבצעים בכל המחלקות',g:[],glow:[],lan:[],booths:[],texCache:{}}; })();
+/* the site's 11.11 sale (the shop's list, 20 products: name, regular price, sale price, % off, the product's page and
+   its photo kept here in img/1111/). The site shows them from 11.11 at midnight, and so do the booths: before that
+   they show the countdown and the hot deals. Three have no photo here (the maker's own, out of reach): a card instead. */
+const SALE_1111=[{"name":"מיקרוגל בנוי Miele M 7244 TC","old":8900,"price":8000,"pct":10,"slug":"miele-microwaves-m-7244-tc-58a2af86","img":"img/1111/01.jpg"},{"name":"כיריים משולבות AEG HDB95623NB","old":6200,"price":5260,"pct":15,"slug":"aeg-hybrid-cooktops-hdb95623nb-ecbba657","img":null},{"name":"כיריים גז Bertazzoni QB36600X","old":5900,"price":5300,"pct":10,"slug":"bertazzoni-gas-cooktops-qb36600x","img":"img/1111/03.jpg"},{"name":"מקרר דלונגי DLR9680X נירוסטה","old":4900,"price":4160,"pct":15,"slug":"dlr9680x-eae428ca","img":"img/1111/04.jpg"},{"name":"מקרר דלונגי DLR9680DX מושחר","old":4900,"price":4160,"pct":15,"slug":"delonghi-refrigeration-dlr9680dx","img":"img/1111/05.jpg"},{"name":"כיריים גז Bertazzoni PM365SOX","old":4900,"price":3910,"pct":20,"slug":"bertazzoni-gas-cooktops-pm365sox","img":"img/1111/06.jpg"},{"name":"מקרר אינטגרלי SMEG C875TNE","old":7900,"price":7100,"pct":10,"slug":"smeg-fridge-integrated-c875tne","img":"img/1111/07.jpg"},{"name":"כיריים אינדוקציה AEG TK95IN00FB","old":4800,"price":4310,"pct":10,"slug":"aeg-induction-cooktops-tk95in00fb","img":null},{"name":"מקרר GENERAL GEBFI513RIX","old":4500,"price":3820,"pct":15,"slug":"general-refrigeration-gebfi513rix","img":"img/1111/09.jpg"},{"name":"מדיח אינטגרלי Bauknecht B8IHT58TIS","old":4500,"price":3820,"pct":15,"slug":"bauknecht-dishwasher-standard-b8iht58tis","img":null},{"name":"מקרר SBS KONKA KRF-600WG","old":3600,"price":3230,"pct":10,"slug":"konka-fridge-side-by-side-krf-600wg","img":"img/1111/11.jpg"},{"name":"קולט Faber Eclipse EV8","old":2900,"price":2460,"pct":15,"slug":"faber-range-hoods-eclipse-ev8-led-x-a372-b8520357","img":"img/1111/12.jpg"},{"name":"מקרר דלונגי DLR8522X","old":3300,"price":2800,"pct":15,"slug":"dlr8522x-971b394e","img":"img/1111/13.jpg"},{"name":"כיריים גז Gorenje GW951GB","old":2700,"price":2290,"pct":15,"slug":"gorenje-gas-cooktops-gw951gb","img":"img/1111/14.jpg"},{"name":"כיריים גז Bauknecht TGV6955SW","old":2600,"price":2330,"pct":10,"slug":"bauknecht-gas-cooktops-tgv6955sw","img":"img/1111/15.jpg"},{"name":"מדיח Bauknecht 14 מערכות","old":2800,"price":2230,"pct":20,"slug":"bauknecht-dishwasher-standard-autbfc3c26pfis","img":"img/1111/16.jpg"},{"name":"מקרר TCL P787TMN 606 ליטר","old":2900,"price":2460,"pct":15,"slug":"xxxx-e3a880-refrigeration-p787tmn","img":"img/1111/17.jpg"},{"name":"מקרר General GE64W 512 ליטר","old":3000,"price":2690,"pct":10,"slug":"general-refrigeration-ge64w","img":"img/1111/18.jpg"},{"name":"כיריים גז Fratelli FRS-905S100N","old":2500,"price":2120,"pct":15,"slug":"fratelli-gas-cooktops-frs-905s100n","img":"img/1111/19.jpg"},{"name":"כיריים גז Gorenje GW951X","old":2490,"price":2110,"pct":15,"slug":"gorenje-gas-cooktops-gw951x","img":"img/1111/20.jpg"}];
+const saleLive=()=>{ const n=Date.now(); return n>=SEASON.start&&n<SEASON.end; };
+function seasonBanner(){ return canvasTex(1024,320,(g,W,H)=>{ const gr=g.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#d7111f'); gr.addColorStop(1,'#9e0613'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+    g.strokeStyle='#ffd36b'; g.lineWidth=10; g.strokeRect(14,14,W-28,H-28); g.lineWidth=3; g.strokeRect(30,30,W-60,H-60);
+    // corner knots, a lattice feel
+    g.fillStyle='#ffd36b'; [[44,44],[W-44,44],[44,H-44],[W-44,H-44]].forEach(([x,y])=>{ g.save(); g.translate(x,y); g.rotate(Math.PI/4); g.fillRect(-12,-12,24,24); g.restore(); });
+    g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#ffd36b'; g.shadowColor='rgba(0,0,0,.35)'; g.shadowBlur=10;
+    g.font='900 150px Rubik,sans-serif'; g.fillText('11.11',W/2,H*.40);
+    g.direction='rtl'; g.font='800 54px Rubik,sans-serif'; g.fillStyle='#fff'; g.fillText('יום הרווקים · מבצעים בכל הקניון',W/2,H*.79); }); }
+function seasonLanternParts(){
+  const red=new THREE.MeshStandardMaterial({color:0xb0000e,emissive:0x8a0008,emissiveIntensity:.5,roughness:.6,envMapIntensity:.3}),   // a deep red: the mall's bright light and tone mapping turned a lighter one pink
+        gold=new THREE.MeshStandardMaterial({color:0xe9b23c,metalness:.6,roughness:.35}), cord=new THREE.MeshStandardMaterial({color:0x2a1a12,roughness:.8});
+  const body=new THREE.SphereGeometry(.5,20,14); body.scale(1,.82,1);
+  // the ribs of a paper lantern: shallow grooves, as light and shade
+  const p=body.attributes.position; for(let i=0;i<p.count;i++){ const x=p.getX(i), z=p.getZ(i), a=Math.atan2(z,x), k=1-.035*Math.pow(Math.abs(Math.cos(a*6)),6); p.setX(i,x*k); p.setZ(i,z*k); } body.computeVertexNormals();
+  const cap=new THREE.CylinderGeometry(.22,.26,.1,16), tas=new THREE.CylinderGeometry(.035,.075,.42,8), str=new THREE.CylinderGeometry(.012,.012,1,4);
+  SEASON.glow.push(red); return {red,gold,cord,body,cap,tas,str}; }
+/* lanterns as instanced meshes: each spot is {x,y,z,s,top} (y the lantern's middle, top where its cord is tied) */
+function seasonLanterns(spots,P,parent){ const n=spots.length; if(!n) return;
+  const I=(geo,m)=>{ const im=new THREE.InstancedMesh(geo,m,n); im.frustumCulled=false; im.castShadow=false; parent.add(im); return im; };
+  const body=I(P.body,P.red), capT=I(P.cap,P.gold), capB=I(P.cap,P.gold), tas=I(P.tas,P.red), str=I(P.str,P.cord);
+  const M4=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3();
+  spots.forEach((o,i)=>{ const s=o.s||1;
+    M4.compose(v.set(o.x,o.y,o.z),q.identity(),sc.set(s,s,s)); body.setMatrixAt(i,M4);
+    M4.compose(v.set(o.x,o.y+.43*s,o.z),q,sc.set(s,s,s)); capT.setMatrixAt(i,M4);
+    M4.compose(v.set(o.x,o.y-.43*s,o.z),q,sc.set(s,s,s)); capB.setMatrixAt(i,M4);
+    M4.compose(v.set(o.x,o.y-.68*s,o.z),q,sc.set(s,s,s)); tas.setMatrixAt(i,M4);
+    const L=Math.max(.05,o.top-(o.y+.48*s)); M4.compose(v.set(o.x,o.y+.48*s+L/2,o.z),q,sc.set(1,L,1)); str.setMatrixAt(i,M4); });
+  [body,capT,capB,tas,str].forEach(m=>m.instanceMatrix.needsUpdate=true); }
+function seasonSign(w,h,x,y,z,ry,parent){ const m=new THREE.MeshBasicMaterial({map:seasonBanner(),toneMapped:false});
+  const g=new THREE.Group(); [0,Math.PI].forEach(a=>{ const pl=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m); pl.rotation.y=a; pl.position.z=a?-.02:.02; g.add(pl); });   // a face each way: never read backwards
+  const rod=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,w+.3,8),new THREE.MeshStandardMaterial({color:0xe9b23c,metalness:.6,roughness:.35})); rod.rotation.z=Math.PI/2; rod.position.y=h/2+.04; g.add(rod);
+  g.position.set(x,y,z); g.rotation.y=ry||0; parent.add(g); return g; }
+/* The 11.11 booth: a red and gold pavilion in the hot-deals department, in place of its catalogue screen (the one that
+   says "all 7 products"): four
+   lacquered columns, a two-tier roof with upturned eaves, lanterns at its corners, a counter, and on both faces a screen
+   cycling through the deals (the biggest discounts first). At it, the button opens all the deals. */
+function seasonDealsTex(){ const c=document.createElement('canvas'); c.width=640; c.height=400; const g=c.getContext('2d'), t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
+  const live=saleLive(), deals=live?SALE_1111.map(x=>Object.assign({short:x.name},x)):CATALOG.filter(i=>i.old&&i.old>i.price).sort((a,b)=>(b.old-b.price)/b.old-(a.old-a.price)/a.old).slice(0,10), imgs={};
+  deals.forEach(it=>{ if(it.img){ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>{ imgs[it.slug]=im; }; im.src=it.img; } });
+  let k=-1, slide=0; const camp=()=>{ const now=Date.now(), live=now>=SEASON.start&&now<SEASON.end; g.direction='rtl'; g.textAlign='center'; g.fillStyle='#ffd36b';
+    g.font='900 92px Rubik,sans-serif'; g.fillText('11.11',320,118); g.fillStyle='#fff'; g.font='800 34px Rubik,sans-serif'; g.fillText('יום הרווקים הסיני',320,166);
+    if(live){ g.fillStyle='#ffd36b'; g.font='900 50px Rubik,sans-serif'; g.fillText('המבצע פתוח עכשיו!',320,240); }
+    else { const ms=Math.max(0,SEASON.start-now), dd=Math.floor(ms/864e5), hh=Math.floor(ms/36e5)%24, mm=Math.floor(ms/6e4)%60, ss=Math.floor(ms/1e3)%60, p2=n=>String(n).padStart(2,'0');
+      g.fillStyle='rgba(255,255,255,.8)'; g.font='600 26px Rubik,sans-serif'; g.fillText('המבצע נפתח בעוד',320,212);
+      g.fillStyle='#ffd36b'; g.font='900 50px Rubik,sans-serif'; g.fillText(dd+' ימים · '+p2(hh)+':'+p2(mm)+':'+p2(ss),320,266); }
+    g.fillStyle='#fff'; g.font='700 27px Rubik,sans-serif'; g.fillText('20 מוצרים נבחרים · עד 20% הנחה · יום אחד בלבד',320,330); g.fillStyle='rgba(255,255,255,.75)'; g.font='600 22px Rubik,sans-serif'; g.fillText('לחצו "למבצע" ליד הדוכן',320,368); };
+  const draw=()=>{ const it=slide%2===0?null:deals.length?deals[(k=(k+1)%deals.length)]:null;   // every other slide is the sale itself
+    const gr=g.createLinearGradient(0,0,0,400); gr.addColorStop(0,'#c10c1a'); gr.addColorStop(1,'#7d0410'); g.fillStyle=gr; g.fillRect(0,0,640,400);
+    g.strokeStyle='#ffd36b'; g.lineWidth=8; g.strokeRect(10,10,620,380);
+    if(slide%2===0){ camp(); t.needsUpdate=true; return; }
+    g.direction='rtl'; g.textAlign='center'; g.fillStyle='#ffd36b'; g.font='900 46px Rubik,sans-serif'; g.fillText(live?'מבצעי 11.11 · היום בלבד':'בינתיים בדיל החם',320,66);
+    if(!it){ g.fillStyle='#fff'; g.font='700 30px Rubik,sans-serif'; g.fillText('כל ההנחות במקום אחד',320,220); t.needsUpdate=true; return; }
+    g.fillStyle='#fff'; g.beginPath(); g.roundRect?g.roundRect(30,92,250,250,18):g.rect(30,92,250,250); g.fill();
+    const im=imgs[it.slug]; if(im){ const sc=Math.min(230/im.width,230/im.height); g.drawImage(im,155-im.width*sc/2,217-im.height*sc/2,im.width*sc,im.height*sc); }
+    else if(!it.img&&live){ g.fillStyle='#9e0613'; g.textAlign='center'; g.font='900 34px Rubik,sans-serif'; g.direction='ltr'; const w=(it.name.match(/[A-Za-z0-9][A-Za-z0-9 .-]+/)||[''])[0].trim().split(' '); g.fillText(w[0]||'',155,205); g.font='800 26px Rubik,sans-serif'; g.fillText(w.slice(1).join(' '),155,245); g.direction='rtl'; }
+    g.textAlign='right'; g.fillStyle='#fff'; g.font='700 28px Rubik,sans-serif'; const words=(it.short||it.name).split(' '); let line='', y=140, n=0;
+    for(const w of words){ const tl=line?line+' '+w:w; if(g.measureText(tl).width>300&&line){ g.fillText(line,610,y); y+=36; line=w; if(++n===2) break; } else line=tl; } if(n<2&&line) g.fillText(line,610,y);
+    g.fillStyle='#ffd36b'; g.font='900 64px Rubik,sans-serif'; g.fillText(shekel(it.price),610,288);
+    g.fillStyle='rgba(255,255,255,.75)'; g.font='600 28px Rubik,sans-serif'; const o=shekel(it.old); g.fillText(o,610,330); const w=g.measureText(o).width; g.fillRect(610-w,320,w,3);
+    const pc=Math.round((1-it.price/it.old)*100); g.fillStyle='#ffd36b'; g.beginPath(); g.arc(270,110,44,0,7); g.fill(); g.fillStyle='#9e0613'; g.textAlign='center'; g.font='900 30px Rubik,sans-serif'; g.fillText('-'+pc+'%',270,121);
+    t.needsUpdate=true; };
+  draw(); let n=0; setInterval(()=>{ n++; if(slide%2===0&&n%4) return draw(); slide++; draw(); },1000);   // each slide about four seconds; the countdown ticks every second
+  return t; }
+function seasonBooth(P,parent,x,z,ry,f,where){ const Y=f*FH, g=new THREE.Group(); g.position.set(x,Y,z); g.rotation.y=ry; parent.add(g); SEASON.booths.push({x,z,f,where});
+  const red=new THREE.MeshStandardMaterial({color:0xb30d18,roughness:.4}), dark=new THREE.MeshStandardMaterial({color:0x6e0710,roughness:.6}), gold=P.gold,
+        tile=new THREE.MeshStandardMaterial({color:0x8f0a14,roughness:.55,flatShading:true});
+  const B=(w,h,d,m,px,py,pz)=>{ const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); o.position.set(px,py,pz); o.castShadow=true; o.receiveShadow=true; g.add(o); return o; };
+  B(4.6,.22,3.4,dark,0,.11,0); B(4.7,.05,3.5,gold,0,.24,0);                                       // the platform, a gold edge
+  [[-2,-1.4],[2,-1.4],[-2,1.4],[2,1.4]].forEach(([cx,cz])=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(.13,.15,2.75,14),red); c.position.set(cx,1.6,cz); c.castShadow=true; g.add(c);
+    [.35,2.85].forEach(y=>{ const r=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.12,14),gold); r.position.set(cx,y,cz); g.add(r); }); });
+  B(4.3,.32,.1,red,0,2.75,1.42); B(4.3,.32,.1,red,0,2.75,-1.42); B(.1,.32,2.9,red,2.02,2.75,0); B(.1,.32,2.9,red,-2.02,2.75,0);   // the beam round the top
+  // two-tier roof: a low wide pyramid, its corners turned up in gold, then a small one with a finial
+  const roof=(w,d,h,y)=>{ const geo=new THREE.ConeGeometry(1,1,4,1,true); geo.rotateY(Math.PI/4); const m=new THREE.Mesh(geo,tile); m.scale.set(w*.72,h,d*.72); m.position.y=y+h/2; m.castShadow=true; g.add(m);
+    const s=new THREE.Mesh(new THREE.BoxGeometry(w*1.02,.09,d*1.02),gold); s.position.y=y; g.add(s);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{ const tip=new THREE.Mesh(new THREE.ConeGeometry(.09,.5,8),gold); tip.position.set(a*w/2,y+.18,b*d/2); tip.rotation.set(-b*.9,0,a*.9); g.add(tip); }); };
+  roof(5.4,4.2,.95,2.95); roof(2.6,2.1,.75,3.95);
+  const fin=new THREE.Mesh(new THREE.SphereGeometry(.16,14,10),gold); fin.position.y=4.85; g.add(fin);
+  // the counter, front and back (the walks come from both)
+  [1,-1].forEach(s=>{ B(3.2,1,.45,red,0,.72,s*1.0); B(3.3,.08,.55,gold,0,1.26,s*1.0); });
+  // the deals screen, a face each way, and the sign over it
+  const tex=SEASON.dealsTex||(SEASON.dealsTex=seasonDealsTex()), sm=new THREE.MeshBasicMaterial({map:tex,toneMapped:false});
+  [0,Math.PI].forEach(a=>{ const pl=new THREE.Mesh(new THREE.PlaneGeometry(2.3,1.44),sm); pl.rotation.y=a; pl.position.set(0,2.15,a?-.05:.05); g.add(pl); });   // up over the deals on the counters
+  B(2.42,1.55,.08,dark,0,2.15,0);
+  // the deals themselves on both counters: the 11.11 products, each a photo standing on the counter with its price
+  const live=saleLive(), deals=SEASON.deals||(SEASON.deals=live?SALE_1111.slice().sort((a,b)=>b.pct-a.pct||b.old-a.old).slice(0,10).map(x=>Object.assign({short:x.name,cut:x.img,ca:1},x))
+    :(()=>{ const d=CATALOG.filter(i=>i.cat==='deals'&&i.cut); return (d.length?d:CATALOG.filter(i=>i.old&&i.cut).sort((a,b)=>b.old/b.price-a.old/a.price)).slice(0,8); })());
+  [1,-1].forEach(s=>{ (live?deals.slice(s>0?0:5,s>0?5:10):deals.slice(0,5)).forEach((it,k,arr)=>{ const n=arr.length, px=(k-(n-1)/2)*.64;   // the hot deals the same on both sides; on the day ten different ones
+      const tx=SEASON.texCache[it.slug]||(SEASON.texCache[it.slug]=it.cut?new THREE.TextureLoader().load(it.cut,t=>{ t.encoding=THREE.sRGBEncoding; t.needsUpdate=true; })
+        :canvasTex(256,256,(c,W,H)=>{ c.fillStyle='#fff'; c.fillRect(0,0,W,H); c.strokeStyle='#d7111f'; c.lineWidth=8; c.strokeRect(6,6,W-12,H-12); const w=(it.name.match(/[A-Za-z0-9][A-Za-z0-9 .-]+/)||[''])[0].trim().split(' ');
+            c.fillStyle='#9e0613'; c.textAlign='center'; c.font='900 46px Rubik,sans-serif'; c.fillText(w[0]||'',W/2,112); c.font='800 30px Rubik,sans-serif'; c.fillText(w.slice(1).join(' '),W/2,160); }));   // no photo here: a card with the make and model
+      const ar=it.ca||1, h=.48, w=Math.min(.58,h*ar), ph=new THREE.Mesh(new THREE.PlaneGeometry(w,w/ar),new THREE.MeshBasicMaterial({map:tx,transparent:true,alphaTest:.05,side:THREE.DoubleSide,toneMapped:false}));
+      ph.position.set(px,1.32+w/ar/2,s*1.0); if(s<0) ph.rotation.y=Math.PI; g.add(ph);
+      const tag=new THREE.Mesh(new THREE.PlaneGeometry(.58,.19),new THREE.MeshBasicMaterial({toneMapped:false,map:canvasTex(256,80,(c,W,H)=>{ c.fillStyle='#ffd36b'; c.fillRect(0,0,W,H); c.fillStyle='#9e0613'; c.textAlign='center'; c.textBaseline='middle';
+          c.font='900 44px Rubik,sans-serif'; c.fillText(shekel(it.price),W*.42,H/2+2); if(it.old>it.price){ c.font='800 26px Rubik,sans-serif'; c.fillText('-'+Math.round((1-it.price/it.old)*100)+'%',W*.86,H/2+2); } })}));
+      tag.position.set(px,1.0,s*1.255); if(s<0) tag.rotation.y=Math.PI; g.add(tag); }); });
+  // dressing: strings of red firecrackers from the eaves' corners, red and gold pennants across the front and back,
+  // gifts at its foot
+  const ck=new THREE.CylinderGeometry(.045,.045,.16,8), ckM=red;
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{ for(let i=0;i<8;i++){ const c=new THREE.Mesh(ck,i%4===3?gold:ckM); c.position.set(a*2.55+(i%2?.05:-.05),2.75-i*.17,b*1.95); c.rotation.z=(i%2?.5:-.5); g.add(c); } });
+  const pen=[new THREE.MeshStandardMaterial({color:0xd7111f,roughness:.6,side:THREE.DoubleSide}),new THREE.MeshStandardMaterial({color:0xf2c14e,roughness:.5,side:THREE.DoubleSide})], tri=new THREE.BufferGeometry();
+  tri.setAttribute('position',new THREE.Float32BufferAttribute([-.13,0,0, .13,0,0, 0,-.3,0],3)); tri.computeVertexNormals();
+  [1,-1].forEach(b=>{ for(let i=0;i<13;i++){ const t=i/12, px=-1.85+3.7*t, py=2.58-Math.sin(t*Math.PI)*.22; const m=new THREE.Mesh(tri,pen[i%2]); m.position.set(px,py,b*1.47); g.add(m); } });
+  [[-2.75,1.1,.55,.45,0],[-2.95,.5,.4,.32,1],[2.8,-1.2,.5,.42,2],[2.6,-1.8,.36,.3,0],[2.85,1.3,.42,.36,1]].forEach(([px,pz,w,h,k])=>{
+    const bx=B(w,h,w,[red,gold,dark][k],px,.24+h/2,pz); const r1=B(w+.02,h+.02,.07,k===1?red:gold,px,.24+h/2,pz); const r2=B(.07,h+.02,w+.02,k===1?red:gold,px,.24+h/2,pz); });
+  [1,-1].forEach(s=>{ const sg=new THREE.Mesh(new THREE.PlaneGeometry(3.6,.62),new THREE.MeshBasicMaterial({map:canvasTex(512,88,(c,W,H)=>{ c.fillStyle='#b30d18'; c.fillRect(0,0,W,H); c.strokeStyle='#ffd36b'; c.lineWidth=5; c.strokeRect(4,4,W-8,H-8);
+      c.fillStyle='#ffd36b'; c.textAlign='center'; c.textBaseline='middle'; c.direction='rtl'; c.font='900 46px Rubik,sans-serif'; c.fillText('🏮 דוכן מבצעי 11.11 🏮',W/2,H/2+2); }),toneMapped:false}));
+    sg.position.set(0,2.75,s*1.48); if(s<0) sg.rotation.y=Math.PI; g.add(sg); });
+  // lanterns under the eaves
+  seasonLanterns([[-2.3,-1.85],[2.3,-1.85],[-2.3,1.85],[2.3,1.85]].map(([a,b])=>({x:x+a*Math.cos(ry)+b*Math.sin(ry),y:Y+2.25,z:z-a*Math.sin(ry)+b*Math.cos(ry),s:.55,top:Y+2.95})),P,parent);
+  const turned=Math.abs(Math.sin(ry))>.5; solid(f,x,z,turned?3.6:4.8,turned?4.8:3.6); }
+// a big "11.11" on the lobby floor, between the doors and the desk
+function seasonFloorMark(parent){ const m=new THREE.Mesh(new THREE.CircleGeometry(2.2,48),new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,
+    map:canvasTex(512,512,(g,W,H)=>{ g.fillStyle='#c10c1a'; g.beginPath(); g.arc(W/2,H/2,W/2-6,0,7); g.fill(); g.strokeStyle='#ffd36b'; g.lineWidth=14; g.beginPath(); g.arc(W/2,H/2,W/2-24,0,7); g.stroke();
+      g.fillStyle='#ffd36b'; g.textAlign='center'; g.textBaseline='middle'; g.font='900 150px Rubik,sans-serif'; g.fillText('11.11',W/2,H/2-30); g.direction='rtl'; g.font='800 52px Rubik,sans-serif'; g.fillStyle='#fff'; g.fillText('יום הרווקים',W/2,H/2+92); })}));
+  m.rotation.x=-Math.PI/2; m.position.set(0,.03,BZ-3.6); m.renderOrder=2; parent.add(m); }
+// confetti: red and gold flakes drifting down the atrium and the lobby for five seconds from coming in, then fading out
+function seasonConfetti(){ const N=420, pos=new Float32Array(N*3), col=new Float32Array(N*3), sp=[], c1=new THREE.Color(0xe0182a), c2=new THREE.Color(0xffc94a), c3=new THREE.Color(0xffffff);
+  const spot=()=>{ const r=Math.random(); return r<.6?[VOID.minX+Math.random()*(VOID.maxX-VOID.minX),VOID.minZ+Math.random()*(VOID.maxZ-VOID.minZ),11.5]:[-6+Math.random()*12,10+Math.random()*20,5.6]; };
+  for(let i=0;i<N;i++){ const [x,z,top]=spot(); pos.set([x,Math.random()*top,z],i*3); const c=[c1,c2,c1,c3][i%4]; col.set([c.r,c.g,c.b],i*3); sp.push({v:.45+Math.random()*.5,w:Math.random()*6,top,x0:x,z0:z}); }
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.09,vertexColors:true,toneMapped:false,transparent:true})); pts.frustumCulled=false; scene.add(pts); SEASON.conf={pts,sp}; }
+// fireworks over the town, seen from the roof at night: a burst every couple of seconds, in red, gold and white
+const fwV=new THREE.Vector3();
+function seasonFireworks(parent){ const N=160, B=3, pts=[];
+  const spark=canvasTex(64,64,(g,W,H)=>{ const r=g.createRadialGradient(W/2,H/2,0,W/2,H/2,W/2); r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.25,'rgba(255,255,255,.85)'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=r; g.fillRect(0,0,W,H); });   // a soft round spark, not a square
+  for(let b=0;b<B;b++){ const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N*3),3));
+    const m=new THREE.PointsMaterial({size:3.2,map:spark,color:[0xff3040,0xffd060,0xffffff][b],transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,fog:false});
+    const p=new THREE.Points(geo,m); p.frustumCulled=false; p.visible=false; parent.add(p); pts.push({p,t:2.41-b*.8,dirs:Array.from({length:N},()=>new THREE.Vector3().randomDirection?new THREE.Vector3().randomDirection():new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize()),c:new THREE.Vector3()}); }
+  SEASON.fw=pts; }
+function buildSeason(){ if(!SEASON.on) return;
+  const P=seasonLanternParts(), G=[0,1,2].map(()=>{ const g=new THREE.Group(); g.name='season'; scene.add(g); return g; }); SEASON.g=G;
+  const atr=new THREE.Group(); atr.name='season-atrium'; scene.add(atr); SEASON.atr=atr;
+  // ground floor: two rows along the walk from the doors to the atrium, low enough for the follow camera to see
+  // (its view tops out a little over 4 m there), high over anyone's head
+  const L0=[]; for(let z=VOID.maxZ+3;z<=BZ-4;z+=4.5) [-2.6,2.6].forEach((x,k)=>L0.push({x,y:3.95+((z/4.5+k)%2?.25:0),z,s:.85,top:FH-.3}));
+  for(let z=VOID.minZ-3;z>=-BZ+5;z-=4.5) [-2.6,2.6].forEach((x,k)=>L0.push({x,y:3.95+((z/4.5+k)%2?.25:0),z,s:.85,top:FH-.3}));
+  seasonLanterns(L0,P,G[0]);
+  // floor 1: round the atrium's rail, under its ceiling
+  const L1=[]; for(let z=VOID.minZ;z<=VOID.maxZ;z+=3.5) [VOID.minX-1.4,VOID.maxX+1.4].forEach(x=>L1.push({x,y:FH+4.6,z,s:.8,top:2*FH-.05}));
+  for(let x=VOID.minX+1;x<=VOID.maxX-1;x+=3.5) [VOID.minZ-1.4,VOID.maxZ+1.4].forEach(z=>{ if(x>SH.x0-1&&x<SH.x1+1&&z<0) return; L1.push({x,y:FH+4.6,z,s:.8,top:2*FH-.05}); });
+  seasonLanterns(L1,P,G[1]);
+  // the atrium: long strings from the skylight, a lantern at several heights on each
+  const LA=[]; [[-3,-4.5],[3,-4.5],[-3,4.5],[3,4.5],[0,5.6]]   /* clear of the giant screen (x ±2.2, z .2 to 4.6) and the lift */.forEach(([x,z],i)=>{ if(x>SH.x0-.6&&x<SH.x1+.6&&z>SH.z0-.6&&z<SH.z1+.6) return;
+    [10.6,8.9,7.2].forEach((y,k)=>{ if(k===2&&i%2) return; LA.push({x,y:y-(i%3)*.35,z,s:1.15-k*.12,top:k?y+1.3:2*FH-.1}); }); });
+  seasonLanterns(LA,P,atr);
+  // the roof: one under every few bulbs of the court's string lights (Y+4.1, sagging by .9 in the middle)
+  const Y=2*FH, LR=[]; for(const z of [11.5,16.5,21.5,26.5]) for(let k=3;k<46;k+=5){ const t=k/46, x=-22.7+t*45.4, y=Y+4.1-Math.sin(t*Math.PI)*.9; if(y<Y+3.75) continue; LR.push({x,y:y-.42,z,s:.5,top:y}); }   // just under the string, and only where it runs high: in its sag they hung at the camera's height
+  seasonLanterns(LR,P,G[2]);
+  // banners: over the lobby, facing the doors; in the atrium, high, across it; over the doors outside
+  seasonSign(5.2,1.62,0,4.15,BZ-13,0,G[0]);   // in from the doors, where it is seen from the way in; right by them it filled the top of the view
+  [-1,1].forEach(s=>seasonSign(4.4,1.38,s*(VOID.maxX-.45),FH+3.4,0,Math.PI/2,atr));   // on each side of the atrium, facing across it: the screen hangs in its middle
+  seasonSign(5.6,1.75,0,6.6,BZ+.35,0,G[0]);
+  // the lobby: piles of red gift boxes with gold ribbons on either side of the welcome desk, in view from the doors
+  const boxM=[new THREE.MeshStandardMaterial({color:0xc4101c,roughness:.5}),new THREE.MeshStandardMaterial({color:0xf3ece0,roughness:.55}),new THREE.MeshStandardMaterial({color:0x9e0613,roughness:.5})], rib=P.gold;
+  const gift=(x,z,w,h,ry,m,y0)=>{ const g=new THREE.Group(); g.position.set(x,y0||0,z); g.rotation.y=ry;
+    const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),m); b.position.y=h/2; b.castShadow=true; g.add(b);
+    [[w+.02,.06,.12],[.12,.06,w+.02]].forEach(([a,c,d])=>{ const r=new THREE.Mesh(new THREE.BoxGeometry(a,h+.02,d),rib); r.position.y=h/2; g.add(r); });
+    const bow=new THREE.Mesh(new THREE.TorusGeometry(w*.13,w*.045,8,16),rib); bow.position.y=h+w*.1; g.add(bow); const bow2=bow.clone(); bow2.rotation.y=Math.PI/2; g.add(bow2);
+    G[0].add(g); };
+  [[-1,24.5],[1,24.5],[-1,17.5],[1,17.5]].forEach(([s,z],i)=>{ const x=s*5.4;
+    gift(x,z,1.1,.9,.3*i,boxM[i%3]); gift(x+s*.15,z+.1,.8,.62,.5+i,boxM[(i+1)%3],.9); gift(x+s*.95,z-.55,.6,.48,-.4,boxM[(i+2)%3]); gift(x-s*.7,z+.7,.5,.4,.9,boxM[i%3]);
+    solid(0,x,z,2.4,2.4); });
+  const ds=SEASON.dealSpot||{x:0,z:-13.6};
+  seasonBooth(P,G[0],ds.x,ds.z,0,0,'הדיל החם');                // in the hot-deals department, its front to the atrium
+  seasonBooth(P,G[2],11,9.5,-Math.PI/2,2,'הגג');                // a second on the open roof, between the skylight and the food court, facing the lift
+  seasonFloorMark(G[0]); seasonConfetti(); seasonFireworks(G[2]);
+  SEASON.lan=[...G[0].children,...G[1].children,...G[2].children,...atr.children];
+}
+function seasonTick(t){ if(!SEASON.on||!SEASON.g.length) return; const f=player.floor;
+  SEASON.g.forEach((g,i)=>{ g.visible=i===f; }); SEASON.atr.visible=f<2;
+  SEASON.glow.forEach(m=>{ m.emissiveIntensity=(TOWN.night&&f===2?1.1:.5)+.08*Math.sin(t*1.7); });
+  const dt=Math.min(.05,t-(SEASON.t||t)); SEASON.t=t;
+  const C=SEASON.conf; if(C&&!C.done&&G.state==='play'&&C.t0===undefined) C.t0=t;
+  if(C&&!C.done){ const age=C.t0===undefined?-1:t-C.t0; C.pts.material.opacity=age<5?1:Math.max(0,1-(age-5)); if(age>6){ C.done=true; C.pts.visible=false; C.pts.geometry.dispose(); }
+    else C.pts.visible=age>=0&&f<2&&!outsideNow; }
+  if(C&&!C.done){ if(C.pts.visible){ const a=C.pts.geometry.attributes.position.array;
+      C.sp.forEach((s,i)=>{ let y=a[i*3+1]-s.v*dt; if(y<0) y=s.top; a[i*3+1]=y; a[i*3]=s.x0+Math.sin(t*1.3+s.w)*.35; a[i*3+2]=s.z0+Math.cos(t*1.1+s.w)*.35; });
+      C.pts.geometry.attributes.position.needsUpdate=true; } }
+  if(SEASON.fw&&f===2) SEASON.fw.forEach(F=>{ F.t+=dt; const T=2.4;
+    if(F.t>T){ F.t=0; const r=50+Math.random()*25;   // a point in the upper part of the frame, 50-75 m out: seen, and short of the town's blocks (82 m on)
+      fwV.set((Math.random()-.5)*1.3,.35+Math.random()*.4,.5).unproject(camera).sub(camera.position).normalize();
+      F.c.copy(camera.position).addScaledVector(fwV,r); if(F.c.y<2*FH+8) F.c.y=2*FH+8; }
+    if(F.t<0){ F.p.visible=false; return; } F.p.visible=true; const u=F.t/T, R=14*(1-Math.pow(1-u,3)), drop=6*u*u, arr=F.p.geometry.attributes.position.array;
+    F.dirs.forEach((d,i)=>{ arr[i*3]=F.c.x+d.x*R; arr[i*3+1]=F.c.y+d.y*R-drop; arr[i*3+2]=F.c.z+d.z*R; }); F.p.geometry.attributes.position.needsUpdate=true; F.p.material.opacity=1-u*u; }); }   // a slow breath of light; brighter in the roof's night
+buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); if(MALL2) buildStores(); buildStalls(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard(); buildSeason();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
   const pos=new Float32Array(nv*3), nor=new Float32Array(nv*3), uv=new Float32Array(nv*2), idx=new (nv>65535?Uint32Array:Uint16Array)(ni);
@@ -4162,8 +4408,12 @@ function buildStreetLife(){
   const spots=[];
   for(let z=BZ+18;z<OUT.front-10;z+=12){ spots.push([-1.6,z+6]); spots.push([12.8,z+6]); }            // along the road
   for(let i=0;i<70;i++){ const x=(rnd()<.5?-1:1)*(14+rnd()*52), z=BZ+16+rnd()*(OUT.front-BZ-26); if(Math.abs(x)<23&&z>OUT.front-12) continue; spots.push([x,z]); }
-  const leaf=[0x5fb84a,0x4fa63e,0x74c75a].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.9,flatShading:true})), bark=new THREE.MeshStandardMaterial({color:0x8a5a3b,roughness:.9}); TOWN.street=leaf.concat(bark);
-  const crown=new THREE.IcosahedronGeometry(1,1), trunk=new THREE.CylinderGeometry(.16,.22,1,7);
+  const leaf=[0x438f35,0x3a822f,0x52a03f].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85})), bark=new THREE.MeshStandardMaterial({color:0x8a5a3b,roughness:.9}); TOWN.street=leaf.concat(bark);
+  /* a crown of a few soft lumps, smoothly shaded: the faceted ball read as low-poly, "pixelated" (review 26.10 item 1) */
+  const crown=(()=>{ const parts=[[0,0,0,1],[.55,.15,.2,.68],[-.5,.2,-.15,.7],[.05,.5,-.45,.62],[-.1,.35,.5,.6]].map(([x,y,z,r])=>{ const g=new THREE.IcosahedronGeometry(r,3);
+      const p=g.attributes.position; for(let i=0;i<p.count;i++){ const vx=p.getX(i), vy=p.getY(i), vz=p.getZ(i), k=1+.07*Math.sin(vx*7.1+vz*3.3)*Math.cos(vy*6.7);
+        p.setXYZ(i,vx*k+x,vy*k+y,vz*k+z); } return g; });   // the normals stay the sphere's own: smooth (this geometry is not indexed, recomputing them would make it faceted again)
+    const m=mergeGeos(parts); m.scale(.82,.82,.82); return m; })(), trunk=new THREE.CylinderGeometry(.16,.22,1,9);
   const T=new THREE.InstancedMesh(trunk,bark,spots.length), C=leaf.map(m=>new THREE.InstancedMesh(crown,m,spots.length)), n=[0,0,0], mx=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3();
   spots.forEach(([x,z],i)=>{ const s=.85+rnd()*.5, th=1.6*s; mx.compose(v.set(x,th/2,z),q.identity(),sc.set(s,th,s)); T.setMatrixAt(i,mx);
     const k=i%3, r=1.35*s; mx.compose(v.set(x,th+r*.8,z),q.setFromAxisAngle(sc.set(0,1,0),rnd()*6),sc.set(r,r*1.1,r)); C[k].setMatrixAt(n[k]++,mx);
@@ -4615,7 +4865,7 @@ function enterMall(){
     CATALOG.forEach(it=>{ if((rs.cart||[]).includes(it.slug)){ it.taken=true; it.model.visible=false; it.tag.visible=false; it.ring.visible=false; } });
     rebuildCart(); renderMoney(); updateCartBadge(); renderList(); }
   if(!Bots.started){ Bots.started=true; const n=Math.max(0,Bots.target-1); for(let i=0;i<n;i++) botSpawn(); }
-  mallIn.msg=rs?'חזרתם לקניון, בדיוק איפה שהייתם':'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה';
+  mallIn.msg=rs?'חזרתם לקניון, בדיוק איפה שהייתם':SEASON.on?SEASON.hi:'ברוכים הבאים ל־BuyToday. המפה משמאל למעלה';
   netStart();
 }
 // the loading screen is gone: the welcome, the tour, and from now the frame rate counts
@@ -4974,13 +5224,15 @@ canvas.addEventListener('pointermove',e=>{ if(e.pointerId!==drag.id) return; dra
   if(G.state==='menu'||G.state==='edit'){ menuOrbit-=(e.clientX-drag.x)*.012; drag.x=e.clientX; return; }
   camYaw-=(e.clientX-drag.x)*.0075; drag.x=e.clientX; dragT=1.4; });
 const endDrag=e=>{ if(e.pointerId!==drag.id) return; drag.id=null; // tap-to-walk on a computer only: on a phone a tap meant to look around or to reach a button sent the shopper off somewhere
-  if(e.type==='pointerup'&&e.pointerType==='mouse'&&drag.moved<8&&performance.now()-drag.t0<400) tapWorld(e.clientX,e.clientY); };
+  if(e.type==='pointerup'&&drag.moved<8&&performance.now()-drag.t0<400){ if(e.pointerType==='mouse') tapWorld(e.clientX,e.clientY); else tapScreenOnly(e.clientX,e.clientY); } };
+function tapScreenOnly(cx,cy){ if(G.state!=='play'||G.paused) return; const r=canvas.getBoundingClientRect(); tapV.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1); tapRay.setFromCamera(tapV,camera); tapKiosk(); }
 /* One hand: a tap on the floor walks there, a tap on a product walks up to it. */
 const tapRay=new THREE.Raycaster(), tapV=new THREE.Vector2();
 let tapMark=null;
 function tapWorld(cx,cy){ if(G.state!=='play'||G.paused) return;
   const r=canvas.getBoundingClientRect(); tapV.set((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1); tapRay.setFromCamera(tapV,camera);
   const f=player.floor, mine=CATALOG.filter(i=>i.f===f&&!i.taken&&i.model.visible);
+  if(tapKiosk()) return;
   const hit=tapRay.intersectObjects(mine.map(i=>i.model),true)[0];
   if(hit){ let o=hit.object; const it=mine.find(i=>{ let q=o; while(q){ if(q===i.model) return true; q=q.parent; } return false; }); if(it&&Math.hypot(it.x-player.pos.x,it.z-player.pos.z)<40){ walkTo(itemGoal(it)); markTap(it.x,it.z,f); joyLearned(); return; } }
   const y=f*FH, dy=tapRay.ray.direction.y; if(dy>-.02) return;
@@ -4988,6 +5240,12 @@ function tapWorld(cx,cy){ if(G.state!=='play'||G.paused) return;
   if(Math.abs(x)>BX||Math.abs(z)>BZ||Math.hypot(x-player.pos.x,z-player.pos.z)>45) return;
   const sp=freeSpot(f,x,z); if(!sp) return;
   walkTo({f,x:sp.x,z:sp.z,label:''}); markTap(sp.x,sp.z,f); joyLearned(); }
+/* the screen says "tap to open": a tap on it opens that department's catalogue (from up to 9 m away) */
+function tapKiosk(){ let d=null, bt=1e9;
+  DEPTS.forEach(k=>{ const K=k.kiosk; if(!K||K.f!==player.floor||Math.hypot(K.x-player.pos.x,K.z-player.pos.z)>9) return;
+    const t=tapRay.ray.direction.dot(tmpK.copy(K.c).sub(tapRay.ray.origin)); if(t<=0||tapRay.ray.distanceToPoint(K.c)>1.05) return; if(t<bt){ bt=t; d=k; } });   // the screen is about 2 x 2.6 m
+  if(!d) return false; stopAuto(); openCatalog(d); joyLearned(); return true; }
+const tmpK=new THREE.Vector3();
 function markTap(x,z,f){ if(!tapMark){ tapMark=new THREE.Mesh(new THREE.RingGeometry(.35,.5,28),new THREE.MeshBasicMaterial({color:0x44e092,transparent:true,depthWrite:false})); tapMark.rotation.x=-Math.PI/2; scene.add(tapMark); }
   tapMark.position.set(x,f*FH+.05,z); tapMark.visible=true; tapMark.material.opacity=1; tapMark.userData.t=performance.now(); }
 canvas.addEventListener('pointerup',endDrag); canvas.addEventListener('pointercancel',endDrag);
@@ -5036,6 +5294,8 @@ function doAction(){
     openTalk();
   } else if(near.type==='kiosk'){
     openCatalog(near.d);
+  } else if(near.type==='season'){
+    openProduct(utm(SITE+SEASON.url,'mall-booth-1111'),'יום הרווקים 11.11');   // the site's own sale page: its 20 products, shown there from 11.11 at midnight
   } else if(near.type==='checkout'){
     if(SC.ok&&CO_INSIDE){ if(SC.count){ clearTrolley(); openCheckout(utm(SITE+'/checkout','counters')); } else toast('העגלה ריקה. בחרו מוצרים במחלקות','bad'); }
     else openReceipt();
@@ -5113,6 +5373,11 @@ function drawBig(){
     const w=Math.min(room,g.measureText(d.name).width+30); cx=clamp(cx,bx(x0)+w/2+12,bx(x1)-w/2-12);
     g.fillStyle='#fff'; rrect(g,cx-w/2,cz-19,w,38,19); g.fill(); g.fillStyle=d.color; g.beginPath(); g.arc(cx+w/2-13,cz,5,0,7); g.fill();
     g.fillStyle='#161a2b'; g.fillText(d.name,cx-5,cz+1); g.globalAlpha=1; });
+  mapPins(f).forEach(p=>{ const X=bx(p.bx!==undefined?p.bx:p.x), Z=bz(p.bz!==undefined?p.bz:p.z), on=dirPin&&dirPin.label===p.label; g.globalAlpha=(dirSel||dirPin)&&!on?.5:1;
+    g.font='700 18px Rubik, sans-serif'; const w=g.measureText(p.label).width+52;
+    g.fillStyle=on?p.c:'#fff'; rrect(g,X-w/2,Z-20,w,40,20); g.fill(); g.strokeStyle=p.c; g.lineWidth=on?0:3; if(!on) g.stroke();
+    g.fillStyle=on?'#fff':'#161a2b'; g.fillText(p.label,X-12,Z+1); g.font='20px sans-serif'; g.fillText(p.ico,X+w/2-20,Z+1); g.globalAlpha=1; });
+  syncMapGo();
   // you are here
   if(player.floor===f){ const X=bx(player.pos.x), Z=bz(player.pos.z), a=Math.atan2(Math.sin(player.yaw),Math.cos(player.yaw));
     g.fillStyle='rgba(47,125,225,.18)'; g.beginPath(); g.arc(X,Z,38,0,7); g.fill();
@@ -5121,6 +5386,18 @@ function drawBig(){
     g.font='700 20px Rubik, sans-serif'; const w=g.measureText('אתם כאן').width+20; g.fillStyle='#2f7de1'; rrect(g,X-w/2,Z-58,w,32,16); g.fill(); g.fillStyle='#fff'; g.fillText('אתם כאן',X,Z-41); }
   else { const t='אתם ב'+FLOOR_NAME[player.floor]; g.font='700 19px Rubik, sans-serif'; const w=g.measureText(t).width+28; g.fillStyle='#2f7de1'; rrect(g,BW/2-w/2,4,w,34,17); g.fill(); g.fillStyle='#fff'; g.fillText(t,BW/2,22); }
 }
+/* on the roof, the places that are not departments, so the map shows them and they can be picked: the pet corner
+   (review 26.10 item 2: it was nowhere on the map), the outfit shop, the games */
+const roofPins=()=>[{x:PET_ZONE.spot.x,z:PET_ZONE.spot.z,label:'פינת החיות',ico:'🐾',c:'#2bb673'},{x:SHOP_SPOT.x,z:SHOP_SPOT.z,label:'חנות BuyToday',ico:'👕',c:'#f55304'}]
+  .concat(GAME_SPOTS.map(gs=>({x:gs.x,z:gs.z,label:gs.title,ico:'🎮',c:'#7a4fd6'})));
+// the pins on a floor's map: the roof's places, and in season the 11.11 booths (where you stand: in front of them)
+const mapPins=f=>(f===2?roofPins():[]).concat(SEASON.booths.filter(b=>b.f===f).map(b=>({f,x:b.x+(b.f===2?-3:0),z:b.z+(b.f===2?0:3),bx:b.x,bz:b.z,label:'דוכן מבצעי 11.11',ico:'🏮',c:'#d7111f'})))
+  .map(p=>Object.assign({f},p));
+let dirPin=null;   // a roof place picked on the map
+function syncMapGo(){ const b=$('#mapGo'), t=dirPin?dirPin.label:dirSel&&dirSel.f===dirFloor?dirSel.name:null; b.hidden=!t||!!dirQuery.trim();
+  if(t){ b.innerHTML=svgI(ARROW,2.6)+'<span></span>'; b.querySelector('span').textContent='שיגור ל'+t; } }
+$('#mapGo').addEventListener('click',()=>{ const pin=dirPin, d=dirSel; closeDir();
+  if(pin) driveTo({f:pin.f,x:pin.x,z:pin.z,label:pin.label}); else if(d) driveTo(deptGoal(d)); });
 const deptAt0=(it,d)=>it.f===d.f&&it.x>=d.rect[0]&&it.x<=d.rect[1]&&it.z>=d.rect[2]&&it.z<=d.rect[3];
 function prodCard(it){
   const b=document.createElement('button'); b.className='prod'+(it.taken?' got':''); const n=pinNo(it);
@@ -5137,7 +5414,7 @@ function deptCard(d,its,full){
   const wantHere=its.filter(i=>pinNo(i)).length;
   el.querySelector('small').textContent=d.sub+(its.length?` · ${its.length} מוצרים`:'')+(wantHere?` · ${wantHere} ברשימה`:'');
   // a row picks the department (map and list show it); the picked one has the one button that goes there
-  el.querySelector('.drow').addEventListener('click',()=>{ if(full) return; dirSel=d; drawBig(); renderDepts(); $('#dscroll').scrollTop=0; });
+  el.querySelector('.drow').addEventListener('click',()=>{ if(full) return; dirSel=d; dirPin=null; drawBig(); renderDepts(); $('#dscroll').scrollTop=0; });
   if(!full) return el;
   const go=document.createElement('button'); go.className='takeme'; go.innerHTML=svgI(ARROW,2.6)+'קח אותי לשם'; go.addEventListener('click',()=>{ closeDir(); driveTo(deptGoal(d)); }); el.appendChild(go);
   if(its.length){ const row=document.createElement('div'); row.className='prods'; its.forEach(it=>row.appendChild(prodCard(it))); el.appendChild(row); }
@@ -5156,27 +5433,28 @@ function renderDepts(){
     if(hitD.length){ const h=document.createElement('div'); h.className='sect'; h.textContent='מחלקות'; box.appendChild(h); hitD.forEach(d=>box.appendChild(deptCard(d,deptItems(d),true))); }
     return;
   }
-  if(dirSel&&dirSel.f===dirFloor){ const back=document.createElement('button'); back.className='sect back'; back.textContent='› כל המחלקות ב'+FLOOR_NAME[dirFloor]; back.addEventListener('click',()=>{ dirSel=null; drawBig(); renderDepts(); }); box.appendChild(back);
+  if(dirSel&&dirSel.f===dirFloor){ const back=document.createElement('button'); back.className='sect back'; back.textContent='› כל המחלקות ב'+FLOOR_NAME[dirFloor]; back.addEventListener('click',()=>{ dirSel=null; dirPin=null; drawBig(); renderDepts(); }); box.appendChild(back);
     box.appendChild(deptCard(dirSel,deptItems(dirSel),true)); return; }
   const h=document.createElement('div'); h.className='sect'; h.textContent='המחלקות ב'+FLOOR_NAME[dirFloor]+' · בחרו אחת'; box.appendChild(h);
   DEPTS.filter(d=>d.f===dirFloor).forEach(d=>box.appendChild(deptCard(d,deptItems(d))));
 }
-function setDirFloor(f){ dirFloor=f; if(dirSel&&dirSel.f!==f) dirSel=null;
+function setDirFloor(f){ dirFloor=f; if(dirSel&&dirSel.f!==f) dirSel=null; if(dirPin&&dirPin.f!==f) dirPin=null;
   const fg=$('#floorGo'); fg.hidden=f===player.floor; fg.textContent=(f>player.floor?'⬆ ':'⬇ ')+'קפיצה ל'+['קומת הקרקע','קומה 1','גג'][f]; document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.f===f)); drawBig(); renderDepts(); }
-function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirQuery=''; $('#dirSearch').value=''; dirSel=null;
+function openDir(){ if(G.state!=='play') return; G.paused=true; dirEl.hidden=false; dirQuery=''; $('#dirSearch').value=''; dirSel=null; dirPin=null;
   [0,1,2].forEach(f=>{ $('#tab'+f).textContent=''; });
   setDirFloor(player.floor); $('#dscroll').scrollTop=0; }
 function closeDir(){ G.paused=false; dirEl.hidden=true; last=performance.now(); try{ document.activeElement.blur(); }catch(e){} }
 ui.mapBtn.addEventListener('click',openDir);
 $('#dirClose').addEventListener('click',closeDir);
 dirEl.addEventListener('click',e=>{ if(e.target===dirEl) closeDir(); });
-$('#dirSearch').addEventListener('input',e=>{ dirQuery=e.target.value; renderDepts(); });
+$('#dirSearch').addEventListener('input',e=>{ dirQuery=e.target.value; renderDepts(); syncMapGo(); });
 document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setDirFloor(+b.dataset.f)));
 big.addEventListener('click',e=>{ const r=big.getBoundingClientRect(); const px=(e.clientX-r.left)/r.width*BW, pz=(e.clientY-r.top)/r.height*BH;
   const x=(px-PAD)/(BW-2*PAD)*2*BX-BX, z=(pz-PAD)/(BH-2*PAD)*2*BZ-BZ;
   const it=CATALOG.find(i=>i.f===dirFloor&&!i.taken&&(pinNo(i)||(dirSel&&deptAt0(i,dirSel)))&&Math.hypot(i.x-x,i.z-z)<2); if(it){ closeDir(); driveTo(itemGoal(it)); return; }
+  { const pin=mapPins(dirFloor).find(p=>Math.abs((p.bx!==undefined?p.bx:p.x)-x)<4.5&&Math.abs((p.bz!==undefined?p.bz:p.z)-z)<1.6); if(pin){ dirPin=dirPin&&dirPin.label===pin.label?null:pin; dirSel=null; drawBig(); renderDepts(); return; } }
   if(Math.abs(x)<2.5&&z>SH.z0-2&&z<SH.z1+2&&dirFloor!==player.floor){ closeDir(); driveTo({f:dirFloor,x:0,z:dirFloor?SH.z0-2.6:SH.z1+2.6,label:FLOOR_NAME[dirFloor]}); return; }
-  const d=DEPTS.find(d=>d.f===dirFloor&&x>=d.rect[0]&&x<=d.rect[1]&&z>=d.rect[2]&&z<=d.rect[3]); if(d){ dirSel=dirSel===d?null:d; drawBig(); renderDepts(); } });
+  const d=DEPTS.find(d=>d.f===dirFloor&&x>=d.rect[0]&&x<=d.rect[1]&&z>=d.rect[2]&&z<=d.rect[3]); if(d){ dirSel=dirSel===d?null:d; dirPin=null; drawBig(); renderDepts(); } });
 
 /* ---------- my cart ---------- */
 
@@ -5654,9 +5932,9 @@ function buildClawCabinet(gs,Y,f){ const g=new THREE.Group(), body=mat(0xf55304,
   box(C.r*2,.012,C.r*2,M.black,C.x,.972,C.z,g,false);
   box(1.6,.12,.5,M.dark,0,.98,.92,g); box(.1,.18,.1,M.red,-.3,1.12,.95,g,false); box(.16,.06,.16,M.ledCyan,.3,1.06,.95,g,false);
   box(.36,.22,.06,M.black,-.5,.55,.71,g,false);   // the prize door
-  place(g,gs.mx,Y,gs.mz,-Math.PI/2); solid(f,gs.mx,gs.mz,1.5,1.7);
+  place(g,gs.mx,Y,gs.mz,Math.PI/2); solid(f,gs.mx,gs.mz,1.5,1.7);
   // the moving parts live in the scene (not merged with the building): a group in the cabinet's own space
-  const r=new THREE.Group(); r.position.set(gs.mx,Y,gs.mz); r.rotation.y=-Math.PI/2; scene.add(r); CLAW3.root=r;
+  const r=new THREE.Group(); r.position.set(gs.mx,Y,gs.mz); r.rotation.y=Math.PI/2; scene.add(r); CLAW3.root=r;
   const steel=mat(0xd5d9e0,{metalness:.7,roughness:.25}), dark=mat(0x2b2f3d,{metalness:.4,roughness:.4});
   [-.6,.6].forEach(z=>{ const rail=new THREE.Mesh(new THREE.BoxGeometry(1.42,.03,.04),steel); rail.position.set(0,2.26,z); r.add(rail); });
   const bridge=new THREE.Mesh(new THREE.BoxGeometry(.05,.04,1.24),dark); bridge.position.y=2.24; r.add(bridge); CLAW3.bridge=bridge;
@@ -6543,7 +6821,7 @@ $('#cardImg').addEventListener('click',()=>cardGalStep(1));
   $('#cardGal').addEventListener('touchend',e=>{ if(sx===null) return; const dx=e.changedTouches[0].clientX-sx; sx=null; if(Math.abs(dx)>28) cardGalStep(dx<0?1:-1); },{passive:true}); }
 $('#cardMoreBtn').addEventListener('click',()=>{ const m=$('#cardMore'), open=m.hidden; m.hidden=!open; $('#cardMoreBtn').setAttribute('aria-expanded',String(open)); syncCardSpace(); buzz(6); });
 
-const ACT_ICON={exit:'door',enter:'door',car:'car',kids:'view',alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
+const ACT_ICON={season:'deal',exit:'door',enter:'door',car:'car',kids:'view',alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
 let actKind='';
 function setActKind(k){ if(k===actKind) return; actKind=k; ui.act.dataset.k=k; ui.act.querySelector('svg').innerHTML=ICONS[ACT_ICON[k]||'cart']; }
 const liftPad=$('#liftPad');
@@ -6559,8 +6837,12 @@ function updateNear(){ syncMini();
   if(inCabin()) near={type:'ride',to:elev.floor===TOP?0:elev.floor+1};
   else if(!elev.moving && elev.floor!==f && atCall(f)) near={type:'call'};
   if(!near){ let best=1; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), cx=p.x+fx*1.2, cz=p.z+fz*1.2;
+    /* standing at a catalogue screen, the screen wins: the products shown beside it used to take the button,
+       so walking up to the screen offered "to the cart" and the catalogue never opened */
+    for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.1||Math.hypot(k.x-cx,k.z-cz)<1.5)){ near={type:'kiosk',d}; best=0; break; } }
     // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
-    CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
+    if(!near) for(const b of SEASON.booths){ if(b.f===f&&(Math.hypot(b.x-p.x,b.z-p.z)<3.6||Math.hypot(b.x-cx,b.z-cz)<2.8)){ near={type:'season'}; break; } }
+    if(!near) CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
     if(!near&&f===TOP){ for(const gs of GAME_SPOTS){ if(Math.hypot(gs.x-p.x,gs.z-p.z)<2.1||Math.hypot(gs.x-cx,gs.z-cz)<1.6){ near={type:'game',gs}; break; } }
       if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'};
       if(!near&&(Math.hypot(PET_ZONE.spot.x-p.x,PET_ZONE.spot.z-p.z)<2.4||(p.x>PET_ZONE.x0&&p.x<PET_ZONE.x1&&p.z>PET_ZONE.z0&&p.z<PET_ZONE.z1))) near={type:'pets'}; }
@@ -6583,7 +6865,7 @@ function updateNear(){ syncMini();
   if(near.type==='item'){ ui.hint.hidden=true; ui.actLabel.textContent='לעגלה'; ui.act.classList.remove('off'); }
   else if(near.type==='ride') setHint('מעלית','בחרו קומה, או '+(near.to>elev.floor?'למעלה':'למטה')+' ל'+FLOOR_SHORT[near.to],false,near.to>elev.floor?'למעלה':'למטה');
   else if(near.type==='call') setHint('מעלית','המעלית בקומה אחרת',false,'הזמנה');
-  else if(near.type==='game') setHint(near.gs.title,near.gs.id==='claw'?(clawPlayedToday()?'שיחקתם היום · משחק חינם הבא מחר':'משחק חינם אחד ביום · תופסים כדור ומקבלים מטבעות'):'משחקים וצוברים מטבעות · יש לכם '+Coins.n,false,'שחק');
+  else if(near.type==='game') setHint('🎮 '+near.gs.title,near.gs.id==='claw'?(clawPlayedToday()?'שיחקתם היום · משחק חינם הבא מחר':near.gs.how+' · חינם פעם ביום'):near.gs.how+' · מרוויחים מטבעות',false,'שחק');
   else if(near.type==='exit') setHint('יציאה לרחוב','הרכב של BuyToday מחכה בחוץ · נסיעה ל־BuyToday Kids',false,'יציאה');
   else if(near.type==='enter') setHint('קניון BuyToday','חזרה פנימה, לכל המחלקות',false,'כניסה');
   else if(near.type==='car') setHint(OUT.parked==='home'?'נסיעה ל־BuyToday Kids 🚗':'חזרה לקניון BuyToday 🚗',OUT.parked==='home'?'הקניון החדש לילדים, ממש בהמשך הרחוב':'נוסעים בחזרה לכניסה',false,'נסיעה');
@@ -6591,8 +6873,9 @@ function updateNear(){ syncMini();
   else if(near.type==='pets') setHint('פינת החיות','חבר שהולך איתכם · יש לכם '+Coins.n+' מטבעות',false,'לבחור');
   else if(near.type==='shop') setHint('חנות BuyToday',(MESHY_HERO?'תלבושות חדשות למטבעות':'חולצות וכובעים למטבעות')+' · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
-  else if(near.type==='kiosk'&&near.store){ ui.hint.hidden=true; ui.actLabel.textContent='לקטלוג'; ui.act.classList.remove('off'); }   // quietly: just the button
-  else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'פתח'); }
+  else if(near.type==='season') setHint('🏮 דוכן מבצעי 11.11',Date.now()<SEASON.start?'20 מוצרים עד 20% הנחה · נפתח ב-11.11 בחצות':'20 מוצרים עד 20% הנחה · היום בלבד',false,'למבצע');
+  else if(near.type==='kiosk'&&near.store){ const n=catTotal(near.d); setHint('קטלוג המחלקה · '+near.d.name,n?`כל ${n} המוצרים, לא רק מה שעל המדפים`:'כל המוצרים במחלקה',false,'לקטלוג'); }   // in a shop away from any product: the button says what it opens
+  else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג המחלקה · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'לקטלוג'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
 }
 function updateArrow(t){ arrow.visible=false; return;
@@ -6909,7 +7192,7 @@ function qTick(raw,now){
   Q.steady+=2; if(Q.steady>=20){ Q.steady=-1e9; try{ localStorage.setItem('bt-q4',String(Q.lv)); }catch(e){} }   // this level holds here: start at it next time
 }
 function fadeTapMark(){ if(!tapMark||!tapMark.visible) return; const a=1-(performance.now()-tapMark.userData.t)/900; if(a<=0||!auto.on) tapMark.visible=false; else { tapMark.material.opacity=a; tapMark.scale.setScalar(1+(1-a)*.4); } }
-function loop(now){ fadeTapMark(); kioskGlow(now/1000);
+function loop(now){ fadeTapMark(); kioskGlow(now/1000); seasonTick(now/1000);
   const raw=(now-last)/1000, dt=Math.min(.05,raw); last=now; const t=now/1000; frame++;
   if(G.state==='play'&&!G.paused) qTick(raw,now);
   // a mini-game covers the whole screen: don't spend the phone's GPU on the mall behind it
