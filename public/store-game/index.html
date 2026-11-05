@@ -314,6 +314,7 @@
   #act:active{transform:translateY(3px);box-shadow:0 2px 0 var(--sh);}
   /* the button says what it will do: its colour and icon change with the action, not only the word */
   #act[data-k="kiosk"]{--bg:#2f7de1;--sh:#1a4f99;}
+  #act[data-k="season"]{--bg:#d7111f;--sh:#8a0610;}
   #act[data-k="game"]{--bg:#b5179e;--sh:#7a0f6a;}
   #act[data-k="shop"]{--bg:#d4a017;--sh:#8d6a0c;}
   #act[data-k="up"],#act[data-k="down"],#act[data-k="call"]{--bg:#3949ab;--sh:#232e75;}
@@ -3984,6 +3985,72 @@ function seasonSign(w,h,x,y,z,ry,parent){ const m=new THREE.MeshBasicMaterial({m
   const g=new THREE.Group(); [0,Math.PI].forEach(a=>{ const pl=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m); pl.rotation.y=a; pl.position.z=a?-.02:.02; g.add(pl); });   // a face each way: never read backwards
   const rod=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,w+.3,8),new THREE.MeshStandardMaterial({color:0xe9b23c,metalness:.6,roughness:.35})); rod.rotation.z=Math.PI/2; rod.position.y=h/2+.04; g.add(rod);
   g.position.set(x,y,z); g.rotation.y=ry||0; parent.add(g); return g; }
+/* The 11.11 booth: a red and gold pavilion in the open side of the lobby, beside the way in (where
+   the walks cross it stood behind the gadget stall and under the giant screen, hidden from the lobby): four
+   lacquered columns, a two-tier roof with upturned eaves, lanterns at its corners, a counter, and on both faces a screen
+   cycling through the deals (the biggest discounts first). At it, the button opens all the deals. */
+function seasonDealsTex(){ const c=document.createElement('canvas'); c.width=640; c.height=400; const g=c.getContext('2d'), t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
+  const deals=CATALOG.filter(i=>i.old&&i.old>i.price).sort((a,b)=>(b.old-b.price)/b.old-(a.old-a.price)/a.old).slice(0,10), imgs={};
+  deals.forEach(it=>{ if(it.img){ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>{ imgs[it.slug]=im; }; im.src=it.img; } });
+  let k=-1; const draw=()=>{ const it=deals.length?deals[(k=(k+1)%deals.length)]:null;
+    const gr=g.createLinearGradient(0,0,0,400); gr.addColorStop(0,'#c10c1a'); gr.addColorStop(1,'#7d0410'); g.fillStyle=gr; g.fillRect(0,0,640,400);
+    g.strokeStyle='#ffd36b'; g.lineWidth=8; g.strokeRect(10,10,620,380);
+    g.direction='rtl'; g.textAlign='center'; g.fillStyle='#ffd36b'; g.font='900 46px Rubik,sans-serif'; g.fillText('מבצעי 11.11',320,66);
+    if(!it){ g.fillStyle='#fff'; g.font='700 30px Rubik,sans-serif'; g.fillText('כל ההנחות במקום אחד',320,220); t.needsUpdate=true; return; }
+    g.fillStyle='#fff'; g.beginPath(); g.roundRect?g.roundRect(30,92,250,250,18):g.rect(30,92,250,250); g.fill();
+    const im=imgs[it.slug]; if(im){ const sc=Math.min(230/im.width,230/im.height); g.drawImage(im,155-im.width*sc/2,217-im.height*sc/2,im.width*sc,im.height*sc); }
+    g.textAlign='right'; g.fillStyle='#fff'; g.font='700 28px Rubik,sans-serif'; const words=(it.short||it.name).split(' '); let line='', y=140, n=0;
+    for(const w of words){ const tl=line?line+' '+w:w; if(g.measureText(tl).width>300&&line){ g.fillText(line,610,y); y+=36; line=w; if(++n===2) break; } else line=tl; } if(n<2&&line) g.fillText(line,610,y);
+    g.fillStyle='#ffd36b'; g.font='900 64px Rubik,sans-serif'; g.fillText(shekel(it.price),610,288);
+    g.fillStyle='rgba(255,255,255,.75)'; g.font='600 28px Rubik,sans-serif'; const o=shekel(it.old); g.fillText(o,610,330); const w=g.measureText(o).width; g.fillRect(610-w,320,w,3);
+    const pc=Math.round((1-it.price/it.old)*100); g.fillStyle='#ffd36b'; g.beginPath(); g.arc(270,110,44,0,7); g.fill(); g.fillStyle='#9e0613'; g.textAlign='center'; g.font='900 30px Rubik,sans-serif'; g.fillText('-'+pc+'%',270,121);
+    t.needsUpdate=true; };
+  draw(); setInterval(()=>{ if(player.floor===0) draw(); },3500); return t; }
+function seasonBooth(P,parent){ const x=-7.6, z=28.6, ry=Math.PI/2, g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry; parent.add(g); SEASON.booth={x,z};   // its front to the lobby's middle
+  const red=new THREE.MeshStandardMaterial({color:0xb30d18,roughness:.4}), dark=new THREE.MeshStandardMaterial({color:0x6e0710,roughness:.6}), gold=P.gold,
+        tile=new THREE.MeshStandardMaterial({color:0x8f0a14,roughness:.55,flatShading:true});
+  const B=(w,h,d,m,px,py,pz)=>{ const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); o.position.set(px,py,pz); o.castShadow=true; o.receiveShadow=true; g.add(o); return o; };
+  B(4.6,.22,3.4,dark,0,.11,0); B(4.7,.05,3.5,gold,0,.24,0);                                       // the platform, a gold edge
+  [[-2,-1.4],[2,-1.4],[-2,1.4],[2,1.4]].forEach(([cx,cz])=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(.13,.15,2.75,14),red); c.position.set(cx,1.6,cz); c.castShadow=true; g.add(c);
+    [.35,2.85].forEach(y=>{ const r=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.12,14),gold); r.position.set(cx,y,cz); g.add(r); }); });
+  B(4.3,.32,.1,red,0,2.75,1.42); B(4.3,.32,.1,red,0,2.75,-1.42); B(.1,.32,2.9,red,2.02,2.75,0); B(.1,.32,2.9,red,-2.02,2.75,0);   // the beam round the top
+  // two-tier roof: a low wide pyramid, its corners turned up in gold, then a small one with a finial
+  const roof=(w,d,h,y)=>{ const geo=new THREE.ConeGeometry(1,1,4,1,true); geo.rotateY(Math.PI/4); const m=new THREE.Mesh(geo,tile); m.scale.set(w*.72,h,d*.72); m.position.y=y+h/2; m.castShadow=true; g.add(m);
+    const s=new THREE.Mesh(new THREE.BoxGeometry(w*1.02,.09,d*1.02),gold); s.position.y=y; g.add(s);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{ const tip=new THREE.Mesh(new THREE.ConeGeometry(.09,.5,8),gold); tip.position.set(a*w/2,y+.18,b*d/2); tip.rotation.set(-b*.9,0,a*.9); g.add(tip); }); };
+  roof(5.4,4.2,.95,2.95); roof(2.6,2.1,.75,3.95);
+  const fin=new THREE.Mesh(new THREE.SphereGeometry(.16,14,10),gold); fin.position.y=4.85; g.add(fin);
+  // the counter, front and back (the walks come from both)
+  [1,-1].forEach(s=>{ B(3.2,1,.45,red,0,.72,s*1.0); B(3.3,.08,.55,gold,0,1.26,s*1.0); });
+  // the deals screen, a face each way, and the sign over it
+  const tex=seasonDealsTex(), sm=new THREE.MeshBasicMaterial({map:tex,toneMapped:false});
+  [0,Math.PI].forEach(a=>{ const pl=new THREE.Mesh(new THREE.PlaneGeometry(2.6,1.625),sm); pl.rotation.y=a; pl.position.set(0,1.95,a?-.05:.05); g.add(pl); });
+  B(2.75,1.75,.08,dark,0,1.95,0);
+  [1,-1].forEach(s=>{ const sg=new THREE.Mesh(new THREE.PlaneGeometry(3.6,.62),new THREE.MeshBasicMaterial({map:canvasTex(512,88,(c,W,H)=>{ c.fillStyle='#b30d18'; c.fillRect(0,0,W,H); c.strokeStyle='#ffd36b'; c.lineWidth=5; c.strokeRect(4,4,W-8,H-8);
+      c.fillStyle='#ffd36b'; c.textAlign='center'; c.textBaseline='middle'; c.direction='rtl'; c.font='900 46px Rubik,sans-serif'; c.fillText('🏮 דוכן מבצעי 11.11 🏮',W/2,H/2+2); }),toneMapped:false}));
+    sg.position.set(0,2.75,s*1.48); if(s<0) sg.rotation.y=Math.PI; g.add(sg); });
+  // lanterns under the eaves
+  seasonLanterns([[-2.3,-1.85],[2.3,-1.85],[-2.3,1.85],[2.3,1.85]].map(([a,b])=>({x:x+a*Math.cos(ry)+b*Math.sin(ry),y:2.25,z:z-a*Math.sin(ry)+b*Math.cos(ry),s:.55,top:2.95})),P,parent);
+  solid(0,x,z,3.6,4.8); }
+// a big "11.11" on the lobby floor, between the doors and the desk
+function seasonFloorMark(parent){ const m=new THREE.Mesh(new THREE.CircleGeometry(2.2,48),new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,
+    map:canvasTex(512,512,(g,W,H)=>{ g.fillStyle='#c10c1a'; g.beginPath(); g.arc(W/2,H/2,W/2-6,0,7); g.fill(); g.strokeStyle='#ffd36b'; g.lineWidth=14; g.beginPath(); g.arc(W/2,H/2,W/2-24,0,7); g.stroke();
+      g.fillStyle='#ffd36b'; g.textAlign='center'; g.textBaseline='middle'; g.font='900 150px Rubik,sans-serif'; g.fillText('11.11',W/2,H/2-30); g.direction='rtl'; g.font='800 52px Rubik,sans-serif'; g.fillStyle='#fff'; g.fillText('יום הרווקים',W/2,H/2+92); })}));
+  m.rotation.x=-Math.PI/2; m.position.set(0,.03,BZ-3.6); m.renderOrder=2; parent.add(m); }
+// confetti: red and gold flakes drifting down the atrium and the lobby, turning as they fall
+function seasonConfetti(){ const N=420, pos=new Float32Array(N*3), col=new Float32Array(N*3), sp=[], c1=new THREE.Color(0xe0182a), c2=new THREE.Color(0xffc94a), c3=new THREE.Color(0xffffff);
+  const spot=()=>{ const r=Math.random(); return r<.6?[VOID.minX+Math.random()*(VOID.maxX-VOID.minX),VOID.minZ+Math.random()*(VOID.maxZ-VOID.minZ),11.5]:[-6+Math.random()*12,10+Math.random()*20,5.6]; };
+  for(let i=0;i<N;i++){ const [x,z,top]=spot(); pos.set([x,Math.random()*top,z],i*3); const c=[c1,c2,c1,c3][i%4]; col.set([c.r,c.g,c.b],i*3); sp.push({v:.45+Math.random()*.5,w:Math.random()*6,top,x0:x,z0:z}); }
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.09,vertexColors:true,toneMapped:false})); pts.frustumCulled=false; scene.add(pts); SEASON.conf={pts,sp}; }
+// fireworks over the town, seen from the roof at night: a burst every couple of seconds, in red, gold and white
+const fwV=new THREE.Vector3();
+function seasonFireworks(parent){ const N=160, B=3, pts=[];
+  const spark=canvasTex(64,64,(g,W,H)=>{ const r=g.createRadialGradient(W/2,H/2,0,W/2,H/2,W/2); r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.25,'rgba(255,255,255,.85)'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=r; g.fillRect(0,0,W,H); });   // a soft round spark, not a square
+  for(let b=0;b<B;b++){ const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(N*3),3));
+    const m=new THREE.PointsMaterial({size:3.2,map:spark,color:[0xff3040,0xffd060,0xffffff][b],transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,fog:false});
+    const p=new THREE.Points(geo,m); p.frustumCulled=false; p.visible=false; parent.add(p); pts.push({p,t:2.41-b*.8,dirs:Array.from({length:N},()=>new THREE.Vector3().randomDirection?new THREE.Vector3().randomDirection():new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).normalize()),c:new THREE.Vector3()}); }
+  SEASON.fw=pts; }
 function buildSeason(){ if(!SEASON.on) return;
   const P=seasonLanternParts(), G=[0,1,2].map(()=>{ const g=new THREE.Group(); g.name='season'; scene.add(g); return g; }); SEASON.g=G;
   const atr=new THREE.Group(); atr.name='season-atrium'; scene.add(atr); SEASON.atr=atr;
@@ -4001,7 +4068,7 @@ function buildSeason(){ if(!SEASON.on) return;
     [10.6,8.9,7.2].forEach((y,k)=>{ if(k===2&&i%2) return; LA.push({x,y:y-(i%3)*.35,z,s:1.15-k*.12,top:k?y+1.3:2*FH-.1}); }); });
   seasonLanterns(LA,P,atr);
   // the roof: one under every few bulbs of the court's string lights (Y+4.1, sagging by .9 in the middle)
-  const Y=2*FH, LR=[]; for(const z of [11.5,16.5,21.5,26.5]) for(let k=3;k<46;k+=5){ const t=k/46, x=-22.7+t*45.4, y=Y+4.1-Math.sin(t*Math.PI)*.9; LR.push({x,y:y-.85,z,s:.62,top:y}); }
+  const Y=2*FH, LR=[]; for(const z of [11.5,16.5,21.5,26.5]) for(let k=3;k<46;k+=5){ const t=k/46, x=-22.7+t*45.4, y=Y+4.1-Math.sin(t*Math.PI)*.9; if(y<Y+3.75) continue; LR.push({x,y:y-.42,z,s:.5,top:y}); }   // just under the string, and only where it runs high: in its sag they hung at the camera's height
   seasonLanterns(LR,P,G[2]);
   // banners: over the lobby, facing the doors; in the atrium, high, across it; over the doors outside
   seasonSign(5.2,1.62,0,4.15,BZ-13,0,G[0]);   // in from the doors, where it is seen from the way in; right by them it filled the top of the view
@@ -4017,11 +4084,22 @@ function buildSeason(){ if(!SEASON.on) return;
   [[-1,24.5],[1,24.5],[-1,17.5],[1,17.5]].forEach(([s,z],i)=>{ const x=s*5.4;
     gift(x,z,1.1,.9,.3*i,boxM[i%3]); gift(x+s*.15,z+.1,.8,.62,.5+i,boxM[(i+1)%3],.9); gift(x+s*.95,z-.55,.6,.48,-.4,boxM[(i+2)%3]); gift(x-s*.7,z+.7,.5,.4,.9,boxM[i%3]);
     solid(0,x,z,2.4,2.4); });
+  seasonBooth(P,G[0]); seasonFloorMark(G[0]); seasonConfetti(); seasonFireworks(G[2]);
   SEASON.lan=[...G[0].children,...G[1].children,...G[2].children,...atr.children];
 }
 function seasonTick(t){ if(!SEASON.on||!SEASON.g.length) return; const f=player.floor;
   SEASON.g.forEach((g,i)=>{ g.visible=i===f; }); SEASON.atr.visible=f<2;
-  SEASON.glow.forEach(m=>{ m.emissiveIntensity=(TOWN.night&&f===2?1.1:.5)+.08*Math.sin(t*1.7); }); }   // a slow breath of light; brighter in the roof's night
+  SEASON.glow.forEach(m=>{ m.emissiveIntensity=(TOWN.night&&f===2?1.1:.5)+.08*Math.sin(t*1.7); });
+  const dt=Math.min(.05,t-(SEASON.t||t)); SEASON.t=t;
+  const C=SEASON.conf; if(C){ C.pts.visible=f<2&&!outsideNow; if(C.pts.visible){ const a=C.pts.geometry.attributes.position.array;
+      C.sp.forEach((s,i)=>{ let y=a[i*3+1]-s.v*dt; if(y<0) y=s.top; a[i*3+1]=y; a[i*3]=s.x0+Math.sin(t*1.3+s.w)*.35; a[i*3+2]=s.z0+Math.cos(t*1.1+s.w)*.35; });
+      C.pts.geometry.attributes.position.needsUpdate=true; } }
+  if(SEASON.fw&&f===2) SEASON.fw.forEach(F=>{ F.t+=dt; const T=2.4;
+    if(F.t>T){ F.t=0; const r=50+Math.random()*25;   // a point in the upper part of the frame, 50-75 m out: seen, and short of the town's blocks (82 m on)
+      fwV.set((Math.random()-.5)*1.3,.35+Math.random()*.4,.5).unproject(camera).sub(camera.position).normalize();
+      F.c.copy(camera.position).addScaledVector(fwV,r); if(F.c.y<2*FH+8) F.c.y=2*FH+8; }
+    if(F.t<0){ F.p.visible=false; return; } F.p.visible=true; const u=F.t/T, R=14*(1-Math.pow(1-u,3)), drop=6*u*u, arr=F.p.geometry.attributes.position.array;
+    F.dirs.forEach((d,i)=>{ arr[i*3]=F.c.x+d.x*R; arr[i*3+1]=F.c.y+d.y*R-drop; arr[i*3+2]=F.c.z+d.z*R; }); F.p.geometry.attributes.position.needsUpdate=true; F.p.material.opacity=1-u*u; }); }   // a slow breath of light; brighter in the roof's night
 buildShell(); buildElevator(); buildGround(); buildUpper(); buildRoof(); if(MALL2) buildStores(); buildStalls(); markDyn(()=>{ buildItems(); buildFronts(); buildWayfinding(); }); buildOutside(); markDyn(buildKiosks); buildJumbo(); buildAdBoard(); buildSeason();
 function mergeGeos(gs){
   let nv=0, ni=0; gs.forEach(g=>{ nv+=g.attributes.position.count; ni+=g.index?g.index.count:g.attributes.position.count; });
@@ -5173,6 +5251,8 @@ function doAction(){
     openTalk();
   } else if(near.type==='kiosk'){
     openCatalog(near.d);
+  } else if(near.type==='season'){
+    const d=DEPTS.find(d=>d.id==='deal'); if(d) openCatalog(d);
   } else if(near.type==='checkout'){
     if(SC.ok&&CO_INSIDE){ if(SC.count){ clearTrolley(); openCheckout(utm(SITE+'/checkout','counters')); } else toast('העגלה ריקה. בחרו מוצרים במחלקות','bad'); }
     else openReceipt();
@@ -6695,7 +6775,7 @@ $('#cardImg').addEventListener('click',()=>cardGalStep(1));
   $('#cardGal').addEventListener('touchend',e=>{ if(sx===null) return; const dx=e.changedTouches[0].clientX-sx; sx=null; if(Math.abs(dx)>28) cardGalStep(dx<0?1:-1); },{passive:true}); }
 $('#cardMoreBtn').addEventListener('click',()=>{ const m=$('#cardMore'), open=m.hidden; m.hidden=!open; $('#cardMoreBtn').setAttribute('aria-expanded',String(open)); syncCardSpace(); buzz(6); });
 
-const ACT_ICON={exit:'door',enter:'door',car:'car',kids:'view',alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
+const ACT_ICON={season:'deal',exit:'door',enter:'door',car:'car',kids:'view',alfred:'chat',item:'cart',kiosk:'grid',game:'gaming',shop:'shirt',up:'up',down:'down',call:'bell',checkout:'checkout',stop:'x'};
 let actKind='';
 function setActKind(k){ if(k===actKind) return; actKind=k; ui.act.dataset.k=k; ui.act.querySelector('svg').innerHTML=ICONS[ACT_ICON[k]||'cart']; }
 const liftPad=$('#liftPad');
@@ -6715,6 +6795,7 @@ function updateNear(){ syncMini();
        so walking up to the screen offered "to the cart" and the catalogue never opened */
     for(const d of DEPTS){ const k=d.kiosk; if(k&&k.f===f&&(Math.hypot(k.x-p.x,k.z-p.z)<2.1||Math.hypot(k.x-cx,k.z-cz)<1.5)){ near={type:'kiosk',d}; best=0; break; } }
     // a product on the hot-deal stage sits behind the stage's rim, so the cart stops further out: give it a longer reach
+    if(!near&&SEASON.booth&&f===0&&(Math.hypot(SEASON.booth.x-p.x,SEASON.booth.z-p.z)<3.6||Math.hypot(SEASON.booth.x-cx,SEASON.booth.z-cz)<2.8)) near={type:'season'};
     if(!near) CATALOG.forEach(it=>{ if(it.taken||it.f!==f) return; const reach=it.y>0?3.8:2.3; const d=Math.min(Math.hypot(it.x-p.x,it.z-p.z),Math.hypot(it.x-cx,it.z-cz))/reach; if(d<best){ best=d; near={type:'item',it}; } });
     if(!near&&f===TOP){ for(const gs of GAME_SPOTS){ if(Math.hypot(gs.x-p.x,gs.z-p.z)<2.1||Math.hypot(gs.x-cx,gs.z-cz)<1.6){ near={type:'game',gs}; break; } }
       if(!near&&(Math.hypot(SHOP_SPOT.x-p.x,SHOP_SPOT.z-p.z)<2.4||Math.hypot(SHOP_SPOT.x-cx,SHOP_SPOT.z-cz)<1.8)) near={type:'shop'};
@@ -6746,6 +6827,7 @@ function updateNear(){ syncMini();
   else if(near.type==='pets') setHint('פינת החיות','חבר שהולך איתכם · יש לכם '+Coins.n+' מטבעות',false,'לבחור');
   else if(near.type==='shop') setHint('חנות BuyToday',(MESHY_HERO?'תלבושות חדשות למטבעות':'חולצות וכובעים למטבעות')+' · יש לכם '+Coins.n+' מטבעות',false,'לחנות');
   else if(near.type==='alfred') setHint('אלפרד, הנציג שלנו',PHONE.matches?'שאלו אותי כל שאלה':'שאלו אותי על כל מוצר, מחיר, משלוח או אחריות',false,'דברו');
+  else if(near.type==='season') setHint('🏮 דוכן מבצעי 11.11','כל ההנחות של יום הרווקים במקום אחד',false,'למבצעים');
   else if(near.type==='kiosk'&&near.store){ const n=catTotal(near.d); setHint('קטלוג המחלקה · '+near.d.name,n?`כל ${n} המוצרים, לא רק מה שעל המדפים`:'כל המוצרים במחלקה',false,'לקטלוג'); }   // in a shop away from any product: the button says what it opens
   else if(near.type==='kiosk'){ const n=catTotal(near.d); setHint('קטלוג המחלקה · '+near.d.name,n?`כל ${n} המוצרים`:'כל המוצרים במחלקה',false,'לקטלוג'); }
   else { const n=CATALOG.filter(i=>i.taken).length; setHint('קופה',n?`${n} מוצרים · ${shekel(cartTotal())}`:'העגלה ריקה',!n,'לקופה'); }
