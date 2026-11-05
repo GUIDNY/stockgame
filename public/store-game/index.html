@@ -2881,8 +2881,8 @@ function meshyAcc(model,o){
 }
 /* fitted by eye, front and three-quarter, on both figures. sq: the skull in the head's box (fractions of it): centre, radii,
    and the rim line; the boy's box takes in his tall hair, the girl's her long hair at the back */
-const HAT_FIT={cap:{k:1.05,brim:.62,droop:.24},beanie:{top:1.16,k:1.04},
-  sq:{m:{x:.5,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03,capCut:.68}}};   // capCut: her brows reach .66   // bd: how much lower the beanie's rim sits
+const HAT_FIT={cap:{k:1.09,brim:.66,droop:.2},beanie:{top:1.16,k:1.04},
+  sq:{m:{x:.5,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1,capCut:.555},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03,capCut:.68}}};   // capCut: her brows reach .66   // bd: how much lower the beanie's rim sits
 /* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
    taller than the head, a small pompom; BuyToday orange, the logo on the cuff */
 /* hat colours: the hat itself; its seams, cuff and brim are shades of it */
@@ -2916,25 +2916,38 @@ function capMat(col){ const key='c'+col; if(HAT_MAT[key]) return HAT_MAT[key];
   const c=document.createElement('canvas'); c.width=1024; c.height=256; const g=c.getContext('2d'), white=col===M_HAT_C[4][2];
   g.fillStyle=hatCss(col,1); g.fillRect(0,0,1024,256);
   const n=g.createLinearGradient(0,0,0,256); n.addColorStop(0,'rgba(255,255,255,.08)'); n.addColorStop(1,'rgba(0,0,0,.12)'); g.fillStyle=n; g.fillRect(0,0,1024,256);
-  for(let i=0;i<6;i++){ const x=(i+.5)*1024/6;   // the panel seams, either side of the front: a groove and the stitching beside it
-    g.strokeStyle='rgba(0,0,0,.45)'; g.lineWidth=4; g.beginPath(); g.moveTo(x,0); g.lineTo(x,256); g.stroke();
-    g.strokeStyle='rgba(255,255,255,.28)'; g.lineWidth=1.5; g.setLineDash([6,5]); [-7,7].forEach(d=>{ g.beginPath(); g.moveTo(x+d,8); g.lineTo(x+d,256); g.stroke(); }); g.setLineDash([]); }
+  for(let i=0;i<6;i++){ const x=i*1024/6;   // the panel seams, either side of the front (u .25, between two of them): a groove and the stitching beside it
+    g.strokeStyle='rgba(0,0,0,.16)'; g.lineWidth=2.5; g.beginPath(); g.moveTo(x,30); g.lineTo(x,256); g.stroke();   // faint, and not up to the top: six dark lines meeting there read as a basketball
+    g.strokeStyle='rgba(255,255,255,.2)'; g.lineWidth=1.2; g.setLineDash([5,5]); [-6,6].forEach(d=>{ g.beginPath(); g.moveTo(x+d,40); g.lineTo(x+d,250); g.stroke(); }); g.setLineDash([]); }
   g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=3; g.beginPath(); g.moveTo(0,244); g.lineTo(1024,244); g.stroke();
-  g.save(); g.translate(256,156); g.scale(.62,1); g.fillStyle=white||col===M_HAT_C[3][2]?'#f26a1b':'#fff'; g.font='900 70px Rubik,Arial,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',0,0); g.restore();   // u .25 is the front
+  g.save(); g.translate(256,166); g.scale(.6,1.15); g.fillStyle=white||col===M_HAT_C[3][2]?'#f26a1b':'#fff'; g.font='900 62px Rubik,Arial,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('BuyToday',0,0); g.restore();   // u .25 is the front: on the front panel, over the peak (higher up it sat on top of the head)
   const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
   return HAT_MAT[key]=new THREE.MeshStandardMaterial({map:t,roughness:.85,metalness:0}); }
 const brimMat=(col,f,side)=>{ const key='b'+col+f; return HAT_MAT[key]||(HAT_MAT[key]=new THREE.MeshStandardMaterial({color:new THREE.Color(hatCss(col,f)).convertSRGBToLinear(),roughness:.9,metalness:0,side})); };   // the colour as seen, not as light
 function capHat(sk,col){ const F=HAT_FIT.cap, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, k=F.k, th=Math.acos(Math.max(-1,Math.min(1,y0/k)));
   const S=m=>{ m.scale.copy(sk.r); m.position.copy(sk.c); return m; };
-  g.add(S(new THREE.Mesh(new THREE.SphereGeometry(k,40,14,0,Math.PI*2,0,th),capMat(col))));
-  const btn=new THREE.Mesh(new THREE.SphereGeometry(.07,12,6),brimMat(col,.9,THREE.FrontSide)); btn.scale.y=.45; btn.position.y=k-.01; g.add(S(new THREE.Group().add(btn)));
-  // the brim: from the rim round the front, longest at the middle, its sides curved down
-  const rin=k*Math.sin(th)-.01, N=24, pos=[], idx=[], A=1.15;
-  for(let i=0;i<=N;i++){ const a=-A+2*A*i/N, cs=Math.cos(a/A*Math.PI/2), L=F.brim*Math.pow(Math.max(cs,0),.8);
-    for(const t of [0,1]){ const r=rin+L*t, y=y0-.02-t*(.14+F.droop*(a/A)**2)-.06*t*t; pos.push(Math.sin(a)*r,y,Math.cos(a)*r); } }
-  for(let i=0;i<N;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
-  const bg=new THREE.BufferGeometry(); bg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); bg.setIndex(idx); bg.computeVertexNormals();
-  g.add(S(new THREE.Mesh(bg,brimMat(col,.82,THREE.FrontSide))), S(new THREE.Mesh(bg,brimMat(col,.5,THREE.BackSide))));   // top, and the darker underside
+  /* the crown: the skull's shape a little bigger, its front fuller and higher (a cap's structured front panels), the
+     back following the head down */
+  const cg=new THREE.SphereGeometry(k,48,18,0,Math.PI*2,0,th), cp=cg.attributes.position;
+  for(let i=0;i<cp.count;i++){ const x=cp.getX(i), y=cp.getY(i), z=cp.getZ(i), fr=Math.max(0,z/k), low=1-Math.max(0,y/k);
+    const m=1+.06*fr*low; cp.setXYZ(i,x*(1+.02*fr),y+.05*fr*Math.max(0,y/k),z*m); }
+  cg.computeVertexNormals(); g.add(S(new THREE.Mesh(cg,capMat(col))));
+  const btn=new THREE.Mesh(new THREE.SphereGeometry(.07,12,6),brimMat(col,.9,THREE.FrontSide)); btn.scale.y=.45; btn.position.y=k+.03; g.add(S(new THREE.Group().add(btn)));
+  /* the peak: a solid, curved bill (it was one bare sheet, paper-thin from the side): a top, a darker underside and an
+     edge all round, from the rim at the front, longest in the middle, its sides bent down */
+  const N=28, A=1.05, T=.045, top=[], bot=[];
+  for(let i=0;i<=N;i++){ const a=-A+2*A*i/N, cs=Math.cos(a/A*Math.PI/2), L=F.brim*Math.pow(Math.max(cs,0),.7), rin=k*Math.sin(th)*(1+.055*Math.cos(a))-.02;   // from the crown's own edge, fuller at the front: no gap between them
+    for(const t of [0,1]){ const r=rin+L*t, y=y0+.004-t*(.1+F.droop*(a/A)**2)-.05*t*t; top.push([Math.sin(a)*r,y,Math.cos(a)*r]); bot.push([Math.sin(a)*r,y-T*(1-.4*t),Math.cos(a)*r]); } }
+  const pos=[], idx=[], quad=(a,b,c,d)=>{ const o=pos.length/3; [a,b,c,d].forEach(v=>pos.push(...v)); idx.push(o,o+1,o+2, o+1,o+3,o+2); };
+  for(let i=0;i<N;i++){ const j=i*2;
+    quad(top[j],top[j+1],top[j+2],top[j+3]);            // the top, facing up
+    quad(bot[j+1],bot[j],bot[j+3],bot[j+2]); }           // the underside, facing down
+  const edge=[], eidx=[]; for(let i=0;i<N;i++){ const j=i*2, o=edge.length/3; [top[j+1],bot[j+1],top[j+3],bot[j+3]].forEach(v=>edge.push(...v)); eidx.push(o,o+1,o+2, o+1,o+3,o+2); }   // the outer edge
+  const mk=(p,ix)=>{ const b=new THREE.BufferGeometry(); b.setAttribute('position',new THREE.Float32BufferAttribute(p,3)); b.setIndex(ix); b.computeVertexNormals(); return b; };
+  const bg=mk(pos,idx), eg=mk(edge,eidx);
+  g.add(S(new THREE.Mesh(bg,brimMat(col,.82,THREE.DoubleSide))), S(new THREE.Mesh(eg,brimMat(col,.6,THREE.DoubleSide))));
+  // the underside darker: a second copy just under the top, seen only from below
+  const ug=bg.clone(); ug.translate(0,-.002,0); g.add(S(new THREE.Mesh(ug,brimMat(col,.45,THREE.BackSide))));
   return g; }
 /* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
    taller than the head, a small pompom, the label on the cuff */
