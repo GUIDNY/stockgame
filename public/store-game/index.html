@@ -2851,7 +2851,7 @@ function meshyAcc(model,o){
   if(hat==='cap'&&Q.capCut) sk.cut=b.min.y+Ht*Q.capCut;   // a cap's rim goes above the brows, or its peak covers the eyes
   const sq=hat==='cap'||hat==='beanie';
   model.traverse(x=>{ if(!x.isMesh||x.userData.acc) return; (Array.isArray(x.material)?x.material:[x.material]).forEach(mt=>{ const U=mt.userData.look; if(!U) return;
-    U.uSqOn.value=sq?1:0; U.uSqC.value.copy(sk.c); U.uSqR.value.copy(sk.r); U.uSqY.value=sk.cut; U.uSqB.value=Ht*.03; }); });
+    U.uSqOn.value=sq?1:0; U.uSqC.value.copy(sk.c); U.uSqR.value.copy(sk.r); U.uSqY.value=sk.cut-(hat==='cap'?sk.r.y*HAT_FIT.cap.sides:0); U.uSqB.value=Ht*.03; }); });   // under a cap, pressed down to its rim at the sides
   // built in the mesh's own (bind-pose) space, then hung on the head bone: bone-local = boneInverse × bindMatrix × mesh space
   const add=g=>{ const wrap=new THREE.Group(); wrap.matrixAutoUpdate=false; wrap.matrix.copy(H.inv).multiply(H.sm.bindMatrix); wrap.add(g);
     wrap.traverse(x=>{ x.userData.acc=true; if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } }); H.bone.add(wrap); model.userData.acc.push(wrap); };   // marked: the outfit painter leaves it alone
@@ -2881,8 +2881,8 @@ function meshyAcc(model,o){
 }
 /* fitted by eye, front and three-quarter, on both figures. sq: the skull in the head's box (fractions of it): centre, radii,
    and the rim line; the boy's box takes in his tall hair, the girl's her long hair at the back */
-const HAT_FIT={cap:{k:1.09,brim:.66,droop:.2},beanie:{top:1.16,k:1.04},
-  sq:{m:{x:.5,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1,capCut:.555},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03,capCut:.68}}};   // capCut: her brows reach .66   // bd: how much lower the beanie's rim sits
+const HAT_FIT={cap:{k:1.09,brim:.66,droop:.2,sides:.26},beanie:{top:1.16,k:1.04},
+  sq:{m:{x:.53,y:.5,z:.5,rx:.43,ry:.36,rz:.44,cut:.58,bd:.1,capCut:.555},f:{x:.5,y:.53,z:.55,rx:.36,ry:.34,rz:.4,cut:.59,bd:.03,capCut:.68}}};   // capCut: her brows reach .66   // bd: how much lower the beanie's rim sits
 /* the beanie: knitted, made here to the skull's own shape: a folded ribbed cuff at the rim line, a soft crown a little
    taller than the head, a small pompom; BuyToday orange, the logo on the cuff */
 /* hat colours: the hat itself; its seams, cuff and brim are shades of it */
@@ -2926,18 +2926,25 @@ function capMat(col){ const key='c'+col; if(HAT_MAT[key]) return HAT_MAT[key];
 const brimMat=(col,f,side)=>{ const key='b'+col+f; return HAT_MAT[key]||(HAT_MAT[key]=new THREE.MeshStandardMaterial({color:new THREE.Color(hatCss(col,f)).convertSRGBToLinear(),roughness:.9,metalness:0,side})); };   // the colour as seen, not as light
 function capHat(sk,col){ const F=HAT_FIT.cap, g=new THREE.Group(), y0=(sk.cut-sk.c.y)/sk.r.y, k=F.k, th=Math.acos(Math.max(-1,Math.min(1,y0/k)));
   const S=m=>{ m.scale.copy(sk.r); m.position.copy(sk.c); return m; };
-  /* the crown: the skull's shape a little bigger, its front fuller and higher (a cap's structured front panels), the
-     back following the head down */
-  const cg=new THREE.SphereGeometry(k,48,18,0,Math.PI*2,0,th), cp=cg.attributes.position;
-  for(let i=0;i<cp.count;i++){ const x=cp.getX(i), y=cp.getY(i), z=cp.getZ(i), fr=Math.max(0,z/k), low=1-Math.max(0,y/k);
-    const m=1+.06*fr*low; cp.setXYZ(i,x*(1+.02*fr),y+.05*fr*Math.max(0,y/k),z*m); }
-  cg.computeVertexNormals(); g.add(S(new THREE.Mesh(cg,capMat(col))));
+  /* The crown, down to a rim that follows the head like a worn cap's: at the forehead in front, down over the ears at
+     the sides, lower again at the back (a level rim all round left the cap perched on top of the head, ending high over
+     the ears). Built as a grid round the skull: u round it (.25 the front, as the texture has it), v from the top to
+     that rim. The front is a little fuller, a cap's structured panels. */
+  const rimY=d=>y0-F.sides*(1-Math.cos(d))/2*1.6-F.sides*.2*(1-Math.cos(d))**2;   // d: the angle from the front; y0 there, about y0-sides at the sides, more at the back
+  const NU=56, NV=16, cpos=[], cuv=[], cidx=[];
+  for(let j=0;j<=NV;j++) for(let i=0;i<=NU;i++){ const u=i/NU, ph=u*Math.PI*2, d=Math.acos(Math.max(-1,Math.min(1,Math.sin(ph))));   // sin(ph) is z: 1 at the front
+    const t=Math.acos(Math.max(-1,Math.min(1,rimY(d)/k))), th2=t*j/NV, fr=Math.max(0,Math.sin(ph)*Math.sin(th2)), up=Math.cos(th2);
+    const r=k*(1+.055*fr*(1-Math.max(0,up)));
+    cpos.push(-Math.cos(ph)*Math.sin(th2)*r, k*up+.05*fr*Math.max(0,up), Math.sin(ph)*Math.sin(th2)*r); cuv.push(u,1-j/NV); }
+  for(let j=0;j<NV;j++) for(let i=0;i<NU;i++){ const a=j*(NU+1)+i, b=a+NU+1; cidx.push(a,b,a+1, b,b+1,a+1); }
+  const cg=new THREE.BufferGeometry(); cg.setAttribute('position',new THREE.Float32BufferAttribute(cpos,3)); cg.setAttribute('uv',new THREE.Float32BufferAttribute(cuv,2)); cg.setIndex(cidx); cg.computeVertexNormals();
+  g.add(S(new THREE.Mesh(cg,capMat(col))));
   const btn=new THREE.Mesh(new THREE.SphereGeometry(.07,12,6),brimMat(col,.9,THREE.FrontSide)); btn.scale.y=.45; btn.position.y=k+.03; g.add(S(new THREE.Group().add(btn)));
   /* the peak: a solid, curved bill (it was one bare sheet, paper-thin from the side): a top, a darker underside and an
      edge all round, from the rim at the front, longest in the middle, its sides bent down */
   const N=28, A=1.05, T=.045, top=[], bot=[];
-  for(let i=0;i<=N;i++){ const a=-A+2*A*i/N, cs=Math.cos(a/A*Math.PI/2), L=F.brim*Math.pow(Math.max(cs,0),.7), rin=k*Math.sin(th)*(1+.055*Math.cos(a))-.02;   // from the crown's own edge, fuller at the front: no gap between them
-    for(const t of [0,1]){ const r=rin+L*t, y=y0+.004-t*(.1+F.droop*(a/A)**2)-.05*t*t; top.push([Math.sin(a)*r,y,Math.cos(a)*r]); bot.push([Math.sin(a)*r,y-T*(1-.4*t),Math.cos(a)*r]); } }
+  for(let i=0;i<=N;i++){ const a=-A+2*A*i/N, cs=Math.cos(a/A*Math.PI/2), L=F.brim*Math.pow(Math.max(cs,0),.7), ry=rimY(Math.abs(a)), rin=k*Math.sin(Math.acos(Math.max(-1,Math.min(1,ry/k))))*(1+.055*Math.cos(a))-.02;   // from the crown's own edge, which falls away to the sides: no gap between them
+    for(const t of [0,1]){ const r=rin+L*t, y=ry+.004-t*(.1+F.droop*(a/A)**2)-.05*t*t; top.push([Math.sin(a)*r,y,Math.cos(a)*r]); bot.push([Math.sin(a)*r,y-T*(1-.4*t),Math.cos(a)*r]); } }
   const pos=[], idx=[], quad=(a,b,c,d)=>{ const o=pos.length/3; [a,b,c,d].forEach(v=>pos.push(...v)); idx.push(o,o+1,o+2, o+1,o+3,o+2); };
   for(let i=0;i<N;i++){ const j=i*2;
     quad(top[j],top[j+1],top[j+2],top[j+3]);            // the top, facing up
