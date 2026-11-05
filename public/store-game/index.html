@@ -3919,6 +3919,7 @@ function buildKiosks(){
     const S=MALL2&&STORE_DEFS.find(S=>S.id===d.id);
     if(S) best=S.at(S.D*.8,-S.L*.42);   // in a real shop the catalogue screen stands in the far corner, off the way in
     if(!best) return;
+    if(SEASON.on&&d.id==='deal'){ SEASON.dealSpot={x:best[0],z:best[1]}; return; }   // in season the 11.11 booth stands here instead, and opens the same catalogue
     const [x,z]=best, y=f*FH, P=STATIC[f], g=new THREE.Group();
     // turn the screen to where people walk: the longest clear run from the kiosk, nudged towards the department's centre
     const toA=Math.atan2(d.to[0]-x,d.to[1]-z); let ry=toA, bs2=-1e9;
@@ -3985,8 +3986,8 @@ function seasonSign(w,h,x,y,z,ry,parent){ const m=new THREE.MeshBasicMaterial({m
   const g=new THREE.Group(); [0,Math.PI].forEach(a=>{ const pl=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m); pl.rotation.y=a; pl.position.z=a?-.02:.02; g.add(pl); });   // a face each way: never read backwards
   const rod=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,w+.3,8),new THREE.MeshStandardMaterial({color:0xe9b23c,metalness:.6,roughness:.35})); rod.rotation.z=Math.PI/2; rod.position.y=h/2+.04; g.add(rod);
   g.position.set(x,y,z); g.rotation.y=ry||0; parent.add(g); return g; }
-/* The 11.11 booth: a red and gold pavilion in the open side of the lobby, beside the way in (where
-   the walks cross it stood behind the gadget stall and under the giant screen, hidden from the lobby): four
+/* The 11.11 booth: a red and gold pavilion in the hot-deals department, in place of its catalogue screen (the one that
+   says "all 7 products"): four
    lacquered columns, a two-tier roof with upturned eaves, lanterns at its corners, a counter, and on both faces a screen
    cycling through the deals (the biggest discounts first). At it, the button opens all the deals. */
 function seasonDealsTex(){ const c=document.createElement('canvas'); c.width=640; c.height=400; const g=c.getContext('2d'), t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=4;
@@ -4006,7 +4007,7 @@ function seasonDealsTex(){ const c=document.createElement('canvas'); c.width=640
     const pc=Math.round((1-it.price/it.old)*100); g.fillStyle='#ffd36b'; g.beginPath(); g.arc(270,110,44,0,7); g.fill(); g.fillStyle='#9e0613'; g.textAlign='center'; g.font='900 30px Rubik,sans-serif'; g.fillText('-'+pc+'%',270,121);
     t.needsUpdate=true; };
   draw(); setInterval(()=>{ if(player.floor===0) draw(); },3500); return t; }
-function seasonBooth(P,parent){ const x=-7.6, z=28.6, ry=Math.PI/2, g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry; parent.add(g); SEASON.booth={x,z};   // its front to the lobby's middle
+function seasonBooth(P,parent){ const sp=SEASON.dealSpot||{x:0,z:-13.6}, x=sp.x, z=sp.z, ry=0, g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry; parent.add(g); SEASON.booth={x,z};   // its front to the atrium, where people come from
   const red=new THREE.MeshStandardMaterial({color:0xb30d18,roughness:.4}), dark=new THREE.MeshStandardMaterial({color:0x6e0710,roughness:.6}), gold=P.gold,
         tile=new THREE.MeshStandardMaterial({color:0x8f0a14,roughness:.55,flatShading:true});
   const B=(w,h,d,m,px,py,pz)=>{ const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); o.position.set(px,py,pz); o.castShadow=true; o.receiveShadow=true; g.add(o); return o; };
@@ -4031,18 +4032,18 @@ function seasonBooth(P,parent){ const x=-7.6, z=28.6, ry=Math.PI/2, g=new THREE.
     sg.position.set(0,2.75,s*1.48); if(s<0) sg.rotation.y=Math.PI; g.add(sg); });
   // lanterns under the eaves
   seasonLanterns([[-2.3,-1.85],[2.3,-1.85],[-2.3,1.85],[2.3,1.85]].map(([a,b])=>({x:x+a*Math.cos(ry)+b*Math.sin(ry),y:2.25,z:z-a*Math.sin(ry)+b*Math.cos(ry),s:.55,top:2.95})),P,parent);
-  solid(0,x,z,3.6,4.8); }
+  solid(0,x,z,4.8,3.6); }
 // a big "11.11" on the lobby floor, between the doors and the desk
 function seasonFloorMark(parent){ const m=new THREE.Mesh(new THREE.CircleGeometry(2.2,48),new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,
     map:canvasTex(512,512,(g,W,H)=>{ g.fillStyle='#c10c1a'; g.beginPath(); g.arc(W/2,H/2,W/2-6,0,7); g.fill(); g.strokeStyle='#ffd36b'; g.lineWidth=14; g.beginPath(); g.arc(W/2,H/2,W/2-24,0,7); g.stroke();
       g.fillStyle='#ffd36b'; g.textAlign='center'; g.textBaseline='middle'; g.font='900 150px Rubik,sans-serif'; g.fillText('11.11',W/2,H/2-30); g.direction='rtl'; g.font='800 52px Rubik,sans-serif'; g.fillStyle='#fff'; g.fillText('יום הרווקים',W/2,H/2+92); })}));
   m.rotation.x=-Math.PI/2; m.position.set(0,.03,BZ-3.6); m.renderOrder=2; parent.add(m); }
-// confetti: red and gold flakes drifting down the atrium and the lobby, turning as they fall
+// confetti: red and gold flakes drifting down the atrium and the lobby for five seconds from coming in, then fading out
 function seasonConfetti(){ const N=420, pos=new Float32Array(N*3), col=new Float32Array(N*3), sp=[], c1=new THREE.Color(0xe0182a), c2=new THREE.Color(0xffc94a), c3=new THREE.Color(0xffffff);
   const spot=()=>{ const r=Math.random(); return r<.6?[VOID.minX+Math.random()*(VOID.maxX-VOID.minX),VOID.minZ+Math.random()*(VOID.maxZ-VOID.minZ),11.5]:[-6+Math.random()*12,10+Math.random()*20,5.6]; };
   for(let i=0;i<N;i++){ const [x,z,top]=spot(); pos.set([x,Math.random()*top,z],i*3); const c=[c1,c2,c1,c3][i%4]; col.set([c.r,c.g,c.b],i*3); sp.push({v:.45+Math.random()*.5,w:Math.random()*6,top,x0:x,z0:z}); }
   const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); geo.setAttribute('color',new THREE.BufferAttribute(col,3));
-  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.09,vertexColors:true,toneMapped:false})); pts.frustumCulled=false; scene.add(pts); SEASON.conf={pts,sp}; }
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:.09,vertexColors:true,toneMapped:false,transparent:true})); pts.frustumCulled=false; scene.add(pts); SEASON.conf={pts,sp}; }
 // fireworks over the town, seen from the roof at night: a burst every couple of seconds, in red, gold and white
 const fwV=new THREE.Vector3();
 function seasonFireworks(parent){ const N=160, B=3, pts=[];
@@ -4091,7 +4092,10 @@ function seasonTick(t){ if(!SEASON.on||!SEASON.g.length) return; const f=player.
   SEASON.g.forEach((g,i)=>{ g.visible=i===f; }); SEASON.atr.visible=f<2;
   SEASON.glow.forEach(m=>{ m.emissiveIntensity=(TOWN.night&&f===2?1.1:.5)+.08*Math.sin(t*1.7); });
   const dt=Math.min(.05,t-(SEASON.t||t)); SEASON.t=t;
-  const C=SEASON.conf; if(C){ C.pts.visible=f<2&&!outsideNow; if(C.pts.visible){ const a=C.pts.geometry.attributes.position.array;
+  const C=SEASON.conf; if(C&&!C.done&&G.state==='play'&&C.t0===undefined) C.t0=t;
+  if(C&&!C.done){ const age=C.t0===undefined?-1:t-C.t0; C.pts.material.opacity=age<5?1:Math.max(0,1-(age-5)); if(age>6){ C.done=true; C.pts.visible=false; C.pts.geometry.dispose(); }
+    else C.pts.visible=age>=0&&f<2&&!outsideNow; }
+  if(C&&!C.done){ if(C.pts.visible){ const a=C.pts.geometry.attributes.position.array;
       C.sp.forEach((s,i)=>{ let y=a[i*3+1]-s.v*dt; if(y<0) y=s.top; a[i*3+1]=y; a[i*3]=s.x0+Math.sin(t*1.3+s.w)*.35; a[i*3+2]=s.z0+Math.cos(t*1.1+s.w)*.35; });
       C.pts.geometry.attributes.position.needsUpdate=true; } }
   if(SEASON.fw&&f===2) SEASON.fw.forEach(F=>{ F.t+=dt; const T=2.4;
